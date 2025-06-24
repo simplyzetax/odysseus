@@ -49,5 +49,3 @@ app.get("/content/api/pages/fortnite-game", async (c) => {
 
     return c.json(contentpagesTemplate);
 });
-
-//export

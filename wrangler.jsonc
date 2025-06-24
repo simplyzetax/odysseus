@@ -40,16 +40,21 @@
 				"name": "CACHE_DO",
 				"class_name": "CacheDurableObject",
 				"script_name": "odysseus"
+			},
+			{
+				"name": "MatchmakerServer",
+				"class_name": "MatchmakerServer",
+				"script_name": "odysseus"
 			}
 		]
 	},
 	"migrations": [
-		/*{
-      "tag": "v1",
-      "new_classes": [
-        "XmppWebsocketDO"
-      ]
-    },*/
+		{
+			"tag": "v1",
+			"new_classes": [
+				"MatchmakerServer"
+			]
+		},
 		{
 			"tag": "v1",
 			"new_sqlite_classes": [

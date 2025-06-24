@@ -6,7 +6,8 @@ import { app } from './core/app';
 import.meta.glob('./services/*/routes/**/*.ts', { eager: true });
 
 // Export Durable Object
-export { CacheDurableObject } from './durableobjects/cache-durable-object';
+export { CacheDurableObject } from '@utils/cache/cache-durable-object';
+export { MatchmakerServer } from '@services/matchmaker/server';
 
 export default {
 	fetch: app.fetch,

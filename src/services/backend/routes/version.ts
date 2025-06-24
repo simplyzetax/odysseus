@@ -46,5 +46,3 @@ app.get("/fortnite/api/v2/versioncheck/:platform", (c) => {
         type: "NO_UPDATE"
     });
 });
-
-//export
