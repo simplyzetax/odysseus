@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { odysseus } from "../../core/error";
-import { HonoContext } from "../../types/context";
+import { Context } from "hono";
 
 interface McpResponseBody {
     [key: string]: unknown;
@@ -39,7 +39,7 @@ function isJsonResponse(response: Response): boolean {
  * Middleware that adds MCP (Model Context Protocol) correction data to JSON responses
  * Adds profile revision information based on the request's revision number
  */
-export const mcpCorrectionMiddleware = createMiddleware(async (c: HonoContext, next) => {
+export const mcpCorrectionMiddleware = createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
     await next();
 
     // Skip correction if explicitly disabled

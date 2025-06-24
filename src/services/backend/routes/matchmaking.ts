@@ -106,7 +106,7 @@ app.get("/fortnite/api/game/v2/matchmakingservice/ticket/player/:accountId", aci
     console.info(`[Matchmaking] WS URL: ${protocol}://${url.host}/fortnite/api/game/v1/matchmakingservice/ws?playerCustomKey=${playerCustomKey}`);
 
     return c.json({
-        serviceUrl: `${protocol}://${url.host}/services/matchmaker/${playerCustomKey}`,
+        serviceUrl: `${protocol}://${url.host}/fortnite/api/game/v1/matchmakingservice/ws?playerCustomKey${playerCustomKey}`,
         ticketType: "mms-player",
         payload: signedPayload,
         signature: signatureHash

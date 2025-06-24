@@ -8,6 +8,9 @@ export default defineConfig({
         injectDmnoConfigVitePlugin({ injectSensitiveConfig: true }),
         cloudflare()
     ],
+    "build": {
+        minify: true,
+    },
     resolve: {
         alias: {
             "@core": path.resolve(__dirname, "./src/core"),

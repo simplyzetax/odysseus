@@ -51,16 +51,16 @@
 	"migrations": [
 		{
 			"tag": "v1",
+			"new_sqlite_classes": [
+				"CacheDurableObject"
+			]
+		},
+		{
+			"tag": "v2",
 			"new_classes": [
 				"MatchmakerServer"
 			]
 		},
-		{
-			"tag": "v1",
-			"new_sqlite_classes": [
-				"CacheDurableObject"
-			]
-		}
 	],
 	/**
 	 * Smart Placement
