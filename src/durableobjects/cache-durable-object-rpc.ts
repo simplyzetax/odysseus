@@ -251,8 +251,12 @@ export class CacheDurableObject extends DurableObject {
 
     private async scheduleCleanupAlarm(): Promise<void> {
         try {
-            // Cancel any existing alarm
-            await this.ctx.storage.deleteAlarm();
+            // Check if an alarm is already scheduled
+            const existingAlarm = await this.ctx.storage.getAlarm();
+            if (existingAlarm) {
+                console.log(`⏰ Cleanup alarm already scheduled for ${new Date(existingAlarm).toISOString()}`);
+                return;
+            }
 
             // Schedule next cleanup
             const nextCleanup = Date.now() + this.CLEANUP_INTERVAL;
