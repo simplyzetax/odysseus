@@ -25,16 +25,22 @@ importers:
         version: 0.31.2
       drizzle-orm:
         specifier: ^0.44.2
-        version: 0.44.2(@types/pg@8.15.4)(pg@8.16.2)
+        version: 0.44.2(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7)
       hono:
         specifier: ^4.8.2
         version: 4.8.2
+      jose:
+        specifier: ^6.0.11
+        version: 6.0.11
       nanoid:
         specifier: ^5.1.5
         version: 5.1.5
       pg:
         specifier: ^8.16.2
         version: 8.16.2
+      postgres:
+        specifier: ^3.4.7
+        version: 3.4.7
       zod:
         specifier: ^3.25.67
         version: 3.25.67
@@ -1645,6 +1651,9 @@ packages:
     resolution: {integrity: sha512-LpB/54B+/2J5hqQ7imZHfdU31OlgQqx7ZicVlkm9kzg9/w8GKLEcFfJl/t7DCEDueOyBAD6zCCwTO6Fzs0NoEQ==}
     engines: {node: '>=16'}
 
+  jose@6.0.11:
+    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
+
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
@@ -1871,6 +1880,10 @@ packages:
   postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
+
+  postgres@3.4.7:
+    resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
+    engines: {node: '>=12'}
 
   pretty-ms@9.2.0:
     resolution: {integrity: sha512-4yf0QO/sllf/1zbZWYnvWw3NxCQwLXKzIj0G849LSufP15BXKM0rbD2Z3wVnkMfjdn/CB0Dpp444gYAACdsplg==}
@@ -3333,10 +3346,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.2(@types/pg@8.15.4)(pg@8.16.2):
+  drizzle-orm@0.44.2(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7):
     optionalDependencies:
       '@types/pg': 8.15.4
       pg: 8.16.2
+      postgres: 3.4.7
 
   eastasianwidth@0.2.0: {}
 
@@ -3605,6 +3619,8 @@ snapshots:
 
   isexe@3.1.1: {}
 
+  jose@6.0.11: {}
+
   js-tokens@9.0.1: {}
 
   js-yaml@4.1.0:
@@ -3794,6 +3810,8 @@ snapshots:
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+
+  postgres@3.4.7: {}
 
   pretty-ms@9.2.0:
     dependencies:

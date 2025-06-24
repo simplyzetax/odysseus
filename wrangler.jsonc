@@ -20,6 +20,12 @@
 			"localConnectionString": "postgresql://finnernzerhoff:123@localhost:5432/odysseus"
 		}
 	],
+	"r2_buckets": [
+		{
+			"bucket_name": "odysseus",
+			"binding": "r2"
+		}
+	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

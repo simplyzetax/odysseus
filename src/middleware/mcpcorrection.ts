@@ -43,7 +43,7 @@ export const mcpCorrectionMiddleware = createMiddleware(async (c: HonoContext, n
     await next();
 
     // Skip correction if explicitly disabled
-    if (c.flags?.skipMcpCorrection) {
+    if (c.flags.skipMcpCorrection) {
         return;
     }
 

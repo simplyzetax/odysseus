@@ -1,5 +1,7 @@
 import { Context } from "hono";
-import { Flags } from "../middleware/rem";
+import { Flags, Misc } from "../middleware/rem";
+import { ApiError } from "@core/error";
+import { parseUserAgent } from "@utils/useragent";
 
 declare module "hono" {
     interface Context {
@@ -8,6 +10,7 @@ declare module "hono" {
         sendStatus: (statusCode: number) => Response;
         id: string;
         flags: Flags;
+        misc: Misc;
     }
 }
 

@@ -3,9 +3,14 @@ import { nanoid } from "nanoid";
 import { ApiError } from "../core/error";
 import { createMiddleware } from "hono/factory";
 import { HonoContext } from "../types/context";
+import { parseUserAgent } from "@utils/useragent";
 
 export type Flags = {
     skipMcpCorrection: boolean;
+}
+
+export type Misc = {
+    build: ReturnType<typeof parseUserAgent>;
 }
 
 const defaultFlags: Flags = {
@@ -35,6 +40,12 @@ export const responseEnhancementsMiddleware = createMiddleware(async (c: HonoCon
     };
 
     c.id = nanoid();
+
+    c.misc = {
+        build: parseUserAgent(c.req.header('User-Agent') || ''),
+    };
+
+    c.flags = { ...defaultFlags };
 
     await next();
 });
