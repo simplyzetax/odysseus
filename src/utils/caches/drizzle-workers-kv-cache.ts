@@ -2,6 +2,7 @@ import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
 
+//TODO: Implement this cache using Durable Objects SQL for ultra low latency
 export class CloudflareKVDrizzleCache extends Cache {
     private globalTtl: number = 1000;
     private readonly tableKeysPrefix = "drizzle_table_keys:";

@@ -1,8 +1,19 @@
-import { CloudflareKVDrizzleCache } from "@utils/drizzle-cache";
+import { CloudflareKVDrizzleCache } from "@utils/caches/drizzle-workers-kv-cache";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { Context } from "hono";
+import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/caches/drizzle-workers-do-cache";
 
 export const getDB = (c: Context<{ Bindings: Env }>) => {
+    // Get the Durable Object namespace from the Cloudflare environment
+    const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(c.env.CACHE_DO, "drizzle-cache");
+
+    return drizzle(c.env.DB.connectionString, {
+        cache: durableObjectCache
+    });
+}
+
+// Legacy function for KV cache (keep for rollback if needed)
+export const getDBWithKVCache = (c: Context<{ Bindings: Env }>) => {
     // Get the KV namespace from the Cloudflare environment
     const kvCache = new CloudflareKVDrizzleCache(c.env.kv);
 

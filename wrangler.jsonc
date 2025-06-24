@@ -32,6 +32,29 @@
 			"id": "148ab769ecc34b5f96ac6a9f38a946be"
 		}
 	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "CACHE_DO",
+				"class_name": "CacheDurableObject",
+				"script_name": "odysseues"
+			}
+		]
+	},
+	"migrations": [
+		/*{
+      "tag": "v1",
+      "new_classes": [
+        "XmppWebsocketDO"
+      ]
+    },*/
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"CacheDurableObject"
+			]
+		}
+	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
