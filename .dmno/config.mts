@@ -8,7 +8,11 @@ export default defineDmnoService({
       WRANGLER_DEV_URL: {},
       WRANGLER_DEV_ACTIVE: {}, // true when running `dwrangler dev` or `dwrangler pages dev`
     }),
-    DATABASE_URL: DmnoBaseTypes.string,
+    DATABASE_URL: {
+      extends: DmnoBaseTypes.string,
+      description: 'The URL of the database to connect to. This is used by the ORM to connect to the database.',
+      required: true,
+    },
     BASE_URL: {
       value: switchBy('WRANGLER_DEV_ACTIVE', { // use info from wrangler to affect other config
         _default: 'http://localhost:8787',

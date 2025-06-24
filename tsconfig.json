@@ -32,7 +32,8 @@
 		/* Skip type checking all .d.ts files. */
 		"skipLibCheck": true,
 		"types": [
-			"./worker-configuration.d.ts"
+			"./worker-configuration.d.ts",
+			"@cloudflare/vitest-pool-workers", // provides `cloudflare:test` types
 		]
 	},
 	"exclude": [
