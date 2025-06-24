@@ -25,6 +25,7 @@
 	"dependencies": {
 		"@dmno/cloudflare-platform": "^0.0.4",
 		"@dmno/vite-integration": "^0.0.16",
+		"@tsndr/cloudflare-worker-jwt": "^3.2.0",
 		"@types/pg": "^8.15.4",
 		"dmno": "^0.0.39",
 		"drizzle-kit": "^0.31.2",

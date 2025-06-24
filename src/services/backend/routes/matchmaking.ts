@@ -1,8 +1,9 @@
 import { app } from "@core/app";
+import { acidMiddleware } from "@middleware/auth/acid";
 
 //TODO: Implement the rest of the matchmaking API endpoints
 
-app.get("/fortnite/api/matchmaking/session/findPlayer/*", (c) => {
+app.get("/fortnite/api/matchmaking/session/findPlayer/:accountId", (c) => {
     return c.sendStatus(200);
 });
 
@@ -14,7 +15,7 @@ app.get("/fortnite/api/game/v2/matchmaking/account/:accountId/session/:sessionId
     });
 });
 
-app.post("/fortnite/api/matchmaking/session/:sessionId/join", (c) => {
+app.post("/fortnite/api/matchmaking/session/:sessionId/join", acidMiddleware, (c) => {
     //TODO: Check if sessionId is valid and if server is ready to be joined
     const sessionId = c.req.param("sessionId");
     return c.sendStatus(204);

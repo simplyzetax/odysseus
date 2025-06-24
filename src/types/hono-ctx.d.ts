@@ -1,0 +1,1 @@
+type HonoContext = Context<{ Bindings: Env }>

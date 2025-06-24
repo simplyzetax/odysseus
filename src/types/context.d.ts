@@ -13,5 +13,3 @@ declare module "hono" {
         misc: Misc;
     }
 }
-
-type HonoContext = Context<{ Bindings: Env }>

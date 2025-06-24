@@ -2,12 +2,13 @@ import { app } from "@core/app";
 import { db } from "@core/db/client";
 import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
+import { clientTokenMiddleware } from "@middleware/auth/client-auth";
 import { HotfixParser } from "@utils/hotfixe-parser";
 import { sha1, sha256 } from "hono/utils/crypto";
 
 //TODO: Implement client credentials authentication for these endpoints
 
-app.get("/fortnite/api/cloudstorage/system", async (c) => {
+app.get("/fortnite/api/cloudstorage/system", clientTokenMiddleware, async (c) => {
 
     const hotfixes = await db(c).select().from(HOTFIXES);
 
@@ -35,7 +36,7 @@ app.get("/fortnite/api/cloudstorage/system", async (c) => {
     return c.json(response);
 });
 
-app.get("/fortnite/api/cloudstorage/system/:filename", async (c) => {
+app.get("/fortnite/api/cloudstorage/system/:filename", clientTokenMiddleware, async (c) => {
 
     const filename = c.req.param("filename");
     const hotfixes = await db(c).select().from(HOTFIXES);

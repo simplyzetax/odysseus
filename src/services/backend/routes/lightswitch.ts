@@ -1,6 +1,7 @@
 import { app } from "@core/app";
+import { clientTokenMiddleware } from "@middleware/auth/client-auth";
 
-app.get("/lightswitch/api/service/:serviceName/status", async (c) => {
+app.get("/lightswitch/api/service/:serviceName/status", clientTokenMiddleware, async (c) => {
 
     const service = c.req.param("serviceName");
 
@@ -22,7 +23,7 @@ app.get("/lightswitch/api/service/:serviceName/status", async (c) => {
     });
 });
 
-app.get("/lightswitch/api/service/bulk/status", async (c) => {
+app.get("/lightswitch/api/service/bulk/status", clientTokenMiddleware, async (c) => {
     return c.json([{
         serviceInstanceId: "fortnite",
         status: "UP",

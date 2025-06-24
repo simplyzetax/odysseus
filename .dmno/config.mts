@@ -13,6 +13,11 @@ export default defineDmnoService({
       description: 'The URL of the database to connect to. This is used by the ORM to connect to the database.',
       required: true,
     },
+    JWT_SECRET: {
+      extends: DmnoBaseTypes.string,
+      description: 'Secret used to sign JWT tokens. Should be at least 32 characters long.',
+      required: true,
+    },
     BASE_URL: {
       value: switchBy('WRANGLER_DEV_ACTIVE', { // use info from wrangler to affect other config
         _default: 'http://localhost:8787',
