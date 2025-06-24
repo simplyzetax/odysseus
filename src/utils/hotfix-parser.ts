@@ -12,9 +12,10 @@ export class HotfixParser {
      * Transforms all hotfixes into a map of filename -> .ini content
      * @param includeDisabled Whether to include disabled hotfixes (default: false)
      * @param scope Filter by scope (default: 'user')
+     * @param includeTimestamp Whether to include timestamp in generated files (default: true)
      * @returns Map of filename to .ini file content
      */
-    public transformToIniFiles(includeDisabled: boolean = false, scope?: string): Map<string, string> {
+    public transformToIniFiles(includeDisabled: boolean = false, scope?: string, includeTimestamp: boolean = true): Map<string, string> {
         const fileMap = new Map<string, string>();
 
         // Filter hotfixes based on criteria
@@ -29,7 +30,7 @@ export class HotfixParser {
 
         // Transform each file group into .ini format
         for (const [filename, hotfixes] of groupedByFile) {
-            const iniContent = this.transformFileToIni(hotfixes);
+            const iniContent = this.transformFileToIni(hotfixes, includeTimestamp);
             fileMap.set(filename, iniContent);
         }
 
@@ -39,15 +40,18 @@ export class HotfixParser {
     /**
      * Transforms hotfixes for a single file into .ini format
      * @param hotfixes Array of hotfixes for a single file
+     * @param includeTimestamp Whether to include timestamp in generated file (default: true)
      * @returns .ini formatted string
      */
-    private transformFileToIni(hotfixes: SelectHotfix[]): string {
+    private transformFileToIni(hotfixes: SelectHotfix[], includeTimestamp: boolean = true): string {
         const sections = this.groupBySection(hotfixes);
         const iniLines: string[] = [];
 
         // Add header comment
         iniLines.push('; Generated hotfix configuration');
-        iniLines.push('; Auto-generated on ' + new Date().toISOString());
+        if (includeTimestamp) {
+            iniLines.push('; Auto-generated on ' + new Date().toISOString());
+        }
         iniLines.push('');
 
         // Process each section
@@ -136,10 +140,11 @@ export class HotfixParser {
      * @param filename The filename to get .ini content for
      * @param includeDisabled Whether to include disabled hotfixes
      * @param scope Filter by scope
+     * @param includeTimestamp Whether to include timestamp in generated file (default: true)
      * @returns .ini file content or null if file not found
      */
-    public getIniForFile(filename: string, includeDisabled: boolean = false, scope?: string): string | null {
-        const fileMap = this.transformToIniFiles(includeDisabled, scope);
+    public getIniForFile(filename: string, includeDisabled: boolean = false, scope?: string, includeTimestamp: boolean = true): string | null {
+        const fileMap = this.transformToIniFiles(includeDisabled, scope, includeTimestamp);
         return fileMap.get(filename) || null;
     }
 
