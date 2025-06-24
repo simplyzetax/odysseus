@@ -2,15 +2,11 @@ import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
 
-interface Env {
-    kv: KVNamespace;
-}
-
 export class CloudflareKVDrizzleCache extends Cache {
     private globalTtl: number = 1000;
     private readonly tableKeysPrefix = "drizzle_table_keys:";
 
-    constructor(private env: Env) {
+    constructor(private kv: KVNamespace) {
         super();
     }
 
@@ -20,7 +16,7 @@ export class CloudflareKVDrizzleCache extends Cache {
 
     private async getTableKeys(tableName: string): Promise<string[]> {
         try {
-            const stored = await this.env.kv.get(this.getTableKeysStorageKey(tableName));
+            const stored = await this.kv.get(this.getTableKeysStorageKey(tableName));
             return stored ? JSON.parse(stored) : [];
         } catch (error) {
             console.error(`Error getting table keys for ${tableName}:`, error);
@@ -33,7 +29,7 @@ export class CloudflareKVDrizzleCache extends Cache {
             const existingKeys = await this.getTableKeys(tableName);
             if (!existingKeys.includes(key)) {
                 existingKeys.push(key);
-                await this.env.kv.put(
+                await this.kv.put(
                     this.getTableKeysStorageKey(tableName),
                     JSON.stringify(existingKeys),
                     { expirationTtl: 86400 } // 24 hours TTL for tracking data
@@ -50,9 +46,9 @@ export class CloudflareKVDrizzleCache extends Cache {
             const filteredKeys = existingKeys.filter(k => !keysToRemove.has(k));
 
             if (filteredKeys.length === 0) {
-                await this.env.kv.delete(this.getTableKeysStorageKey(tableName));
+                await this.kv.delete(this.getTableKeysStorageKey(tableName));
             } else {
-                await this.env.kv.put(
+                await this.kv.put(
                     this.getTableKeysStorageKey(tableName),
                     JSON.stringify(filteredKeys),
                     { expirationTtl: 86400 }
@@ -75,8 +71,14 @@ export class CloudflareKVDrizzleCache extends Cache {
     // allowing you to retrieve response values for this query from the cache.
     override async get(key: string): Promise<any[] | undefined> {
         try {
-            const res = await this.env.kv.get(key);
-            return res ? JSON.parse(res) : undefined;
+            const res = await this.kv.get(key);
+            if (res) {
+                console.log(`🎯 Cache HIT for key: ${key}`);
+                return JSON.parse(res);
+            } else {
+                console.log(`❌ Cache MISS for key: ${key}`);
+                return undefined;
+            }
         } catch (error) {
             console.error('Cache get error:', error);
             return undefined;
@@ -99,7 +101,10 @@ export class CloudflareKVDrizzleCache extends Cache {
         config?: CacheConfig,
     ): Promise<void> {
         try {
-            await this.env.kv.put(key, JSON.stringify(response), { expirationTtl: config ? config.ex : this.globalTtl });
+            const ttl = config ? config.ex : this.globalTtl;
+            await this.kv.put(key, JSON.stringify(response), { expirationTtl: ttl });
+
+            console.log(`💾 Cache PUT - Key: ${key}, Tables: [${tables.join(', ')}], TTL: ${ttl}s`);
 
             // Track which tables this key belongs to for invalidation
             for (const table of tables) {
@@ -134,26 +139,30 @@ export class CloudflareKVDrizzleCache extends Cache {
                 : [];
 
             const keysToDelete = new Set<string>();
+            const affectedTableNames: string[] = [];
 
             // Collect all keys that need to be deleted based on affected tables
             for (const table of tablesArray) {
                 const tableName = is(table, Table)
                     ? getTableName(table)
                     : (table as string);
+                affectedTableNames.push(tableName);
                 const keys = await this.getTableKeys(tableName);
                 for (const key of keys) {
                     keysToDelete.add(key);
                 }
             }
 
+            console.log(`🗑️  Cache INVALIDATION - Tables: [${affectedTableNames.join(', ')}], Keys to delete: ${keysToDelete.size}, Tags: [${tagsArray.join(', ')}]`);
+
             // Delete tagged queries
             for (const tag of tagsArray) {
-                await this.env.kv.delete(tag);
+                await this.kv.delete(tag);
             }
 
             // Delete cache entries and update tracking
             for (const key of keysToDelete) {
-                await this.env.kv.delete(key);
+                await this.kv.delete(key);
             }
 
             // Remove deleted keys from tracking for each affected table
@@ -162,6 +171,10 @@ export class CloudflareKVDrizzleCache extends Cache {
                     ? getTableName(table)
                     : (table as string);
                 await this.removeTableKeys(tableName, keysToDelete);
+            }
+
+            if (keysToDelete.size > 0 || tagsArray.length > 0) {
+                console.log(`✅ Cache invalidation completed - Deleted ${keysToDelete.size} cache entries`);
             }
         } catch (error) {
             console.error('Cache invalidation error:', error);

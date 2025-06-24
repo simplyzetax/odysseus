@@ -1,5 +1,5 @@
 import { app } from "@core/app";
-import { db } from "@core/db/client";
+import { getDB } from "@core/db/client";
 import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/acid";
@@ -11,7 +11,8 @@ const SETTINGS_FILE = "clientsettings.sav";
 
 app.get("/fortnite/api/cloudstorage/system", clientTokenMiddleware, async (c) => {
 
-    const hotfixes = await db(c).select().from(HOTFIXES);
+    const db = getDB(c);
+    const hotfixes = await db.select().from(HOTFIXES);
 
     const parser = new HotfixParser(hotfixes);
     // Get all .ini files for enabled global-scope hotfixes (without timestamps for consistent hashing)
@@ -40,8 +41,9 @@ app.get("/fortnite/api/cloudstorage/system", clientTokenMiddleware, async (c) =>
 app.get("/fortnite/api/cloudstorage/system/:filename", clientTokenMiddleware, async (c) => {
 
     const filename = c.req.param("filename");
-    const hotfixes = await db(c).select().from(HOTFIXES);
+    const hotfixes = await getDB(c).select().from(HOTFIXES);
     const parser = new HotfixParser(hotfixes);
+
 
     // Get .ini content for the specific file (without timestamp for consistent hashing)
     const content = parser.getIniForFile(filename, false, 'global', false);

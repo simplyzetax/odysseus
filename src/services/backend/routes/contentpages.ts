@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { isNull } from "drizzle-orm";
 
 import { app } from "@core/app";
-import { db } from "@core/db/client";
+import { getDB } from "@core/db/client";
 import { CONTENT } from "@core/db/schemas/content";
 
 // Fuck you epicgames for adding another unnecessary slash to this endpoint
@@ -41,7 +41,7 @@ app.get("/content/api/pages/fortnite-game", async (c) => {
         }
     };
 
-    const globalScopeContentEntries = await db(c).select().from(CONTENT);
+    const globalScopeContentEntries = await getDB(c).select().from(CONTENT);
 
     for (const entry of globalScopeContentEntries) {
         contentpagesTemplate[entry.key] = entry.valueJSON;
