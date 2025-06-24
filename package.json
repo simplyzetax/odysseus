@@ -20,7 +20,7 @@
 		"typescript": "^5.5.2",
 		"vite": "^6.3.5",
 		"vitest": "~3.2.0",
-		"wrangler": "^4.21.0"
+		"wrangler": "^4.21.1"
 	},
 	"dependencies": {
 		"@dmno/cloudflare-platform": "^0.0.4",

@@ -41,11 +41,6 @@
 				"class_name": "CacheDurableObject",
 				"script_name": "odysseus"
 			},
-			{
-				"name": "MatchmakerServer",
-				"class_name": "MatchmakerServer",
-				"script_name": "odysseus"
-			}
 		]
 	},
 	"migrations": [
@@ -53,12 +48,6 @@
 			"tag": "v1",
 			"new_sqlite_classes": [
 				"CacheDurableObject"
-			]
-		},
-		{
-			"tag": "v2",
-			"new_classes": [
-				"MatchmakerServer"
 			]
 		},
 	],
