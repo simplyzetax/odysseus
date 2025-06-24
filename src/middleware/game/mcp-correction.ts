@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
-import { odysseus } from "../core/error";
-import { HonoContext } from "../types/context";
+import { odysseus } from "../../core/error";
+import { HonoContext } from "../../types/context";
 
 interface McpResponseBody {
     [key: string]: unknown;

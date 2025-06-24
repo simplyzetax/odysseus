@@ -1,7 +1,7 @@
 import { Context } from "hono";
 import { Flags, Misc } from "../middleware/rem";
 import { ApiError } from "@core/error";
-import { parseUserAgent } from "@utils/useragent";
+import { parseUserAgent } from "@utils/misc/user-agent";
 
 declare module "hono" {
     interface Context {

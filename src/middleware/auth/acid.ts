@@ -1,5 +1,5 @@
 import { odysseus } from "@core/error";
-import { GRANT_TYPES, JWT } from "@utils/jwt";
+import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
 import { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 

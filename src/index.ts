@@ -6,7 +6,7 @@ import { app } from './core/app';
 import.meta.glob('./services/*/routes/**/*.ts', { eager: true });
 
 // Export Durable Object
-export { CacheDurableObject } from './durableobjects/cache-durable-object-rpc';
+export { CacheDurableObject } from './durableobjects/cache-durable-object';
 
 export default {
 	fetch: app.fetch,

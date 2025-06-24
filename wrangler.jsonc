@@ -13,6 +13,8 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"logpush": true,
+	"upload_source_maps": true,
 	"hyperdrive": [
 		{
 			"binding": "DB",
@@ -37,7 +39,7 @@
 			{
 				"name": "CACHE_DO",
 				"class_name": "CacheDurableObject",
-				"script_name": "odysseues"
+				"script_name": "odysseus"
 			}
 		]
 	},

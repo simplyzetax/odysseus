@@ -1,7 +1,7 @@
 import { app } from "@core/app";
 import { odysseus } from "@core/error";
-import { ClientId, CLIENTS } from "@utils/clients";
-import { GRANT_TYPES, JWT } from "@utils/jwt";
+import { ClientId, CLIENTS } from "@utils/auth/clients";
+import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
 import { validator } from "hono/validator";
 import z from "zod/v4";
 

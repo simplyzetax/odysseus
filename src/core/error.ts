@@ -1042,7 +1042,7 @@ export const odysseus = {
             return new ApiError('errors.com.odysseus.internal.unknownError', 'Sorry an error occurred and we were unable to resolve it.', 1001, 500);
         },
         get eosError() {
-            return new ApiError('errors.com.odysseus.internal.EosError', 'Sorry an error occurred while communication with Odysseues Online Service Servers.', 1001, 500);
+            return new ApiError('errors.com.odysseus.internal.EosError', 'Sorry an error occurred while communication with Odysseus Online Service Servers.', 1001, 500);
         }
     },
     basic: {

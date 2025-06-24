@@ -4,7 +4,7 @@ import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/acid";
 import { clientTokenMiddleware } from "@middleware/auth/client-auth";
-import { HotfixParser } from "@utils/hotfix-parser";
+import { HotfixParser } from "@utils/misc/hotfix-parser";
 import { md5, sha1, sha256 } from "hono/utils/crypto";
 
 const SETTINGS_FILE = "clientsettings.sav";

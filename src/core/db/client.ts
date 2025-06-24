@@ -1,7 +1,7 @@
-import { CloudflareKVDrizzleCache } from "@utils/caches/drizzle-workers-kv-cache";
+import { CloudflareKVDrizzleCache } from "@utils/cache/drizzle-workers-kv-cache";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { Context } from "hono";
-import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/caches/drizzle-workers-do-cache";
+import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzle-workers-do-cache";
 import { odysseus } from "@core/error";
 
 export const getDB = (c: Context<{ Bindings: Env }>) => {

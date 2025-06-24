@@ -19,7 +19,7 @@ app.get("/launcher/api/public/distributionpoints/", (c) => {
 app.get("/launcher/api/public/assets/:someId", async (c) => {
     return c.json({
         appName: "FortniteContentBuilds",
-        labelName: "Odysseues",
+        labelName: "Odysseus",
         buildVersion: c.misc.build.cl,
         catalogItemId: "5cb97847cee34581afdbc445400e2f77",
         expires: "9999-12-31T23:59:59.999Z",

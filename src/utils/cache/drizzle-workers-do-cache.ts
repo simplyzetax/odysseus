@@ -1,7 +1,7 @@
 import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
-import { CacheDurableObject } from "../../durableobjects/cache-durable-object-rpc";
+import { CacheDurableObject } from "../../durableobjects/cache-durable-object";
 
 export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     private globalTtl: number = 1000;

@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { ApiError } from "../core/error";
 import { createMiddleware } from "hono/factory";
 import { HonoContext } from "../types/context";
-import { parseUserAgent } from "@utils/useragent";
+import { parseUserAgent } from "@utils/misc/user-agent";
 
 export type Flags = {
     skipMcpCorrection: boolean;
