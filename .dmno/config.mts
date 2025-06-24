@@ -5,7 +5,6 @@ import { DmnoBaseTypes, defineDmnoService, pickFromSchemaObject, switchBy } from
 export default defineDmnoService({
   schema: {
     ...pickFromSchemaObject(DmnoWranglerEnvSchema, {
-      WRANGLER_INJECT_MODE: { value: 'secrets' },
       WRANGLER_DEV_URL: {},
       WRANGLER_DEV_ACTIVE: {}, // true when running `dwrangler dev` or `dwrangler pages dev`
     }),
