@@ -16,13 +16,14 @@ export interface TableKey {
 
 export class CacheDurableObject extends DurableObject {
     private sql: SqlStorage;
+    private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
         this.sql = ctx.storage.sql;
         this.ctx.blockConcurrencyWhile(async () => {
             await this.initializeTables();
-            await this.cleanupExpiredEntries();
+            await this.scheduleCleanupAlarm();
         });
         console.log("Cache Durable Object initialized");
     }
@@ -70,8 +71,6 @@ export class CacheDurableObject extends DurableObject {
     // RPC Methods for cache operations
     async getCacheEntry(key: string): Promise<any[] | null> {
         try {
-            await this.cleanupExpiredEntries();
-
             const result = await this.sql.exec(
                 `SELECT data FROM cache_entries WHERE key = ? AND expires_at > ?`,
                 key,
@@ -191,7 +190,7 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    async cleanupExpiredEntries(): Promise<void> {
+    async cleanupExpiredEntries(): Promise<number> {
         try {
             const now = Date.now();
 
@@ -202,7 +201,7 @@ export class CacheDurableObject extends DurableObject {
             );
 
             const expiredRows = expiredResult.toArray();
-            if (expiredRows.length === 0) return;
+            if (expiredRows.length === 0) return 0;
 
             // Use Cloudflare's transaction API
             await this.ctx.storage.transaction(async () => {
@@ -223,8 +222,10 @@ export class CacheDurableObject extends DurableObject {
             });
 
             console.log(`🧹 Cleaned up ${expiredRows.length} expired cache entries`);
+            return expiredRows.length;
         } catch (error) {
             console.error("Error cleaning up expired entries:", error);
+            return 0;
         }
     }
 
@@ -245,6 +246,51 @@ export class CacheDurableObject extends DurableObject {
         } catch (error) {
             console.error("Error getting cache stats:", error);
             return { totalEntries: 0, expiredEntries: 0 };
+        }
+    }
+
+    private async scheduleCleanupAlarm(): Promise<void> {
+        try {
+            // Cancel any existing alarm
+            await this.ctx.storage.deleteAlarm();
+
+            // Schedule next cleanup
+            const nextCleanup = Date.now() + this.CLEANUP_INTERVAL;
+            await this.ctx.storage.setAlarm(nextCleanup);
+
+            console.log(`🔔 Scheduled cleanup alarm for ${new Date(nextCleanup).toISOString()}`);
+        } catch (error) {
+            console.error("Error scheduling cleanup alarm:", error);
+        }
+    }
+
+    // Alarm handler - called automatically by Cloudflare Workers
+    async alarm(): Promise<void> {
+        try {
+            console.log("🔔 Cleanup alarm triggered");
+            await this.cleanupExpiredEntries();
+
+            // Schedule the next cleanup
+            await this.scheduleCleanupAlarm();
+        } catch (error) {
+            console.error("Error in alarm handler:", error);
+            // Still try to reschedule even if cleanup failed
+            try {
+                await this.scheduleCleanupAlarm();
+            } catch (scheduleError) {
+                console.error("Error rescheduling alarm:", scheduleError);
+            }
+        }
+    }
+
+    async forceCleanup(): Promise<number> {
+        try {
+            const deletedCount = await this.cleanupExpiredEntries();
+            console.log(`🧹 Manual cleanup completed, deleted ${deletedCount} entries`);
+            return deletedCount;
+        } catch (error) {
+            console.error("Error in manual cleanup:", error);
+            throw error;
         }
     }
 
@@ -302,8 +348,10 @@ export class CacheDurableObject extends DurableObject {
                         return new Response("OK");
                     }
                     if (path === "/cleanup") {
-                        await this.cleanupExpiredEntries();
-                        return new Response("OK");
+                        const deletedCount = await this.forceCleanup();
+                        return new Response(JSON.stringify({ deletedCount }), {
+                            headers: { "Content-Type": "application/json" }
+                        });
                     }
                     break;
             }
