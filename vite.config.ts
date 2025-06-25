@@ -9,6 +9,7 @@ export default defineConfig({
     server: {
         port: 8787,
     },
+    assetsInclude: ['**/*.sql'],
     resolve: {
         alias: {
             "@core": path.resolve(__dirname, "./src/core"),

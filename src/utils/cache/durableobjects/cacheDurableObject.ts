@@ -1,4 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
+import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
+import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
+import { eq, and, lt, gt, like } from 'drizzle-orm';
+import migrations from '../../../../drizzle-do/migrations';
+import { cacheEntries, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
 
 export interface CacheEntry {
     key: string;
@@ -15,19 +20,19 @@ export interface TableKey {
 }
 
 export class CacheDurableObject extends DurableObject {
-    private sql: SqlStorage;
+    private db: DrizzleSqliteDODatabase;
     private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
-        this.sql = ctx.storage.sql;
+        this.db = drizzle(ctx.storage, { logger: false });
         
         // Add timeout to prevent constructor from hanging indefinitely
         this.ctx.blockConcurrencyWhile(async () => {
             try {
                 await Promise.race([
                     Promise.all([
-                        this.initializeTables(),
+                        this.runMigrations(),
                         this.scheduleCleanupAlarm()
                     ]),
                     new Promise((_, reject) => 
@@ -37,58 +42,21 @@ export class CacheDurableObject extends DurableObject {
             } catch (error) {
                 console.error("Error during Durable Object initialization:", error);
                 // Don't rethrow - allow the object to continue with degraded functionality
-                // The tables might still be created from a previous initialization
             }
         });
-        console.log("Cache Durable Object initialized");
+        console.log("Cache Durable Object initialized with Drizzle ORM");
     }
 
-    private async initializeTables(): Promise<void> {
+    private async runMigrations(): Promise<void> {
         try {
-            // Create cache entries table with timeout
             await Promise.race([
-                this.sql.exec(`
-                    CREATE TABLE IF NOT EXISTS cache_entries (
-                        key TEXT PRIMARY KEY,
-                        data TEXT NOT NULL,
-                        tables TEXT NOT NULL,
-                        expires_at INTEGER NOT NULL,
-                        created_at INTEGER NOT NULL
-                    )
-                `),
+                migrate(this.db, migrations),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Create cache_entries table timeout')), 5000)
-                )
-            ]);
-
-            // Create table keys tracking table with timeout
-            await Promise.race([
-                this.sql.exec(`
-                    CREATE TABLE IF NOT EXISTS table_keys (
-                        table_name TEXT NOT NULL,
-                        cache_key TEXT NOT NULL,
-                        created_at INTEGER NOT NULL,
-                        PRIMARY KEY (table_name, cache_key)
-                    )
-                `),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Create table_keys table timeout')), 5000)
-                )
-            ]);
-
-            // Create indexes for better performance with timeout
-            await Promise.race([
-                Promise.all([
-                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_cache_expires_at ON cache_entries(expires_at)`),
-                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_table_keys_table_name ON table_keys(table_name)`),
-                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_table_keys_cache_key ON table_keys(cache_key)`)
-                ]),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Create indexes timeout')), 5000)
+                    setTimeout(() => reject(new Error('Migration timeout')), 5000)
                 )
             ]);
         } catch (error) {
-            console.error("Error initializing cache tables:", error);
+            console.error("Error running migrations:", error);
             // Don't rethrow - let the Durable Object continue with potentially existing tables
         }
     }
@@ -96,17 +64,19 @@ export class CacheDurableObject extends DurableObject {
     // RPC Methods for cache operations
     async getCacheEntry(key: string): Promise<any[] | null> {
         try {
-            const result = await this.sql.exec(
-                `SELECT data FROM cache_entries WHERE key = ? AND expires_at > ?`,
-                key,
-                Date.now()
-            );
+            const now = Date.now();
+            
+            const results = await this.db
+                .select({ data: cacheEntries.data })
+                .from(cacheEntries)
+                .where(and(
+                    eq(cacheEntries.key, key),
+                    gt(cacheEntries.expiresAt, now)
+                ));
 
-            const rows = result.toArray();
-            if (rows.length > 0) {
-                const row = rows[0] as { data: string };
+            if (results.length > 0) {
                 console.log(`🎯 Cache HIT for key: ${key}`);
-                return JSON.parse(row.data);
+                return JSON.parse(results[0].data);
             } else {
                 console.log(`❌ Cache MISS for key: ${key}`);
                 return null;
@@ -122,32 +92,40 @@ export class CacheDurableObject extends DurableObject {
             const now = Date.now();
             const expiresAt = now + (ttl * 1000);
 
-            // Use Cloudflare's transaction API
-            await this.ctx.storage.transaction(async () => {
+            await this.db.transaction(async (tx) => {
                 // Store the cache entry
-                await this.sql.exec(
-                    `INSERT OR REPLACE INTO cache_entries (key, data, tables, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
+                const newCacheEntry: NewCacheEntry = {
                     key,
                     data,
-                    JSON.stringify(tables),
+                    tables: JSON.stringify(tables),
                     expiresAt,
-                    now
-                );
+                    createdAt: now
+                };
+
+                await tx.insert(cacheEntries)
+                    .values(newCacheEntry)
+                    .onConflictDoUpdate({
+                        target: cacheEntries.key,
+                        set: {
+                            data: newCacheEntry.data,
+                            tables: newCacheEntry.tables,
+                            expiresAt: newCacheEntry.expiresAt,
+                            createdAt: newCacheEntry.createdAt
+                        }
+                    });
 
                 // Remove existing table key mappings for this cache key
-                await this.sql.exec(
-                    "DELETE FROM table_keys WHERE cache_key = ?",
-                    key
-                );
+                await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, key));
 
                 // Track table associations
-                for (const table of tables) {
-                    await this.sql.exec(
-                        `INSERT INTO table_keys (table_name, cache_key, created_at) VALUES (?, ?, ?)`,
-                        table,
-                        key,
-                        now
-                    );
+                if (tables.length > 0) {
+                    const tableKeyEntries: NewTableKey[] = tables.map(table => ({
+                        tableName: table,
+                        cacheKey: key,
+                        createdAt: now
+                    }));
+
+                    await tx.insert(tableKeys).values(tableKeyEntries);
                 }
             });
 
@@ -163,31 +141,28 @@ export class CacheDurableObject extends DurableObject {
             let deletedCount = 0;
             const keysToDelete = new Set<string>();
 
-            // Use Cloudflare's transaction API
-            await this.ctx.storage.transaction(async () => {
+            await this.db.transaction(async (tx) => {
                 for (const tableName of tableNames) {
                     // Get all cache keys for this table
-                    const result = await this.sql.exec(
-                        `SELECT cache_key FROM table_keys WHERE table_name = ?`,
-                        tableName
-                    );
+                    const results = await tx
+                        .select({ cacheKey: tableKeys.cacheKey })
+                        .from(tableKeys)
+                        .where(eq(tableKeys.tableName, tableName));
 
-                    const rows = result.toArray();
-                    for (const row of rows) {
-                        const cacheKey = (row as { cache_key: string }).cache_key;
-                        keysToDelete.add(cacheKey);
+                    for (const row of results) {
+                        keysToDelete.add(row.cacheKey);
                     }
                 }
 
                 // Delete cache entries
                 for (const cacheKey of keysToDelete) {
-                    await this.sql.exec(`DELETE FROM cache_entries WHERE key = ?`, cacheKey);
+                    await tx.delete(cacheEntries).where(eq(cacheEntries.key, cacheKey));
                     deletedCount++;
                 }
 
                 // Remove table associations for the affected tables
                 for (const tableName of tableNames) {
-                    await this.sql.exec(`DELETE FROM table_keys WHERE table_name = ?`, tableName);
+                    await tx.delete(tableKeys).where(eq(tableKeys.tableName, tableName));
                 }
             });
 
@@ -201,10 +176,9 @@ export class CacheDurableObject extends DurableObject {
 
     async invalidateByTags(tags: string[]): Promise<void> {
         try {
-            // Use Cloudflare's transaction API
-            await this.ctx.storage.transaction(async () => {
+            await this.db.transaction(async (tx) => {
                 for (const tag of tags) {
-                    await this.sql.exec(`DELETE FROM cache_entries WHERE key = ?`, tag);
+                    await tx.delete(cacheEntries).where(eq(cacheEntries.key, tag));
                 }
             });
 
@@ -220,34 +194,25 @@ export class CacheDurableObject extends DurableObject {
             const now = Date.now();
 
             // Get expired cache keys
-            const expiredResult = await this.sql.exec(
-                "SELECT key FROM cache_entries WHERE expires_at <= ?",
-                now
-            );
+            const expiredResults = await this.db
+                .select({ key: cacheEntries.key })
+                .from(cacheEntries)
+                .where(lt(cacheEntries.expiresAt, now));
 
-            const expiredRows = expiredResult.toArray();
-            if (expiredRows.length === 0) return 0;
+            if (expiredResults.length === 0) return 0;
 
-            // Use Cloudflare's transaction API
-            await this.ctx.storage.transaction(async () => {
+            await this.db.transaction(async (tx) => {
                 // Delete expired cache entries
-                await this.sql.exec(
-                    "DELETE FROM cache_entries WHERE expires_at <= ?",
-                    now
-                );
+                await tx.delete(cacheEntries).where(lt(cacheEntries.expiresAt, now));
 
                 // Clean up associated table keys
-                for (const row of expiredRows) {
-                    const key = (row as { key: string }).key;
-                    await this.sql.exec(
-                        "DELETE FROM table_keys WHERE cache_key = ?",
-                        key
-                    );
+                for (const row of expiredResults) {
+                    await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, row.key));
                 }
             });
 
-            console.log(`🧹 Cleaned up ${expiredRows.length} expired cache entries`);
-            return expiredRows.length;
+            console.log(`🧹 Cleaned up ${expiredResults.length} expired cache entries`);
+            return expiredResults.length;
         } catch (error) {
             console.error("Error cleaning up expired entries:", error);
             return 0;
@@ -258,30 +223,22 @@ export class CacheDurableObject extends DurableObject {
         try {
             let deletedCount = 0;
 
-            // Use Cloudflare's transaction API
-            await this.ctx.storage.transaction(async () => {
+            await this.db.transaction(async (tx) => {
                 // Get all cache keys that start with the identifier
-                const result = await this.sql.exec(
-                    "SELECT key FROM cache_entries WHERE key LIKE ?",
-                    `${identifier}%`
-                );
+                const results = await tx
+                    .select({ key: cacheEntries.key })
+                    .from(cacheEntries)
+                    .where(like(cacheEntries.key, `${identifier}%`));
 
-                const rows = result.toArray();
-                const keysToDelete = rows.map(row => (row as { key: string }).key);
+                const keysToDelete = results.map(row => row.key);
 
                 // Delete cache entries that start with the identifier
                 if (keysToDelete.length > 0) {
-                    await this.sql.exec(
-                        "DELETE FROM cache_entries WHERE key LIKE ?",
-                        `${identifier}%`
-                    );
+                    await tx.delete(cacheEntries).where(like(cacheEntries.key, `${identifier}%`));
 
                     // Delete associated table keys for the deleted cache entries
                     for (const key of keysToDelete) {
-                        await this.sql.exec(
-                            "DELETE FROM table_keys WHERE cache_key = ?",
-                            key
-                        );
+                        await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, key));
                     }
 
                     deletedCount = keysToDelete.length;
@@ -301,16 +258,19 @@ export class CacheDurableObject extends DurableObject {
         try {
             const now = Date.now();
 
-            const totalResult = await this.sql.exec("SELECT COUNT(*) as count FROM cache_entries");
-            const expiredResult = await this.sql.exec("SELECT COUNT(*) as count FROM cache_entries WHERE expires_at <= ?", now);
+            const totalResults = await this.db
+                .select()
+                .from(cacheEntries);
 
-            const totalRows = totalResult.toArray();
-            const expiredRows = expiredResult.toArray();
+            const expiredResults = await this.db
+                .select()
+                .from(cacheEntries)
+                .where(lt(cacheEntries.expiresAt, now));
 
-            const totalEntries = totalRows.length > 0 ? (totalRows[0] as { count: number }).count : 0;
-            const expiredEntries = expiredRows.length > 0 ? (expiredRows[0] as { count: number }).count : 0;
-
-            return { totalEntries, expiredEntries };
+            return { 
+                totalEntries: totalResults.length, 
+                expiredEntries: expiredResults.length 
+            };
         } catch (error) {
             console.error("Error getting cache stats:", error);
             return { totalEntries: 0, expiredEntries: 0 };
