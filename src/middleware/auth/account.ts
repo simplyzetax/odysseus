@@ -6,10 +6,6 @@ import { eq } from "drizzle-orm";
 import { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
-/**
- * Middleware that adds MCP (Model Context Protocol) correction data to JSON responses
- * Adds profile revision information based on the request's revision number
- */
 export const accountMiddleware = createMiddleware(async (c: Context<{ Bindings: Env, Variables: { account: Account } }>, next) => {
 
     const Authorization = c.req.header("Authorization");

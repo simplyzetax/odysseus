@@ -1,10 +1,10 @@
 import { CloudflareKVDrizzleCache } from "@utils/cache/kv-cache";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { Context } from "hono";
-import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzle-do";
+import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzle-cache";
 import { odysseus } from "@core/error";
 
-export const getDB = (c: Context<{ Bindings: Env }> | Context<any, any, any>) => {
+export const getDB = (c: Context<{ Bindings: Env, Variables: { cacheIdentifier: string } }> | Context<any, any, any>) => {
 
     const colo = String(c.req.raw.cf?.colo);
     if (!colo) {
@@ -14,7 +14,7 @@ export const getDB = (c: Context<{ Bindings: Env }> | Context<any, any, any>) =>
     console.log(`Using colo: ${colo} for Durable Object cache`);
 
     // Get the Durable Object namespace from the Cloudflare environment
-    const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(c.env.CACHE_DO, colo);
+    const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(c.env.CACHE_DO, colo, c.var.cacheIdentifier);
 
     return drizzle(c.env.DB.connectionString, {
         cache: durableObjectCache

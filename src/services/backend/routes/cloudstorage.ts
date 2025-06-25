@@ -3,14 +3,14 @@ import { getDB } from "@core/db/client";
 import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/acid";
-import { clientTokenMiddleware } from "@middleware/auth/client";
+import { clientTokenVerify } from "@middleware/auth/client";
 import { ratelimitMiddleware } from "@middleware/core/ratelimit";
 import { HotfixParser } from "@utils/misc/hotfix-parser";
 import { md5, sha1, sha256 } from "hono/utils/crypto";
 
 const SETTINGS_FILE = "clientsettings.sav";
 
-app.get("/fortnite/api/cloudstorage/system", ratelimitMiddleware(), clientTokenMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/system", ratelimitMiddleware(), clientTokenVerify, async (c) => {
 
     const db = getDB(c);
     const hotfixes = await db.select().from(HOTFIXES);
@@ -39,7 +39,7 @@ app.get("/fortnite/api/cloudstorage/system", ratelimitMiddleware(), clientTokenM
     return c.json(response);
 });
 
-app.get("/fortnite/api/cloudstorage/system/:filename", ratelimitMiddleware(), clientTokenMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/system/:filename", ratelimitMiddleware(), clientTokenVerify, async (c) => {
 
     const filename = c.req.param("filename");
     const hotfixes = await getDB(c).select().from(HOTFIXES);

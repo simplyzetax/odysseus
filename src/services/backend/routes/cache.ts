@@ -1,22 +1,26 @@
 import { app } from "@core/app";
 import { odysseus } from "@core/error";
-import { CacheDurableObject } from "@utils/cache/do-sql-cache";
+import { CacheDurableObject } from "@utils/cache/durableobjects/cache-durable-object";
+import { getSignedCookie } from "hono/cookie";
 
 app.delete("/cache", async (c) => {
 
-    const colo = String(c.req.raw.cf?.colo);
-    if (!colo) {
-        return c.sendError(odysseus.basic.badRequest.withMessage("Missing Cloudflare colo"));
+    const cacheIdentifier = await getSignedCookie(c, c.env.JWT_SECRET, "cacheIdentifier");
+    if (!cacheIdentifier) {
+        return c.sendError(odysseus.basic.badRequest.withMessage("Missing cache identifier"));
     }
 
-    const cacheId = c.env.CACHE_DO.idFromName(colo);
-    const cacheInstance = c.env.CACHE_DO.get(cacheId) as DurableObjectStub<CacheDurableObject>;
+    const colo = cacheIdentifier.split("-")[0];
 
-    await cacheInstance.emptyCache();
+    const cacheId = c.env.CACHE_DO.idFromName(colo);
+    const cacheInstance = c.env.CACHE_DO.get(cacheId);
+
+    await cacheInstance.emptyCacheForIdentifier(cacheIdentifier);
 
     return c.json({
-        deleted: true,
+        message: "Cache cleared",
         colo,
+        cacheIdentifier
     });
 
 });

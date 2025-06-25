@@ -2,6 +2,7 @@ import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
 import { env } from "cloudflare:workers";
+import { CacheDurableObject } from "./durableobjects/cache-durable-object";
 
 const DISABLE_CACHE = env.DISABLE_CACHE === "true";
 
@@ -9,13 +10,17 @@ console.log(`Cache is ${DISABLE_CACHE ? "disabled" : "enabled"} Raw value: ${env
 
 export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     private globalTtl: number = 1000;
-    private durableObject: DurableObjectStub;
+    // Note: I dont want to make it any either but typescript complains
+    // about excessively deep or possibly infinitely deep types for some reason
+    private durableObject: any;
+    private cacheIdentifier: string;
 
-    constructor(durableObjectNamespace: DurableObjectNamespace, cacheName = "drizzle-cache") {
+    constructor(durableObjectNamespace: DurableObjectNamespace, cacheName = "drizzle-cache", cacheIdentifier: string) {
         super();
         // Use a consistent ID for the cache instance
         const durableObjectId = durableObjectNamespace.idFromName(cacheName);
         this.durableObject = durableObjectNamespace.get(durableObjectId);
+        this.cacheIdentifier = cacheIdentifier;
     }
 
     // For the strategy, we have two options:
@@ -29,6 +34,9 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     // This function accepts query and parameters that cached into key param,
     // allowing you to retrieve response values for this query from the cache.
     override async get(key: string): Promise<any[] | undefined> {
+
+        key = this.cacheIdentifier + "-" + key;
+
         if (DISABLE_CACHE) {
             console.log(`🚫 Cache GET disabled - Key: ${key}`);
             return undefined;
@@ -36,7 +44,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
 
         try {
             // Use RPC call instead of fetch
-            const result = await (this.durableObject as any).getCacheEntry(key);
+            const result: any[] | null = await this.durableObject.getCacheEntry(key);
             return result || undefined;
         } catch (error) {
             console.error('Cache get error:', error);
@@ -63,6 +71,8 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             console.log(`🚫 Cache PUT disabled - Key: ${key}, Tables: [${tables.join(', ')}]`);
             return;
         }
+
+        key = this.cacheIdentifier + "-" + key;
 
         try {
             const ttl = config?.ex ?? this.globalTtl;
@@ -146,7 +156,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             }
 
             if (affectedTableNames.length > 0) {
-                const deletedCount = await (this.durableObject as any).invalidateByTables(affectedTableNames);
+                const deletedCount: number = await (this.durableObject as any).invalidateByTables(affectedTableNames);
                 console.log(`✅ Cache invalidation completed - Deleted ${deletedCount} cache entries`);
             }
         } catch (error) {

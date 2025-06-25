@@ -229,21 +229,42 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    async emptyCache() {
+    async emptyCacheForIdentifier(identifier: string) {
         try {
+            let deletedCount = 0;
+
             // Use Cloudflare's transaction API
             await this.ctx.storage.transaction(async () => {
-                // Delete all cache entries
-                await this.sql.exec(
-                    "DELETE FROM cache_entries"
+                // Get all cache keys that start with the identifier
+                const result = await this.sql.exec(
+                    "SELECT key FROM cache_entries WHERE key LIKE ?",
+                    `${identifier}%`
                 );
 
-                await this.sql.exec(
-                    "DELETE FROM table_keys"
-                );
+                const rows = result.toArray();
+                const keysToDelete = rows.map(row => (row as { key: string }).key);
+
+                // Delete cache entries that start with the identifier
+                if (keysToDelete.length > 0) {
+                    await this.sql.exec(
+                        "DELETE FROM cache_entries WHERE key LIKE ?",
+                        `${identifier}%`
+                    );
+
+                    // Delete associated table keys for the deleted cache entries
+                    for (const key of keysToDelete) {
+                        await this.sql.exec(
+                            "DELETE FROM table_keys WHERE cache_key = ?",
+                            key
+                        );
+                    }
+
+                    deletedCount = keysToDelete.length;
+                }
             });
 
-            console.log(`🧹 Emptied cache`);
+            console.log(`🧹 Emptied cache for identifier "${identifier}" - deleted ${deletedCount} entries`);
+            return deletedCount;
 
         } catch (error) {
             console.error("Error emptying cache:", error);

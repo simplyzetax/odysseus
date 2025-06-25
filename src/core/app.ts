@@ -5,9 +5,14 @@ import { mcpCorrectionMiddleware } from "@middleware/game/mcp-correction";
 import { responseEnhancementsMiddleware } from "@middleware/core/rem";
 import { odysseus } from "./error";
 import { logger } from "hono/logger";
-import { persistentDoMiddleware } from "@middleware/core/persistent-do";
+import { persistentDoMiddleware } from "@middleware/core/cache-chooser";
+import { CacheDurableObject } from "@utils/cache/durableobjects/cache-durable-object";
 
-const app = new Hono<{ Bindings: Env }>();
+interface Bindings extends Omit<Env, 'CACHE_DO'> {
+    CACHE_DO: DurableObjectNamespace<CacheDurableObject>;
+}
+
+const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(logger())
 app.use(persistentDoMiddleware);
