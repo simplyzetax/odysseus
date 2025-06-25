@@ -1,11 +1,9 @@
 import { defineConfig } from "vite";
-import { injectDmnoConfigVitePlugin } from '@dmno/vite-integration';
 import { cloudflare } from "@cloudflare/vite-plugin";
 import path from "path";
 
 export default defineConfig({
     plugins: [
-        injectDmnoConfigVitePlugin({ injectSensitiveConfig: true }),
         cloudflare()
     ],
     "build": {

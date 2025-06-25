@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { nanoid } from "nanoid"
 import { ClientId, CLIENTS } from "./clients";
 import { Account } from "@core/db/schemas/account";
+import { env } from "cloudflare:workers";
 
 export enum GRANT_TYPES {
     client_credentials = "client_credentials",
@@ -14,8 +15,11 @@ export type PossibleGrantTypes = keyof typeof GRANT_TYPES;
 
 export class JWT {
 
+    static get encodedSecret() {
+        return new TextEncoder().encode(env.JWT_SECRET);
+    }
+
     static async createClientToken(clientId: ClientId, grant_type: PossibleGrantTypes, expiresIn: number): Promise<string> {
-        const secret = new TextEncoder().encode(DMNO_CONFIG.JWT_SECRET);
         const expirationTime = Math.floor(Date.now() / 1000) + (expiresIn * 3600); // Convert hours to seconds
 
         const token = await new SignJWT({
@@ -32,13 +36,12 @@ export class JWT {
         })
             .setProtectedHeader({ alg: "HS256" })
             .setExpirationTime(expirationTime)
-            .sign(secret);
+            .sign(this.encodedSecret);
 
         return token;
     }
 
     static async createAccessToken(account: Account, clientId: ClientId, grant_type: PossibleGrantTypes, deviceId: string, expiresIn: number) {
-        const secret = new TextEncoder().encode(DMNO_CONFIG.JWT_SECRET);
         const expirationTime = Math.floor(Date.now() / 1000) + (expiresIn * 3600); // Convert hours to seconds
 
         const token = await new SignJWT({
@@ -61,13 +64,12 @@ export class JWT {
         })
             .setProtectedHeader({ alg: "HS256" })
             .setExpirationTime(expirationTime)
-            .sign(secret);
+            .sign(this.encodedSecret);
 
         return token;
     }
 
     static async createRefreshToken(account: Account, clientId: ClientId, grantType: PossibleGrantTypes, expiresIn: number, deviceId: string) {
-        const secret = new TextEncoder().encode(DMNO_CONFIG.JWT_SECRET);
         const expirationTime = Math.floor(Date.now() / 1000) + (expiresIn * 3600); // Convert hours to seconds
 
         const token = await new SignJWT({
@@ -82,15 +84,14 @@ export class JWT {
         })
             .setProtectedHeader({ alg: "HS256" })
             .setExpirationTime(expirationTime)
-            .sign(secret);
+            .sign(this.encodedSecret);
 
         return token;
     }
 
     static async verifyToken(token: string) {
         try {
-            const secret = new TextEncoder().encode(DMNO_CONFIG.JWT_SECRET);
-            const { payload } = await jwtVerify(token, secret);
+            const { payload } = await jwtVerify(token, this.encodedSecret);
             return payload;
         } catch (error) {
             console.error("JWT verification failed:", error);

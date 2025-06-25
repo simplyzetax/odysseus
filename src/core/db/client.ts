@@ -30,20 +30,3 @@ export const getDBWithKVCache = (c: Context<{ Bindings: Env }>) => {
         cache: kvCache
     });
 }
-
-export const getDBEnv = (req: Request, env: Env) => {
-
-    const colo = String(req.cf?.colo);
-    if (!colo) {
-        odysseus.internal.serverError.withMessage("No colo information available in request context").throwHttpException();
-    }
-
-    console.log(`Using colo: ${colo} for Durable Object cache`);
-
-    // Get the Durable Object namespace from the Cloudflare environment
-    const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(env.CACHE_DO, colo);
-
-    return drizzle(env.DB.connectionString, {
-        cache: durableObjectCache
-    });
-}
