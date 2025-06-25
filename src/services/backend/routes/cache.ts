@@ -1,6 +1,5 @@
 import { app } from "@core/app";
 import { odysseus } from "@core/error";
-import { CacheDurableObject } from "@utils/cache/durableobjects/cacheDurableObject";
 import { getSignedCookie } from "hono/cookie";
 
 app.delete("/cache", async (c) => {

@@ -10,6 +10,8 @@
 		"deploy": "vite build && wrangler deploy",
 		"start": "wrangler dev",
 		"test": "vitest",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
 		"cf-typegen": "wrangler types",
 		"push": "drizzle-kit push"
 	},
@@ -17,8 +19,11 @@
 		"@cloudflare/vite-plugin": "^1.7.4",
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@types/node": "^24.0.3",
+		"eslint": "^9.29.0",
 		"typescript": "^5.5.2",
+		"typescript-eslint": "^8.35.0",
 		"vite": "^6.3.5",
+		"vite-plugin-linter": "^3.0.1",
 		"vitest": "~3.2.0",
 		"wrangler": "^4.21.1"
 	},
@@ -30,8 +35,10 @@
 		"hono": "^4.8.2",
 		"jose": "^6.0.11",
 		"nanoid": "^5.1.5",
+		"oslo": "^1.2.1",
 		"pg": "^8.16.2",
 		"postgres": "^3.4.7",
+		"vite-plugin-checker": "^0.9.3",
 		"zod": "^3.25.67"
 	}
 }

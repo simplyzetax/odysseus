@@ -1,9 +1,9 @@
-export type FNBuildData = {
+export interface FNBuildData {
     season: number;
     build: number;
     cl: string;
     lobby: string;
-};
+}
 
 const DEFAULT_BUILD_DATA: FNBuildData = {
     season: 0,
@@ -28,9 +28,9 @@ export function parseUserAgent(ua: string): FNBuildData {
     const buildData = { ...DEFAULT_BUILD_DATA };
 
     const matches = {
-        official: ua.match(REGEX_PATTERNS.OFFICIAL),
-        buildId: ua.match(REGEX_PATTERNS.BUILD_ID),
-        build: ua.match(REGEX_PATTERNS.BUILD)
+        official: REGEX_PATTERNS.OFFICIAL.exec(ua),
+        buildId: REGEX_PATTERNS.BUILD_ID.exec(ua),
+        build: REGEX_PATTERNS.BUILD.exec(ua)
     };
 
     if (matches.official) {

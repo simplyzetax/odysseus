@@ -1,8 +1,8 @@
+import type { Account } from "@core/db/schemas/account";
+import { env } from "cloudflare:workers";
 import { SignJWT, jwtVerify } from "jose"
 import { nanoid } from "nanoid"
-import { ClientId, CLIENTS } from "./clients";
-import { Account } from "@core/db/schemas/account";
-import { env } from "cloudflare:workers";
+import type { ClientId} from "./clients";
 
 export enum GRANT_TYPES {
     client_credentials = "client_credentials",
@@ -117,7 +117,7 @@ export class JWT {
         }
     }
 
-    static DateAddHours(date: Date, hours: number): Date {
+    static dateAddHours(date: Date, hours: number): Date {
         const newDate = new Date(date.getTime());
         newDate.setHours(newDate.getHours() + hours);
         return newDate;

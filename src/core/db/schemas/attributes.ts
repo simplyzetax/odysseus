@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, uuid, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { PROFILES } from "./profile";
 
 export const ATTRIBUTES = pgTable('attributes', {

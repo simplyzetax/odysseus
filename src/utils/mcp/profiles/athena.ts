@@ -1,8 +1,9 @@
-import { Context } from "hono";
-import { FortniteProfile, FortniteProfileWithDBProfile } from "../base-profile";
-import { Profile } from "@core/db/schemas/profile";
 import { ITEMS } from "@core/db/schemas/items";
+import type { Profile } from "@core/db/schemas/profile";
 import { eq, inArray } from "drizzle-orm";
+import type { Context } from "hono";
+import type { FortniteProfile} from "../base-profile";
+import { FortniteProfileWithDBProfile } from "../base-profile";
 
 export class AthenaProfile extends FortniteProfileWithDBProfile<'athena'> {
 

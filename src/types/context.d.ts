@@ -1,7 +1,5 @@
-import { Context } from "hono";
-import { Flags, Misc } from "../middleware/core/remMiddleware";
-import { ApiError } from "@core/error";
-import { parseUserAgent } from "@utils/misc/user-agent";
+import type { ApiError } from "@core/error";
+import type { Flags, Misc } from "../middleware/core/remMiddleware";
 
 declare module "hono" {
     interface Context {

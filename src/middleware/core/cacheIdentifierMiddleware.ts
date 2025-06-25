@@ -1,6 +1,6 @@
 import { odysseus } from "@core/error";
-import { Context } from "hono";
-import { getCookie, getSignedCookie, setCookie, setSignedCookie } from "hono/cookie";
+import type { Context } from "hono";
+import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { nanoid } from "nanoid";
 

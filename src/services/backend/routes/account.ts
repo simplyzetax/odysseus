@@ -3,7 +3,7 @@ import { getDB } from "@core/db/client";
 import { ACCOUNTS } from "@core/db/schemas/account";
 import { odysseus } from "@core/error";
 import { accountMiddleware } from "@middleware/auth/accountMiddleware";
-import { eq, inArray, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 
 app.get("/account/api/public/account", async (c) => {
 
@@ -93,7 +93,6 @@ app.get("/persona/api/public/account/lookup", async (c) => {
 });
 
 app.get("/api/v1/search/:accountId", async (c) => {
-    const accountId = c.req.param("accountId");
 
     const db = getDB(c);
 

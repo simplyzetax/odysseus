@@ -1,3 +1,3 @@
-import { Context } from "hono";
+import type { Context } from "hono";
 
 export type HonoContext = Context<{ Bindings: Env }>

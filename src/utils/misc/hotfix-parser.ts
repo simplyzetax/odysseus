@@ -1,4 +1,4 @@
-import { Hotfix } from "@core/db/schemas/hotfixes";
+import type { Hotfix } from "@core/db/schemas/hotfixes";
 
 export class HotfixParser {
 

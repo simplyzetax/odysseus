@@ -1,6 +1,6 @@
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { odysseus } from "../../core/error";
-import { Context } from "hono";
 
 interface McpResponseBody {
     [key: string]: unknown;
@@ -58,7 +58,7 @@ export const mcpCorrectionMiddleware = createMiddleware(async (c: Context<{ Bind
 
         // Clone response to avoid consuming the original stream
         const responseClone = c.res.clone();
-        const responseBody = await responseClone.json() as McpResponseBody;
+        const responseBody = await responseClone.json();
 
         // Add MCP revision data to the response body
         const enhancedBody: McpResponseBody = {

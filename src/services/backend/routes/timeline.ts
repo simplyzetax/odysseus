@@ -4,14 +4,14 @@ app.get("/fortnite/api/calendar/v1/timeline", (c) => {
 
     const activeEvents = [
         {
-            "eventType": `EventFlag.Season${c.misc.build.season}`,
-            "activeUntil": "9999-01-01T00:00:00.000Z",
-            "activeSince": "2020-01-01T00:00:00.000Z"
+            eventType: `EventFlag.Season${c.misc.build.season}`,
+            activeUntil: "9999-01-01T00:00:00.000Z",
+            activeSince: "2020-01-01T00:00:00.000Z"
         },
         {
-            "eventType": `EventFlag.${c.misc.build.lobby}`,
-            "activeUntil": "9999-01-01T00:00:00.000Z",
-            "activeSince": "2020-01-01T00:00:00.000Z"
+            eventType: `EventFlag.${c.misc.build.lobby}`,
+            activeUntil: "9999-01-01T00:00:00.000Z",
+            activeSince: "2020-01-01T00:00:00.000Z"
         }
     ];
 

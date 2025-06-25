@@ -4,7 +4,7 @@ import path from "path";
 
 export default defineConfig({
     plugins: [
-        cloudflare()
+        cloudflare(),
     ],
     server: {
         port: 8787,

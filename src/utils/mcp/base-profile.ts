@@ -1,32 +1,36 @@
 import { getDB } from "@core/db/client";
-import { ITEMS, itemSelectSchema, Item } from "@core/db/schemas/items";
-import { PROFILES, profileTypesEnum, Profile } from "@core/db/schemas/profile";
+import type { Attribute} from "@core/db/schemas/attributes";
+import { ATTRIBUTES } from "@core/db/schemas/attributes";
+import type { Item } from "@core/db/schemas/items";
+import { ITEMS, itemSelectSchema } from "@core/db/schemas/items";
+import type { Profile } from "@core/db/schemas/profile";
+import { PROFILES, profileTypesEnum } from "@core/db/schemas/profile";
+import { odysseus } from "@core/error";
 import { and, eq, sql } from "drizzle-orm";
-import { Context } from "hono";
-import { Attribute, ATTRIBUTES } from "@core/db/schemas/attributes";
+import type { Context } from "hono";
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
-type ProfileClassMap = {
+interface ProfileClassMap {
     athena: FortniteProfileWithDBProfile<'athena'>;
     common_core: FortniteProfileWithDBProfile<'common_core'>;
     common_public: FortniteProfileWithDBProfile<'common_public'>;
     creative: FortniteProfileWithDBProfile<'creative'>;
     profile0: FortniteProfileWithDBProfile<'profile0'>;
-};
+}
 
 // Extract profile type from the enum
 type ProfileType = keyof typeof profileTypesEnum;
 
 // Type for the formatted item structure that matches Fortnite's MCP format
-export type FormattedItem = {
+export interface FormattedItem {
     templateId: string;
     attributes: Record<string, any> & {
         quantity: number;
         favorite?: boolean;
         item_seen?: 0 | 1;
     };
-};
+}
 
 // Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
@@ -77,7 +81,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
         );
 
         if (!dbProfile) {
-            throw new Error(`Profile not found for account ${this.accountId} with type ${this.profileType}`);
+            odysseus.mcp.profileNotFound.variable([this.accountId]).throwHttpException();
         }
 
         // For athena profile, we need to dynamically import to avoid circular dependency
@@ -112,7 +116,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
     }
 }
 
-export type BaseProfileChange = {
+export interface BaseProfileChange {
     changeType: string;
 }
 

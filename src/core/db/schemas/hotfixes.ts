@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { ACCOUNTS } from "./account";
 
 export const HOTFIXES = pgTable('hotfixes', {

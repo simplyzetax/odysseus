@@ -1,12 +1,12 @@
 import { odysseus } from "@core/error";
 import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
-import { Context } from "hono";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
 export const clientTokenVerify = createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
 
     const Authorization = c.req.header("Authorization");
-    if (!Authorization || !Authorization.startsWith("Bearer ")) {
+    if (!Authorization?.startsWith("Bearer ")) {
         return c.sendError(odysseus.authentication.invalidHeader.withMessage("Missing or invalid Authorization header"));
     }
 

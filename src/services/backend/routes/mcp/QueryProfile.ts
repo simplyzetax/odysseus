@@ -9,7 +9,7 @@ app.post("/fortnite/api/game/v2/profile/:accountId/client/QueryProfile", acidMid
         return c.sendError(odysseus.mcp.invalidPayload.withMessage("Missing profile ID"));
     }
 
-    if (FortniteProfile.isValidProfileType(profileId) === false) {
+    if (!FortniteProfile.isValidProfileType(profileId)) {
         return c.sendError(odysseus.mcp.invalidPayload.withMessage("Invalid profile ID"));
     }
 
@@ -18,8 +18,8 @@ app.post("/fortnite/api/game/v2/profile/:accountId/client/QueryProfile", acidMid
     const profileObject = await profile.buildProfileObject();
 
     profile.trackChange({
-        "changeType": "fullProfileUpdate",
-        "profile": profileObject
+        changeType: "fullProfileUpdate",
+        profile: profileObject
     });
 
     return c.json(profile.createResponse());

@@ -1,15 +1,15 @@
-import { StatusCode } from "hono/utils/http-status";
-import { nanoid } from "nanoid";
-import { createMiddleware } from "hono/factory";
+import type { ApiError } from "@core/error";
 import { parseUserAgent } from "@utils/misc/user-agent";
-import { ApiError } from "@core/error";
-import { Context } from "hono";
+import type { Context } from "hono";
+import { createMiddleware } from "hono/factory";
+import type { StatusCode } from "hono/utils/http-status";
+import { nanoid } from "nanoid";
 
-export type Flags = {
+export interface Flags {
     skipMcpCorrection: boolean;
 }
 
-export type Misc = {
+export interface Misc {
     build: ReturnType<typeof parseUserAgent>;
 }
 

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { pgTable, integer, uuid, text, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core"
-import { PROFILES } from "./profile";
+import { pgTable, integer, uuid, text, boolean, jsonb, index } from "drizzle-orm/pg-core"
 import { createSelectSchema } from "drizzle-zod";
+import { PROFILES } from "./profile";
 
 const defaultJsonAttributes = {
     item_seen: true,

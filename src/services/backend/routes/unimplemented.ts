@@ -43,7 +43,7 @@ app.get("/launcher/api/public/assets/:someId", async (c) => {
 })
 
 //TODO: Implement with asset fetcher
-app.get("/Builds/Fortnite/Content/CloudDir/*.manifest", async (c) => {
+app.get("/Builds/Fortnite/Content/CloudDir/*.manifest", async () => {
     /*
         const manifest = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "LawinServer.manifest"));
     
@@ -52,14 +52,14 @@ app.get("/Builds/Fortnite/Content/CloudDir/*.manifest", async (c) => {
 })
 
 //TODO: Implement with asset fetcher
-app.get("/Builds/Fortnite/Content/CloudDir/*.chunk", async (c) => {
+app.get("/Builds/Fortnite/Content/CloudDir/*.chunk", async () => {
 
     /*const chunk = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "LawinServer.chunk"));
 
     return c.sendIni(chunk)*/
 })
 
-app.get("/Builds/Fortnite/Content/CloudDir/*.ini", async (c) => {
+app.get("/Builds/Fortnite/Content/CloudDir/*.ini", async () => {
     /*const ini = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "Full.ini"));
 
     res.status(200).send(ini).end();

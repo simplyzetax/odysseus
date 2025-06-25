@@ -1,7 +1,8 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import { Context } from "hono";
-import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzleCache";
 import { odysseus } from "@core/error";
+import { drizzle } from "drizzle-orm/postgres-js";
+import type { Context } from "hono";
+import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzleCache";
+import { env } from "cloudflare:workers";
 
 export const getDB = (c: Context<{ Bindings: Env, Variables: { cacheIdentifier: string } }> | Context<any, any, any>) => {
 
@@ -13,7 +14,13 @@ export const getDB = (c: Context<{ Bindings: Env, Variables: { cacheIdentifier: 
     // Get the Durable Object namespace from the Cloudflare environment
     const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(c.env.CACHE_DO, colo, c.var.cacheIdentifier);
 
-    return drizzle(c.env.DB.connectionString, {
-        cache: durableObjectCache
+    //TODO: Replace with hyperdrive in prod
+    return drizzle(env.DATABASE_URL, {
+        cache: durableObjectCache,
+        logger: {
+            logQuery: (query, params) => {
+                console.log(query, params);
+            }
+        }
     });
 }

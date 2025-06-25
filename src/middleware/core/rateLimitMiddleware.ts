@@ -1,5 +1,5 @@
 import { odysseus } from "@core/error";
-import { Context } from "hono";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
 /**
@@ -97,9 +97,8 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
             const existingData = await c.env.kv.get(kvKey, "json") as TokenBucketData | null;
 
             let currentTokens: number;
-            let lastUpdate: number;
 
-            if (existingData) {
+            if (existingData && typeof existingData === 'object' && 'tokens' in existingData && 'lastUpdate' in existingData) {
                 // Calculate current tokens based on time elapsed
                 currentTokens = calculateCurrentTokens(
                     existingData.tokens,
@@ -108,11 +107,9 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
                     config.refillRate,
                     config.capacity
                 );
-                lastUpdate = now;
             } else {
                 // First request - start with initial token count
                 currentTokens = config.initialTokens;
-                lastUpdate = now;
             }
 
             // Check if we have enough tokens for this request

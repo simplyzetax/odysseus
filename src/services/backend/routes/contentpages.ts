@@ -1,5 +1,3 @@
-import { eq } from "drizzle-orm";
-import { isNull } from "drizzle-orm";
 
 import { app } from "@core/app";
 import { getDB } from "@core/db/client";

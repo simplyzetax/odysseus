@@ -92,7 +92,7 @@ app.all("/friends/api/v1/:accountId/friends/:friendId/alias", ratelimitMiddlewar
 app.get("/friends/api/public/friends/:accountId", ratelimitMiddleware(), acidMiddleware, async (c) => {
     const db = getDB(c);
 
-    let response: any[] = [];
+    const response: any[] = [];
 
     // Get accepted friends (outbound)
     const acceptedFriends = await db.select().from(FRIENDS).where(

@@ -1,10 +1,11 @@
 import { app } from "@core/app";
 import { getDB } from "@core/db/client";
-import { Account, ACCOUNTS } from "@core/db/schemas/account";
+import type { Account} from "@core/db/schemas/account";
+import { ACCOUNTS } from "@core/db/schemas/account";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/accountIdMiddleware";
 import { ratelimitMiddleware } from "@middleware/core/rateLimitMiddleware";
-import { ClientId, CLIENTS, isValidClientId } from "@utils/auth/clients";
+import { CLIENTS, isValidClientId } from "@utils/auth/clients";
 import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
 import { eq } from "drizzle-orm";
 import { validator } from "hono/validator";
@@ -61,11 +62,11 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
         return c.sendError(odysseus.authentication.invalidHeader.withMessage("Invalid client credentials"));
     }
 
-    if (isValidClientId(clientId) === false) {
+    if (!isValidClientId(clientId)) {
         return c.sendError(odysseus.authentication.invalidHeader.withMessage("Invalid client ID"));
     }
 
-    if (CLIENTS[clientId as ClientId].secret !== clientSecret) {
+    if (CLIENTS[clientId].secret !== clientSecret) {
         return c.sendError(odysseus.authentication.invalidHeader.withMessage("Invalid client secret"));
     }
 
@@ -75,7 +76,7 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
 
     switch (am) {
         case GRANT_TYPES.client_credentials: {
-            const token = await JWT.createClientToken(clientId as ClientId, am, 24);
+            const token = await JWT.createClientToken(clientId, am, 24);
             const decodedClient = await JWT.verifyToken(token);
             if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== am) {
                 return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid client token"));
@@ -83,8 +84,8 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
 
             return c.json({
                 access_token: token,
-                expires_in: Math.round(((JWT.DateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime()) - (new Date().getTime())) / 1000),
-                expires_at: JWT.DateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
+                expires_in: Math.round(((JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime()) - (new Date().getTime())) / 1000),
+                expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
                 token_type: "bearer",
                 client_id: clientId,
                 internal_client: true,
@@ -96,12 +97,13 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
                 return c.sendError(odysseus.authentication.oauth.invalidExchange.withMessage("Missing exchange code"));
             }
 
+            //TODO: Remove in prod
             /*const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
             if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
                 return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid exchange code"));
             }*/
 
-            const db = getDB(c as any);
+            const db = getDB(c);
 
             [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, "b28cc89d-6af0-497d-87e0-58c895be4f73"));
             break;
@@ -112,7 +114,7 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
     }
 
     if (!account) {
-        return c.sendError(odysseus.authentication.authenticationFailed.withMessage("Account not found for the provided grant type"));
+        return c.sendError(odysseus.account.accountNotFound.withMessage("Account not found for the provided grant type"));
     }
 
     if (account.banned) {
@@ -129,8 +131,8 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
     ]);
 
     const now = new Date();
-    const accessExpiresAt = JWT.DateAddHours(now, expiresInAccess);
-    const refreshExpiresAt = JWT.DateAddHours(now, expiresInRefresh);
+    const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
+    const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
 
     return c.json({
         access_token: accessToken,
@@ -156,7 +158,7 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
 app.get("/account/api/oauth/verify", acidMiddleware, async (c) => {
     // Token is already verified by acidMiddleware, get the decoded token
     const decodedToken = await JWT.verifyToken(c.var.token);
-    if (!decodedToken || !decodedToken.sub) {
+    if (!decodedToken?.sub) {
         return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid or expired token"));
     }
 
@@ -171,7 +173,7 @@ app.get("/account/api/oauth/verify", acidMiddleware, async (c) => {
     // Calculate expiration time properly
     const creationDate = new Date(decodedToken.creation_date as string);
     const hoursExpire = decodedToken.hours_expire as number;
-    const expiresAt = JWT.DateAddHours(creationDate, hoursExpire);
+    const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
     const expiresIn = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
 
     return c.json({
@@ -269,7 +271,7 @@ app.post("/epic/oauth/v2/token", ratelimitMiddleware({
     }
 
     // Process refresh token
-    let refreshToken = body.refresh_token;
+    const refreshToken = body.refresh_token;
 
     // Remove "eg1~" prefix if present
     const cleanRefreshToken = refreshToken.startsWith("eg1~") ? refreshToken.slice(4) : refreshToken;
@@ -277,14 +279,14 @@ app.post("/epic/oauth/v2/token", ratelimitMiddleware({
     try {
         // Verify the refresh token
         const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
-        if (!decodedRefreshToken || !decodedRefreshToken.sub || decodedRefreshToken.t !== "r") {
+        if (!decodedRefreshToken?.sub || decodedRefreshToken.t !== "r") {
             throw new Error("Invalid refresh token");
         }
 
         // Check if token is expired (JWT library should handle this, but double-check)
         const creationDate = new Date(decodedRefreshToken.creation_date as string);
         const hoursExpire = decodedRefreshToken.hours_expire as number;
-        const expiresAt = JWT.DateAddHours(creationDate, hoursExpire);
+        const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
 
         if (expiresAt.getTime() <= Date.now()) {
             throw new Error("Expired refresh token");
@@ -313,8 +315,8 @@ app.post("/epic/oauth/v2/token", ratelimitMiddleware({
         ]);
 
         const now = new Date();
-        const accessExpiresAt = JWT.DateAddHours(now, expiresInAccess);
-        const refreshExpiresAt = JWT.DateAddHours(now, expiresInRefresh);
+        const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
+        const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
 
         return c.json({
             scope: body.scope || "basic_profile friends_list openid presence",

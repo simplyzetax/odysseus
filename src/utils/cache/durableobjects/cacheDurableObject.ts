@@ -21,50 +21,75 @@ export class CacheDurableObject extends DurableObject {
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
         this.sql = ctx.storage.sql;
+        
+        // Add timeout to prevent constructor from hanging indefinitely
         this.ctx.blockConcurrencyWhile(async () => {
-            await this.initializeTables();
-            await this.scheduleCleanupAlarm();
+            try {
+                await Promise.race([
+                    Promise.all([
+                        this.initializeTables(),
+                        this.scheduleCleanupAlarm()
+                    ]),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Durable Object initialization timeout after 10 seconds')), 10000)
+                    )
+                ]);
+            } catch (error) {
+                console.error("Error during Durable Object initialization:", error);
+                // Don't rethrow - allow the object to continue with degraded functionality
+                // The tables might still be created from a previous initialization
+            }
         });
         console.log("Cache Durable Object initialized");
     }
 
     private async initializeTables(): Promise<void> {
         try {
-            // Create cache entries table
-            await this.sql.exec(`
-                CREATE TABLE IF NOT EXISTS cache_entries (
-                    key TEXT PRIMARY KEY,
-                    data TEXT NOT NULL,
-                    tables TEXT NOT NULL,
-                    expires_at INTEGER NOT NULL,
-                    created_at INTEGER NOT NULL
+            // Create cache entries table with timeout
+            await Promise.race([
+                this.sql.exec(`
+                    CREATE TABLE IF NOT EXISTS cache_entries (
+                        key TEXT PRIMARY KEY,
+                        data TEXT NOT NULL,
+                        tables TEXT NOT NULL,
+                        expires_at INTEGER NOT NULL,
+                        created_at INTEGER NOT NULL
+                    )
+                `),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Create cache_entries table timeout')), 5000)
                 )
-            `);
+            ]);
 
-            // Create table keys tracking table
-            await this.sql.exec(`
-                CREATE TABLE IF NOT EXISTS table_keys (
-                    table_name TEXT NOT NULL,
-                    cache_key TEXT NOT NULL,
-                    created_at INTEGER NOT NULL,
-                    PRIMARY KEY (table_name, cache_key)
+            // Create table keys tracking table with timeout
+            await Promise.race([
+                this.sql.exec(`
+                    CREATE TABLE IF NOT EXISTS table_keys (
+                        table_name TEXT NOT NULL,
+                        cache_key TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        PRIMARY KEY (table_name, cache_key)
+                    )
+                `),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Create table_keys table timeout')), 5000)
                 )
-            `);
+            ]);
 
-            // Create indexes for better performance
-            await this.sql.exec(`
-                CREATE INDEX IF NOT EXISTS idx_cache_expires_at ON cache_entries(expires_at)
-            `);
-
-            await this.sql.exec(`
-                CREATE INDEX IF NOT EXISTS idx_table_keys_table_name ON table_keys(table_name)
-            `);
-
-            await this.sql.exec(`
-                CREATE INDEX IF NOT EXISTS idx_table_keys_cache_key ON table_keys(cache_key)
-            `);
+            // Create indexes for better performance with timeout
+            await Promise.race([
+                Promise.all([
+                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_cache_expires_at ON cache_entries(expires_at)`),
+                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_table_keys_table_name ON table_keys(table_name)`),
+                    this.sql.exec(`CREATE INDEX IF NOT EXISTS idx_table_keys_cache_key ON table_keys(cache_key)`)
+                ]),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Create indexes timeout')), 5000)
+                )
+            ]);
         } catch (error) {
             console.error("Error initializing cache tables:", error);
+            // Don't rethrow - let the Durable Object continue with potentially existing tables
         }
     }
 
@@ -338,75 +363,6 @@ export class CacheDurableObject extends DurableObject {
         } catch (error) {
             console.error("Error in manual cleanup:", error);
             throw error;
-        }
-    }
-
-    // Keep the fetch method for backward compatibility if needed
-    async fetch(request: Request): Promise<Response> {
-        const url = new URL(request.url);
-        const path = url.pathname;
-
-        try {
-            switch (request.method) {
-                case "GET":
-                    if (path === "/get") {
-                        const key = url.searchParams.get("key");
-                        if (!key) {
-                            return new Response("Missing key parameter", { status: 400 });
-                        }
-
-                        const data = await this.getCacheEntry(key);
-                        return new Response(JSON.stringify({ data }), {
-                            headers: { "Content-Type": "application/json" }
-                        });
-                    }
-                    if (path === "/stats") {
-                        const stats = await this.getCacheStats();
-                        return new Response(JSON.stringify(stats), {
-                            headers: { "Content-Type": "application/json" }
-                        });
-                    }
-                    break;
-
-                case "POST":
-                    if (path === "/put") {
-                        const body = await request.json() as {
-                            key: string;
-                            data: string;
-                            tables: string[];
-                            ttl: number;
-                        };
-                        await this.putCacheEntry(body.key, body.data, body.tables, body.ttl);
-                        return new Response("OK");
-                    }
-                    if (path === "/invalidate") {
-                        const body = await request.json() as {
-                            tags?: string[];
-                            tables?: string[];
-                        };
-
-                        if (body.tags && body.tags.length > 0) {
-                            await this.invalidateByTags(body.tags);
-                        }
-                        if (body.tables && body.tables.length > 0) {
-                            await this.invalidateByTables(body.tables);
-                        }
-
-                        return new Response("OK");
-                    }
-                    if (path === "/cleanup") {
-                        const deletedCount = await this.forceCleanup();
-                        return new Response(JSON.stringify({ deletedCount }), {
-                            headers: { "Content-Type": "application/json" }
-                        });
-                    }
-                    break;
-            }
-
-            return new Response("Not Found", { status: 404 });
-        } catch (error) {
-            console.error("Cache Durable Object error:", error);
-            return new Response("Internal Server Error", { status: 500 });
         }
     }
 }

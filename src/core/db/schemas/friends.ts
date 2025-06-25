@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, integer, uuid, text, boolean, uniqueIndex, index, timestamp, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, uuid, text, boolean, uniqueIndex, index, timestamp, pgEnum } from "drizzle-orm/pg-core"
 import { ACCOUNTS } from "./account";
 
 // Friend status codes - Drizzle enum
