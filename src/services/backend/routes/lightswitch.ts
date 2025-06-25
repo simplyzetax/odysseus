@@ -27,7 +27,7 @@ app.get("/lightswitch/api/service/bulk/status", clientTokenMiddleware, async (c)
     return c.json([{
         serviceInstanceId: "fortnite",
         status: "UP",
-        message: "fortnite is up.",
+        message: "odysseus is up.",
         maintenanceUri: null,
         overrideCatalogIds: [
             "a7f138b2e51945ffbfdacc1af0541053"
