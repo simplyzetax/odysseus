@@ -1,5 +1,8 @@
+import { getDB } from "@core/db/client";
+import { Account, ACCOUNTS } from "@core/db/schemas/account";
 import { odysseus } from "@core/error";
 import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
+import { eq } from "drizzle-orm";
 import { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
@@ -7,7 +10,7 @@ import { createMiddleware } from "hono/factory";
  * Middleware that adds MCP (Model Context Protocol) correction data to JSON responses
  * Adds profile revision information based on the request's revision number
  */
-export const acidMiddleware = createMiddleware(async (c: Context<{ Bindings: Env, Variables: { accountId: string, token: string } }>, next) => {
+export const accountMiddleware = createMiddleware(async (c: Context<{ Bindings: Env, Variables: { account: Account } }>, next) => {
 
     const Authorization = c.req.header("Authorization");
     if (!Authorization || !Authorization.startsWith("Bearer ")) {
@@ -24,8 +27,15 @@ export const acidMiddleware = createMiddleware(async (c: Context<{ Bindings: Env
         return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid or expired token"));
     }
 
-    c.set("accountId", verifiedToken.sub);
-    c.set("token", token);
+    //@ts-expect-error
+    const db = getDB(c);
+
+    const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, verifiedToken.sub));
+    if (!account) {
+        return c.sendError(odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${verifiedToken.sub} not found`));
+    }
+
+    c.set("account", account);
 
     await next();
 });

@@ -3,7 +3,7 @@ import { getDB } from "@core/db/client";
 import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/acid";
-import { clientTokenMiddleware } from "@middleware/auth/client-auth";
+import { clientTokenMiddleware } from "@middleware/auth/client";
 import { ratelimitMiddleware } from "@middleware/core/ratelimit";
 import { HotfixParser } from "@utils/misc/hotfix-parser";
 import { md5, sha1, sha256 } from "hono/utils/crypto";
@@ -45,7 +45,6 @@ app.get("/fortnite/api/cloudstorage/system/:filename", ratelimitMiddleware(), cl
     const hotfixes = await getDB(c).select().from(HOTFIXES);
     const parser = new HotfixParser(hotfixes);
 
-
     // Get .ini content for the specific file (without timestamp for consistent hashing)
     const content = parser.getIniForFile(filename, false, 'global', false);
 
@@ -65,8 +64,16 @@ app.get("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(
     }
 
     try {
+        // First check if file exists using head() for better performance
+        const fileData = await c.env.r2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
+        if (!fileData) {
+            return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
+        }
+
+        // File exists, now get the actual content
         const file = await c.env.r2.get(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
         if (!file) {
+            // This shouldn't happen since head() succeeded, but defensive programming
             return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
         }
 
@@ -94,7 +101,7 @@ app.get("/fortnite/api/cloudstorage/user/:accountId", ratelimitMiddleware(), aci
             hash256: fileData.checksums.sha256 || "",
             length: fileData.size,
             contentType: fileData.httpMetadata?.contentType,
-            uploaded: fileData.uploaded.toISOString(), // Fix timestamp issue
+            uploaded: fileData.uploaded.toISOString(),
             storageType: "S3",
             storageIds: {
                 "primary": fileData.etag

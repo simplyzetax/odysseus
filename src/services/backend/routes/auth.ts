@@ -2,6 +2,7 @@ import { app } from "@core/app";
 import { getDB } from "@core/db/client";
 import { Account, ACCOUNTS } from "@core/db/schemas/account";
 import { odysseus } from "@core/error";
+import { acidMiddleware } from "@middleware/auth/acid";
 import { ratelimitMiddleware } from "@middleware/core/ratelimit";
 import { ClientId, CLIENTS, isValidClientId } from "@utils/auth/clients";
 import { GRANT_TYPES, JWT } from "@utils/auth/jwt";
@@ -100,7 +101,7 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
                 return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid exchange code"));
             }
 
-            const db = getDB(c);
+            const db = getDB(c as any);
 
             [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, DecodedExchangeCode.sub));
             break;
@@ -149,4 +150,193 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
         device_id: deviceId
     })
 
+});
+
+
+app.get("/account/api/oauth/verify", acidMiddleware, async (c) => {
+    // Token is already verified by acidMiddleware, get the decoded token
+    const decodedToken = await JWT.verifyToken(c.var.token);
+    if (!decodedToken || !decodedToken.sub) {
+        return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid or expired token"));
+    }
+
+    //@ts-expect-error
+    const [account] = await getDB(c).select({
+        displayName: ACCOUNTS.displayName,
+    }).from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedToken.sub));
+
+    if (!account) {
+        return c.sendError(odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${decodedToken.sub} not found`));
+    }
+
+    // Calculate expiration time properly
+    const creationDate = new Date(decodedToken.creation_date as string);
+    const hoursExpire = decodedToken.hours_expire as number;
+    const expiresAt = JWT.DateAddHours(creationDate, hoursExpire);
+    const expiresIn = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
+
+    return c.json({
+        token: c.var.token,
+        session_id: decodedToken.jti,
+        token_type: "bearer",
+        client_id: decodedToken.clid,
+        internal_client: true,
+        client_service: "fortnite",
+        account_id: c.var.accountId,
+        expires_in: expiresIn,
+        expires_at: expiresAt.toISOString(),
+        auth_method: decodedToken.am,
+        display_name: account.displayName,
+        app: "fortnite",
+        in_app_id: c.var.accountId,
+        device_id: decodedToken.dvid
+    });
+});
+
+app.delete("/account/api/oauth/sessions/kill", (c) => {
+    return c.sendStatus(204);
+});
+
+app.delete("/account/api/oauth/sessions/kill/:token", (c) => {
+    const token = c.req.param("token");
+    if (!token) {
+        return c.sendError(odysseus.authentication.invalidHeader.withMessage("Missing token parameter"));
+    }
+    // I would invalidate the token in your database or cache but we are not
+    // storing tokens in the db atm, so we just return 204
+    return c.sendStatus(204);
+});
+
+app.post("/auth/v1/oauth/token", async (c) => {
+    return c.json({
+        access_token: nanoid(32),
+        token_type: "bearer",
+        expires_at: "9999-12-31T23:59:59.999Z",
+        features: [
+            "AntiCheat",
+            "Connect",
+            "Ecom"
+        ],
+        organization_id: "org-fn",
+        product_id: "prod-fn",
+        sandbox_id: "fn",
+        deployment_id: "fn",
+        expires_in: 3599
+    });
+})
+
+app.post("/epic/oauth/v2/token", ratelimitMiddleware({
+    capacity: 10,
+    refillRate: 2,
+    initialTokens: 10,
+}), validator('form', (value, c) => {
+    const refreshTokenSchema = z.object({
+        refresh_token: z.string().min(1, "Refresh token is required"),
+        scope: z.string().optional()
+    });
+
+    const result = refreshTokenSchema.safeParse(value);
+    if (!result.success) {
+        return c.sendError(odysseus.authentication.invalidRequest.withMessage("Refresh token is required"));
+    }
+    return result.data;
+}), async (c) => {
+    const body = c.req.valid('form');
+
+    // Parse Authorization header
+    const Authorization = c.req.header("Authorization");
+    if (!Authorization) {
+        return c.sendError(odysseus.authentication.invalidHeader.withMessage("Authorization header may be invalid or not present, please verify that you are sending the correct headers"));
+    }
+
+    if (!Authorization.toLowerCase().startsWith('basic')) {
+        return c.sendError(odysseus.authentication.invalidHeader.withMessage("Authorization header may be invalid or not present, please verify that you are sending the correct headers"));
+    }
+
+    let clientId: string;
+    try {
+        const [id, secret] = atob(Authorization.slice(6)).split(':');
+        if (!id || !secret) {
+            throw new Error("Invalid client credentials");
+        }
+        clientId = id;
+    } catch {
+        return c.sendError(odysseus.authentication.invalidHeader.withMessage("Authorization header may be invalid or not present, please verify that you are sending the correct headers"));
+    }
+
+    // Validate client ID
+    if (!isValidClientId(clientId)) {
+        return c.sendError(odysseus.authentication.invalidHeader.withMessage("Authorization header may be invalid or not present, please verify that you are sending the correct headers"));
+    }
+
+    // Process refresh token
+    let refreshToken = body.refresh_token;
+
+    // Remove "eg1~" prefix if present
+    const cleanRefreshToken = refreshToken.startsWith("eg1~") ? refreshToken.slice(4) : refreshToken;
+
+    try {
+        // Verify the refresh token
+        const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
+        if (!decodedRefreshToken || !decodedRefreshToken.sub || decodedRefreshToken.t !== "r") {
+            throw new Error("Invalid refresh token");
+        }
+
+        // Check if token is expired (JWT library should handle this, but double-check)
+        const creationDate = new Date(decodedRefreshToken.creation_date as string);
+        const hoursExpire = decodedRefreshToken.hours_expire as number;
+        const expiresAt = JWT.DateAddHours(creationDate, hoursExpire);
+
+        if (expiresAt.getTime() <= Date.now()) {
+            throw new Error("Expired refresh token");
+        }
+
+        // Get account information
+        const db = getDB(c);
+        const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
+
+        if (!account) {
+            throw new Error("Account not found");
+        }
+
+        if (account.banned) {
+            throw new Error("Account is banned");
+        }
+
+        // Generate new tokens
+        const deviceId = (decodedRefreshToken.dvid as string) || nanoid(8);
+        const expiresInAccess = 2; // 2 hours for Epic OAuth v2
+        const expiresInRefresh = 8; // 8 hours for refresh token
+
+        const [newAccessToken, newRefreshToken] = await Promise.all([
+            JWT.createAccessToken(account as Account, clientId, "refresh_token", deviceId, expiresInAccess),
+            JWT.createRefreshToken(account as Account, clientId, "refresh_token", expiresInRefresh, deviceId)
+        ]);
+
+        const now = new Date();
+        const accessExpiresAt = JWT.DateAddHours(now, expiresInAccess);
+        const refreshExpiresAt = JWT.DateAddHours(now, expiresInRefresh);
+
+        return c.json({
+            scope: body.scope || "basic_profile friends_list openid presence",
+            token_type: "bearer",
+            access_token: newAccessToken,
+            refresh_token: newRefreshToken,
+            id_token: newAccessToken, // Using access token as ID token for simplicity
+            expires_in: expiresInAccess * 3600,
+            expires_at: accessExpiresAt.toISOString(),
+            refresh_expires_in: expiresInRefresh * 3600,
+            refresh_expires_at: refreshExpiresAt.toISOString(),
+            account_id: account.id,
+            client_id: clientId,
+            application_id: clientId,
+            selected_account_id: account.id,
+            merged_accounts: []
+        });
+
+    } catch (error) {
+        // Handle invalid/expired refresh token
+        console.error('Refresh token error:', error);
+        return c.sendError(odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`));
+    }
 });
