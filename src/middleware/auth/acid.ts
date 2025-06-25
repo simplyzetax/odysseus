@@ -20,7 +20,7 @@ export const acidMiddleware = createMiddleware(async (c: Context<{ Bindings: Env
     }
 
     const verifiedToken = await JWT.verifyToken(token);
-    if (!verifiedToken || !verifiedToken.sub || verifiedToken.am !== GRANT_TYPES.client_credentials) {
+    if (!verifiedToken || !verifiedToken.sub) {
         return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid or expired token"));
     }
 

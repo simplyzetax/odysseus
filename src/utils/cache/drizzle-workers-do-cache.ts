@@ -2,6 +2,9 @@ import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
 import { CacheDurableObject } from "./cache-durable-object";
+import { env } from "cloudflare:workers";
+
+const DISABLE_CACHE = env.DISABLE_CACHE;
 
 export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     private globalTtl: number = 1000;
@@ -25,6 +28,10 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     // This function accepts query and parameters that cached into key param,
     // allowing you to retrieve response values for this query from the cache.
     override async get(key: string): Promise<any[] | undefined> {
+        if (DISABLE_CACHE) {
+            return undefined;
+        }
+        
         try {
             // Use RPC call instead of fetch
             const result = await (this.durableObject as any).getCacheEntry(key);

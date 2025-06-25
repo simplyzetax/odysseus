@@ -27,7 +27,6 @@ export const accountMiddleware = createMiddleware(async (c: Context<{ Bindings: 
         return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid or expired token"));
     }
 
-    //@ts-expect-error
     const db = getDB(c);
 
     const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, verifiedToken.sub));

@@ -39,7 +39,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 
     // Static factory method with perfect type safety
     static async construct<T extends ProfileType>(
-        c: Context<{ Bindings: Env }>,
+        c: Context<any, any, any>,
         accountId: string,
         profileType: T
     ): Promise<ProfileClassMap[T]> {
@@ -48,16 +48,16 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
     }
 
     // Convenience methods for specific profiles with perfect IntelliSense
-    static async athena(c: Context<{ Bindings: Env }>, accountId: string): Promise<ProfileClassMap['athena']> {
+    static async athena(c: Context<any, any, any>, accountId: string): Promise<ProfileClassMap['athena']> {
         return FortniteProfile.construct(c, accountId, 'athena');
     }
 
-    public c: Context<{ Bindings: Env }>;
+    public c: Context<any, any, any>;
     public accountId: string;
     public profileType: T;
     public db: ReturnType<typeof getDB>;
 
-    constructor(c: Context<{ Bindings: Env }>, accountId: string, profileType: T) {
+    constructor(c: Context<any, any, any>, accountId: string, profileType: T) {
         this.c = c;
         this.accountId = accountId;
         this.profileType = profileType;
@@ -141,7 +141,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
     dbProfile: Profile;
     changes: ProfileChange[] = [];
 
-    constructor(c: Context<{ Bindings: Env }>, accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile) {
+    constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile) {
         super(c, accountId, baseProfile.profileType);
         this.dbProfile = dbProfile;
     }

@@ -229,6 +229,30 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    async emptyCache() {
+        try {
+            const now = Date.now();
+
+            // Use Cloudflare's transaction API
+            await this.ctx.storage.transaction(async () => {
+                // Delete all cache entries
+                await this.sql.exec(
+                    "DELETE FROM cache_entries"
+                );
+
+                await this.sql.exec(
+                    "DELETE FROM table_keys"
+                );
+            });
+
+            console.log(`🧹 Emptied cache`);
+
+        } catch (error) {
+            console.error("Error emptying cache:", error);
+            return 0;
+        }
+    }
+
     async getCacheStats(): Promise<{ totalEntries: number; expiredEntries: number }> {
         try {
             const now = Date.now();

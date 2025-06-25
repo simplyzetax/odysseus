@@ -9,8 +9,11 @@ app.post("/fortnite/api/game/v2/profile/:accountId/client/QueryProfile", acidMid
         return c.sendError(odysseus.mcp.invalidPayload.withMessage("Missing profile ID"));
     }
 
-    //@ts-ignore
-    const fp = new FortniteProfile(c, accountId, profileId);
+    if (FortniteProfile.isValidProfileType(profileId) === false) {
+        return c.sendError(odysseus.mcp.invalidPayload.withMessage("Invalid profile ID"));
+    }
+
+    const fp = new FortniteProfile(c, c.var.accountId, profileId);
     const profile = await fp.get();
     const profileObject = await profile.buildProfileObject();
 

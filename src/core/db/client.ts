@@ -4,7 +4,7 @@ import { Context } from "hono";
 import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzle-workers-do-cache";
 import { odysseus } from "@core/error";
 
-export const getDB = (c: Context<{ Bindings: Env }>) => {
+export const getDB = (c: Context<{ Bindings: Env }> | Context<any, any, any>) => {
 
     const colo = String(c.req.raw.cf?.colo);
     if (!colo) {

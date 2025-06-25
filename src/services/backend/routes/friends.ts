@@ -90,7 +90,6 @@ app.all("/friends/api/v1/:accountId/friends/:friendId/alias", ratelimitMiddlewar
 
 // Get friends list for an account
 app.get("/friends/api/public/friends/:accountId", ratelimitMiddleware(), acidMiddleware, async (c) => {
-    //@ts-expect-error
     const db = getDB(c);
 
     let response: any[] = [];
@@ -157,7 +156,6 @@ app.post("/friends/api/*/friends*/:receiverId", ratelimitMiddleware(), acidMiddl
     const receiverId = c.req.param("receiverId");
     const senderId = c.var.accountId;
 
-    //@ts-expect-error
     const db = getDB(c);
 
     // Check if both users exist
@@ -223,7 +221,6 @@ app.delete("/friends/api/*/friends*/:receiverId", ratelimitMiddleware(), acidMid
     const receiverId = c.req.param("receiverId");
     const senderId = c.var.accountId;
 
-    //@ts-expect-error
     const db = getDB(c);
 
     // Check if both users exist
@@ -250,7 +247,6 @@ app.post("/friends/api/*/blocklist*/:receiverId", ratelimitMiddleware(), acidMid
     const receiverId = c.req.param("receiverId");
     const senderId = c.var.accountId;
 
-    //@ts-expect-error
     const db = getDB(c);
 
     // Check if both users exist
@@ -285,7 +281,6 @@ app.delete("/friends/api/*/blocklist*/:receiverId", ratelimitMiddleware(), acidM
     const receiverId = c.req.param("receiverId");
     const senderId = c.var.accountId;
 
-    //@ts-expect-error
     const db = getDB(c);
 
     // Check if both users exist
@@ -309,7 +304,6 @@ app.delete("/friends/api/*/blocklist*/:receiverId", ratelimitMiddleware(), acidM
 
 // Get friends summary
 app.get("/friends/api/v1/:accountId/summary", ratelimitMiddleware(), acidMiddleware, async (c) => {
-    //@ts-expect-error
     const db = getDB(c);
 
     const response = {
@@ -394,7 +388,6 @@ app.get("/friends/api/v1/:accountId/summary", ratelimitMiddleware(), acidMiddlew
 
 // Get blocklist
 app.get("/friends/api/public/blocklist/:accountId", ratelimitMiddleware(), acidMiddleware, async (c) => {
-    //@ts-expect-error
     const db = getDB(c);
 
     const blockedUsers = await db.select({
