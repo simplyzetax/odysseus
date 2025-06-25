@@ -1,30 +1,6 @@
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
-// Enhanced types for better type safety
-export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type ErrorCategory = 'authentication' | 'authorization' | 'validation' | 'business' | 'system' | 'network' | 'external';
-export type HttpStatusCode = 200 | 201 | 400 | 401 | 403 | 404 | 405 | 406 | 408 | 409 | 413 | 415 | 429 | 500 | 501;
-
-export interface ErrorContext {
-    requestId?: string;
-    userId?: string;
-    sessionId?: string;
-    userAgent?: string;
-    ip?: string;
-    path?: string;
-    method?: string;
-    timestamp: string;
-    stack?: string;
-    cause?: Error | ApiError;
-    breadcrumbs?: string[];
-    metadata?: Record<string, any>;
-    performance?: {
-        duration?: number;
-        memory?: number;
-    };
-}
-
 export interface ResponseBody {
     errorCode: string;
     errorMessage: string;
@@ -33,67 +9,26 @@ export interface ResponseBody {
     originatingService: string;
     intent: string;
     validationFailures?: Record<string, object>;
-    // Enhanced fields
-    severity?: ErrorSeverity;
-    category?: ErrorCategory;
-    fingerprint?: string;
-    correlationId?: string;
-    timestamp?: string;
-    retryable?: boolean;
-    context?: Partial<ErrorContext>;
-    suggestions?: string[];
-    documentation?: string;
-    // Development only fields
-    devInfo?: {
-        stack?: string;
-        cause?: any;
-        sourceLocation?: string;
-        debugData?: Record<string, any>;
-    };
 }
 
 export class ApiError {
-    statusCode: HttpStatusCode;
+    statusCode: number;
     public response: ResponseBody;
-    private _context: ErrorContext;
-    private _fingerprint?: string;
-    private _stack?: string;
 
-    constructor(
-        code: string,
-        message: string,
-        numeric: number,
-        statusCode: HttpStatusCode,
-        ...messageVariables: string[]
-    ) {
+    constructor(code: string, message: string, numeric: number, statusCode: number, ...messageVariables: string[]) {
         this.statusCode = statusCode;
-        this._stack = new Error().stack;
-        this._context = {
-            timestamp: new Date().toISOString(),
-            breadcrumbs: [],
-            metadata: {}
-        };
-
         this.response = {
             errorCode: code,
             errorMessage: message,
             messageVars: messageVariables.length > 0 ? messageVariables : undefined,
             numericErrorCode: numeric,
-            originatingService: 'odysseus',
-            intent: 'unknown',
-            severity: this._inferSeverity(statusCode),
-            category: this._inferCategory(code),
-            fingerprint: this._generateFingerprint(code, numeric),
-            correlationId: this._generateCorrelationId(),
-            timestamp: this._context.timestamp,
-            retryable: this._isRetryable(statusCode)
+            originatingService: 'athena',
+            intent: 'unknown'
         };
     }
 
-    // Enhanced fluent API methods
     withMessage(message: string): this {
         this.response.errorMessage = message;
-        this._updateFingerprint();
         return this;
     }
 
@@ -114,7 +49,6 @@ export class ApiError {
 
     originatingService(service: string): this {
         this.response.originatingService = service;
-        this._updateFingerprint();
         return this;
     }
 
@@ -123,112 +57,17 @@ export class ApiError {
         return this;
     }
 
-    // New enhanced methods
-    withSeverity(severity: ErrorSeverity): this {
-        this.response.severity = severity;
-        return this;
-    }
-
-    withCategory(category: ErrorCategory): this {
-        this.response.category = category;
-        this._updateFingerprint();
-        return this;
-    }
-
-    withContext(context: Partial<ErrorContext>): this {
-        this._context = { ...this._context, ...context };
-        this.response.context = this._sanitizeContext(this._context);
-        return this;
-    }
-
-    withCause(cause: Error | ApiError): this {
-        this._context.cause = cause;
-        if (cause instanceof Error) {
-            this._context.stack = cause.stack;
-        }
-        return this;
-    }
-
-    withMetadata(key: string, value: any): this {
-        if (!this._context.metadata) this._context.metadata = {};
-        this._context.metadata[key] = value;
-        return this;
-    }
-
-    withBreadcrumb(breadcrumb: string): this {
-        if (!this._context.breadcrumbs) this._context.breadcrumbs = [];
-        this._context.breadcrumbs.push(`${new Date().toISOString()}: ${breadcrumb}`);
-        if (this._context.breadcrumbs.length > 10) {
-            this._context.breadcrumbs = this._context.breadcrumbs.slice(-10);
-        }
-        return this;
-    }
-
-    withSuggestion(...suggestions: string[]): this {
-        this.response.suggestions = [...(this.response.suggestions || []), ...suggestions];
-        return this;
-    }
-
-    withDocumentation(url: string): this {
-        this.response.documentation = url;
-        return this;
-    }
-
-    retryable(isRetryable: boolean = true): this {
-        this.response.retryable = isRetryable;
-        return this;
-    }
-
-    withValidationFailures(failures: Record<string, object>): this {
-        this.response.validationFailures = failures;
-        return this;
-    }
-
-    // Performance tracking
-    startTimer(): this {
-        this._context.performance = {
-            ...this._context.performance,
-            duration: Date.now()
-        };
-        return this;
-    }
-
-    endTimer(): this {
-        if (this._context.performance?.duration) {
-            this._context.performance.duration = Date.now() - this._context.performance.duration;
-        }
-        return this;
-    }
-
-    // Enhanced apply method with better context handling
     apply(c: Context): ResponseBody {
-        this._enrichContextFromRequest(c);
         this.response.errorMessage = this.getMessage();
-
-        // Set enhanced headers
         c.res.headers.set('Content-Type', 'application/json');
         c.res.headers.set('X-Epic-Error-Code', `${this.response.numericErrorCode}`);
         c.res.headers.set('X-Epic-Error-Name', this.response.errorCode);
-        c.res.headers.set('X-Error-Correlation-ID', this.response.correlationId || '');
-        c.res.headers.set('X-Error-Fingerprint', this.response.fingerprint || '');
-
-        if (this.response.retryable) {
-            c.res.headers.set('X-Error-Retryable', 'true');
-        }
-
         c.status(this.statusCode as any);
-
-        // Log the error for observability
-        this._logError();
-
         return this.response;
     }
 
     getMessage(): string {
-        return this.response.messageVars?.reduce(
-            (message, msgVar, index) => message.replace(`{${index}}`, msgVar),
-            this.response.errorMessage
-        ) || this.response.errorMessage;
+        return this.response.messageVars?.reduce((message, msgVar, index) => message.replace(`{${index}}`, msgVar), this.response.errorMessage) || this.response.errorMessage;
     }
 
     shortenedError(): string {
@@ -236,528 +75,24 @@ export class ApiError {
     }
 
     throwHttpException(): never {
-        this._logError();
-
         const errorResponse = new Response(JSON.stringify(this.response), {
             status: this.statusCode,
             headers: {
                 'Content-Type': 'application/json',
                 'X-Epic-Error-Code': `${this.response.numericErrorCode}`,
-                'X-Epic-Error-Name': this.response.errorCode,
-                'X-Error-Correlation-ID': this.response.correlationId || '',
-                'X-Error-Fingerprint': this.response.fingerprint || ''
+                'X-Epic-Error-Name': this.response.errorCode
             }
         });
         throw new HTTPException(this.statusCode as any, { res: errorResponse });
     }
 
-    devMessage(message: string, devMode: string | undefined): this {
+    devMessage(message: string, devMode: string | undefined) {
         if (devMode !== 'true') return this;
-
-        if (!this.response.devInfo) {
-            this.response.devInfo = {};
-        }
-
-        this.response.devInfo.debugData = {
-            ...this.response.devInfo.debugData,
-            devMessage: message
-        };
-
-        this.response.errorMessage += ` (Dev: ${message})`;
+        this.response.errorMessage += `(Dev: -${message}-)`;
         return this;
     }
 
-    // Enhanced development features
-    withDevInfo(devMode: string | undefined): this {
-        if (devMode !== 'true') return this;
-
-        this.response.devInfo = {
-            stack: this._stack,
-            cause: this._context.cause,
-            sourceLocation: this._getSourceLocation(),
-            debugData: {
-                context: this._context,
-                metadata: this._context.metadata
-            }
-        };
-
-        return this;
-    }
-
-    // Utility methods for error analysis
-    toJSON(): Record<string, any> {
-        return {
-            ...this.response,
-            context: this._context,
-            stack: this._stack
-        };
-    }
-
-    toString(): string {
-        return `[${this.response.severity?.toUpperCase()}] ${this.response.errorCode}: ${this.getMessage()}`;
-    }
-
-    // Private helper methods
-    private _inferSeverity(statusCode: HttpStatusCode): ErrorSeverity {
-        if (statusCode >= 500) return 'critical';
-        if (statusCode === 429) return 'medium';
-        if (statusCode >= 400) return 'medium';
-        return 'low';
-    }
-
-    private _inferCategory(code: string): ErrorCategory {
-        const lowerCode = code.toLowerCase();
-        if (lowerCode.includes('auth')) return 'authentication';
-        if (lowerCode.includes('permission') || lowerCode.includes('forbidden')) return 'authorization';
-        if (lowerCode.includes('validation') || lowerCode.includes('invalid')) return 'validation';
-        if (lowerCode.includes('network') || lowerCode.includes('timeout')) return 'network';
-        if (lowerCode.includes('external') || lowerCode.includes('proxy')) return 'external';
-        if (lowerCode.includes('server') || lowerCode.includes('database')) return 'system';
-        return 'business';
-    }
-
-    private _generateFingerprint(code: string, numeric: number): string {
-        return `${code}-${numeric}`.replace(/\./g, '-');
-    }
-
-    private _updateFingerprint(): void {
-        this.response.fingerprint = this._generateFingerprint(
-            this.response.errorCode,
-            this.response.numericErrorCode
-        );
-    }
-
-    private _generateCorrelationId(): string {
-        return `err_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-    }
-
-    private _isRetryable(statusCode: HttpStatusCode): boolean {
-        return [408, 429, 500, 502, 503, 504].includes(statusCode);
-    }
-
-    private _sanitizeContext(context: ErrorContext): Partial<ErrorContext> {
-        const sanitized = { ...context };
-        // Remove sensitive information
-        delete sanitized.stack;
-        delete sanitized.cause;
-        return sanitized;
-    }
-
-    private _enrichContextFromRequest(c: Context): void {
-        this._context = {
-            ...this._context,
-            requestId: c.req.header('x-request-id'),
-            userId: c.req.header('x-user-id'),
-            sessionId: c.req.header('x-session-id'),
-            userAgent: c.req.header('user-agent'),
-            ip: c.req.header('x-forwarded-for') || c.req.header('x-real-ip'),
-            path: c.req.path,
-            method: c.req.method
-        };
-
-        this.response.context = this._sanitizeContext(this._context);
-    }
-
-    private _getSourceLocation(): string {
-        const stack = this._stack;
-        if (!stack) return 'unknown';
-
-        const lines = stack.split('\n');
-        const relevantLine = lines.find(line =>
-            line.includes('.ts:') &&
-            !line.includes('node_modules') &&
-            !line.includes('error.ts')
-        );
-
-        return relevantLine?.trim() || 'unknown';
-    }
-
-    private _logError(): void {
-        const logData = {
-            errorCode: this.response.errorCode,
-            numericCode: this.response.numericErrorCode,
-            severity: this.response.severity,
-            category: this.response.category,
-            fingerprint: this.response.fingerprint,
-            correlationId: this.response.correlationId,
-            statusCode: this.statusCode,
-            message: this.getMessage(),
-            context: this._context,
-            timestamp: this.response.timestamp
-        };
-
-        // In a real implementation, you'd send this to your logging service
-        if (this.response.severity === 'critical' || this.response.severity === 'high') {
-            console.error('🚨 Critical Error:', logData);
-        } else {
-            console.warn('⚠️  Error:', logData);
-        }
-    }
 }
-
-// Utility types for Result pattern
-export type Result<T, E = ApiError> =
-    | { success: true; data: T; error?: never }
-    | { success: false; error: E; data?: never };
-
-export type AsyncResult<T, E = ApiError> = Promise<Result<T, E>>;
-
-// Error handling utilities
-export class ErrorUtils {
-    // Result pattern helpers
-    static ok<T>(data: T): Result<T> {
-        return { success: true, data };
-    }
-
-    static err<E = ApiError>(error: E): Result<never, E> {
-        return { success: false, error };
-    }
-
-    // Safe async execution with error handling
-    static async safeAsync<T>(
-        fn: () => Promise<T>,
-        errorHandler?: (error: unknown) => ApiError
-    ): AsyncResult<T> {
-        try {
-            const data = await fn();
-            return this.ok(data);
-        } catch (error) {
-            const apiError = errorHandler ? errorHandler(error) : this.fromUnknown(error);
-            return this.err(apiError);
-        }
-    }
-
-    // Safe sync execution with error handling
-    static safe<T>(
-        fn: () => T,
-        errorHandler?: (error: unknown) => ApiError
-    ): Result<T> {
-        try {
-            const data = fn();
-            return this.ok(data);
-        } catch (error) {
-            const apiError = errorHandler ? errorHandler(error) : this.fromUnknown(error);
-            return this.err(apiError);
-        }
-    }
-
-    // Convert unknown errors to ApiError
-    static fromUnknown(error: unknown): ApiError {
-        if (error instanceof ApiError) {
-            return error;
-        }
-
-        if (error instanceof Error) {
-            return odysseus.internal.unknownError
-                .withMessage(error.message)
-                .withCause(error);
-        }
-
-        return odysseus.internal.unknownError
-            .withMessage(String(error));
-    }
-
-    // Aggregate multiple errors
-    static aggregate(errors: ApiError[], message = 'Multiple errors occurred'): ApiError {
-        if (errors.length === 0) {
-            return odysseus.internal.unknownError.withMessage('No errors to aggregate');
-        }
-
-        if (errors.length === 1) {
-            return errors[0];
-        }
-
-        const aggregatedError = odysseus.internal.serverError
-            .withMessage(`${message} (${errors.length} errors)`)
-            .withSeverity('high');
-
-        errors.forEach((error, index) => {
-            aggregatedError.withBreadcrumb(`Error ${index + 1}: ${error.shortenedError()}`);
-        });
-
-        return aggregatedError;
-    }
-
-    // Retry logic with exponential backoff
-    static async withRetry<T>(
-        fn: () => Promise<T>,
-        options: {
-            maxAttempts?: number;
-            baseDelay?: number;
-            maxDelay?: number;
-            shouldRetry?: (error: unknown) => boolean;
-        } = {}
-    ): AsyncResult<T> {
-        const {
-            maxAttempts = 3,
-            baseDelay = 1000,
-            maxDelay = 10000,
-            shouldRetry = (error) => error instanceof ApiError && (error.response.retryable ?? false)
-        } = options;
-
-        let lastError: unknown;
-
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-                const result = await fn();
-                return this.ok(result);
-            } catch (error) {
-                lastError = error;
-
-                if (attempt === maxAttempts || !shouldRetry(error)) {
-                    break;
-                }
-
-                const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-
-        const apiError = this.fromUnknown(lastError)
-            .withBreadcrumb(`Failed after ${maxAttempts} attempts`);
-
-        return this.err(apiError);
-    }
-
-    // Timeout wrapper
-    static async withTimeout<T>(
-        fn: () => Promise<T>,
-        timeoutMs: number,
-        timeoutError?: ApiError
-    ): AsyncResult<T> {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
-                reject(timeoutError || odysseus.internal.requestTimedOut);
-            }, timeoutMs);
-        });
-
-        try {
-            const result = await Promise.race([fn(), timeoutPromise]);
-            return this.ok(result);
-        } catch (error) {
-            return this.err(this.fromUnknown(error));
-        }
-    }
-}
-
-// Error boundary for catching and handling errors
-export class ErrorBoundary {
-    private static instance: ErrorBoundary;
-    private handlers: Map<string, (error: ApiError) => void> = new Map();
-    private metrics: Map<string, number> = new Map();
-
-    static getInstance(): ErrorBoundary {
-        if (!this.instance) {
-            this.instance = new ErrorBoundary();
-        }
-        return this.instance;
-    }
-
-    // Register error handlers
-    onError(pattern: string, handler: (error: ApiError) => void): void {
-        this.handlers.set(pattern, handler);
-    }
-
-    // Handle error with registered handlers
-    handle(error: ApiError): void {
-        // Update metrics
-        const fingerprint = error.response.fingerprint || 'unknown';
-        this.metrics.set(fingerprint, (this.metrics.get(fingerprint) || 0) + 1);
-
-        // Find and execute matching handlers
-        for (const [pattern, handler] of this.handlers) {
-            if (error.response.errorCode.includes(pattern) ||
-                error.response.category === pattern ||
-                error.response.severity === pattern) {
-                try {
-                    handler(error);
-                } catch (handlerError) {
-                    console.error('Error handler failed:', handlerError);
-                }
-            }
-        }
-    }
-
-    // Get error metrics
-    getMetrics(): Record<string, number> {
-        return Object.fromEntries(this.metrics);
-    }
-
-    // Reset metrics
-    resetMetrics(): void {
-        this.metrics.clear();
-    }
-}
-
-// Middleware factory for automatic error handling
-export function createErrorMiddleware(options: {
-    enableDevMode?: boolean;
-    enableMetrics?: boolean;
-    customHandler?: (error: ApiError, c: Context) => Response | Promise<Response>;
-} = {}) {
-    const { enableDevMode = false, enableMetrics = true, customHandler } = options;
-
-    return async (c: Context, next: () => Promise<void>) => {
-        try {
-            await next();
-        } catch (error) {
-            const apiError = ErrorUtils.fromUnknown(error)
-                .withContext({
-                    requestId: c.req.header('x-request-id'),
-                    path: c.req.path,
-                    method: c.req.method,
-                    userAgent: c.req.header('user-agent')
-                });
-
-            if (enableDevMode) {
-                apiError.withDevInfo('true');
-            }
-
-            if (enableMetrics) {
-                ErrorBoundary.getInstance().handle(apiError);
-            }
-
-            if (customHandler) {
-                const response = await customHandler(apiError, c);
-                return response;
-            }
-
-            return new Response(JSON.stringify(apiError.apply(c)), {
-                status: apiError.statusCode,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-        }
-    };
-}
-
-// Error factory with enhanced methods
-export class ErrorFactory {
-    // Create error with automatic categorization
-    static create(
-        code: string,
-        message: string,
-        numeric: number,
-        statusCode: number,
-        options: {
-            category?: ErrorCategory;
-            severity?: ErrorSeverity;
-            suggestions?: string[];
-            retryable?: boolean;
-            documentation?: string;
-        } = {}
-    ): ApiError {
-        return new ApiError(code, message, numeric, statusCode as HttpStatusCode)
-            .withCategory(options.category || 'business')
-            .withSeverity(options.severity || 'medium')
-            .withSuggestion(...(options.suggestions || []))
-            .retryable(options.retryable ?? false)
-            .withDocumentation(options.documentation || '');
-    }
-
-    // Validation error helper
-    static validation(
-        field: string,
-        value: any,
-        rule: string,
-        suggestions: string[] = []
-    ): ApiError {
-        return this.create(
-            `errors.com.odysseus.validation.${field}`,
-            `Validation failed for field '${field}': ${rule}`,
-            1040,
-            400,
-            {
-                category: 'validation',
-                severity: 'medium',
-                suggestions: [
-                    `Check the '${field}' field format`,
-                    `Ensure '${field}' meets the requirements: ${rule}`,
-                    ...suggestions
-                ]
-            }
-        ).withValidationFailures({ [field]: { value, rule } });
-    }
-
-    // Rate limit error helper
-    static rateLimit(
-        limit: number,
-        windowMs: number,
-        retryAfterMs: number
-    ): ApiError {
-        return this.create(
-            'errors.com.odysseus.rateLimit.exceeded',
-            `Rate limit exceeded: ${limit} requests per ${windowMs}ms`,
-            1041,
-            429,
-            {
-                category: 'system',
-                severity: 'medium',
-                retryable: true,
-                suggestions: [
-                    `Wait ${Math.ceil(retryAfterMs / 1000)} seconds before retrying`,
-                    'Consider implementing exponential backoff',
-                    'Check if you can batch your requests'
-                ]
-            }
-        ).withMetadata('retryAfterMs', retryAfterMs);
-    }
-
-    // External service error helper
-    static external(
-        service: string,
-        operation: string,
-        cause?: Error
-    ): ApiError {
-        return this.create(
-            `errors.com.odysseus.external.${service}`,
-            `External service '${service}' failed during '${operation}'`,
-            2000,
-            502,
-            {
-                category: 'external',
-                severity: 'high',
-                retryable: true,
-                suggestions: [
-                    `Check ${service} service status`,
-                    'Retry the operation with exponential backoff',
-                    'Verify network connectivity'
-                ]
-            }
-        ).withCause(cause || new Error(`${service} service error`));
-    }
-}
-
-// Performance monitoring for errors
-export class ErrorPerformanceMonitor {
-    private static metrics = new Map<string, {
-        count: number;
-        avgDuration: number;
-        totalDuration: number;
-    }>();
-
-    static track(error: ApiError): void {
-        const fingerprint = error.response.fingerprint || 'unknown';
-        const duration = error.response.context?.performance?.duration || 0;
-
-        const existing = this.metrics.get(fingerprint) || { count: 0, avgDuration: 0, totalDuration: 0 };
-        existing.count++;
-        existing.totalDuration += duration;
-        existing.avgDuration = existing.totalDuration / existing.count;
-
-        this.metrics.set(fingerprint, existing);
-    }
-
-    static getMetrics(): Record<string, any> {
-        return Object.fromEntries(this.metrics);
-    }
-
-    static reset(): void {
-        this.metrics.clear();
-    }
-}
-
 export const odysseus = {
     proxy: {
         get fetchError() {
@@ -1042,7 +377,7 @@ export const odysseus = {
             return new ApiError('errors.com.odysseus.internal.unknownError', 'Sorry an error occurred and we were unable to resolve it.', 1001, 500);
         },
         get eosError() {
-            return new ApiError('errors.com.odysseus.internal.EosError', 'Sorry an error occurred while communication with Odysseus Online Service Servers.', 1001, 500);
+            return new ApiError('errors.com.odysseus.internal.EosError', 'Sorry an error occurred while communication with Odysseues Online Service Servers.', 1001, 500);
         }
     },
     basic: {
@@ -1065,71 +400,7 @@ export const odysseus = {
             return new ApiError('errors.com.odysseus.basic.throttled', 'Operation access is limited by throttling policy.', 1041, 429);
         }
     },
-    customError(code: string, message: string, numericErrorCode: number, status: number): ApiError {
-        return new ApiError(code, message, numericErrorCode, status as HttpStatusCode);
+    customError(code: string, message: string, numericErrorCode: number, status: number) {
+        return new ApiError(code, message, numericErrorCode, status);
     }
 }
-
-/**
- * 🚀 ODYSSEUS ERROR HANDLING - USAGE EXAMPLES
- * 
- * Basic usage:
- * ```typescript
- * const error = odysseus.authentication.invalidToken
- *   .withMessage('Custom message')
- *   .withSeverity('high')
- *   .withSuggestion('Please refresh your token')
- *   .withContext({ userId: '123' });
- * 
- * throw error.throwHttpException();
- * ```
- * 
- * Result pattern:
- * ```typescript
- * const result = await ErrorUtils.safeAsync(async () => {
- *   return await riskyOperation();
- * });
- * 
- * if (!result.success) {
- *   console.error('Operation failed:', result.error);
- *   return;
- * }
- * 
- * console.log('Success:', result.data);
- * ```
- * 
- * Retry with exponential backoff:
- * ```typescript
- * const result = await ErrorUtils.withRetry(
- *   () => callExternalAPI(),
- *   { maxAttempts: 3, baseDelay: 1000 }
- * );
- * ```
- * 
- * Error middleware:
- * ```typescript
- * app.use(createErrorMiddleware({
- *   enableDevMode: process.env.NODE_ENV === 'development',
- *   enableMetrics: true
- * }));
- * ```
- * 
- * Custom error factory:
- * ```typescript
- * const validationError = ErrorFactory.validation(
- *   'email',
- *   'invalid@',
- *   'must be a valid email address',
- *   ['Check the email format', 'Ensure @ symbol is present']
- * );
- * ```
- * 
- * Error boundary:
- * ```typescript
- * const boundary = ErrorBoundary.getInstance();
- * boundary.onError('authentication', (error) => {
- *   console.log('Auth error occurred:', error);
- *   // Send to monitoring service
- * });
- * ```
- */

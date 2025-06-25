@@ -4,12 +4,13 @@ import { HOTFIXES } from "@core/db/schemas/hotfixes";
 import { odysseus } from "@core/error";
 import { acidMiddleware } from "@middleware/auth/acid";
 import { clientTokenMiddleware } from "@middleware/auth/client-auth";
+import { ratelimitMiddleware } from "@middleware/core/ratelimit";
 import { HotfixParser } from "@utils/misc/hotfix-parser";
 import { md5, sha1, sha256 } from "hono/utils/crypto";
 
 const SETTINGS_FILE = "clientsettings.sav";
 
-app.get("/fortnite/api/cloudstorage/system", clientTokenMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/system", ratelimitMiddleware(), clientTokenMiddleware, async (c) => {
 
     const db = getDB(c);
     const hotfixes = await db.select().from(HOTFIXES);
@@ -38,7 +39,7 @@ app.get("/fortnite/api/cloudstorage/system", clientTokenMiddleware, async (c) =>
     return c.json(response);
 });
 
-app.get("/fortnite/api/cloudstorage/system/:filename", clientTokenMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/system/:filename", ratelimitMiddleware(), clientTokenMiddleware, async (c) => {
 
     const filename = c.req.param("filename");
     const hotfixes = await getDB(c).select().from(HOTFIXES);
@@ -56,7 +57,7 @@ app.get("/fortnite/api/cloudstorage/system/:filename", clientTokenMiddleware, as
 });
 
 // User cloudstorage endpoints
-app.get("/fortnite/api/cloudstorage/user/:accountId/:file", acidMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(), acidMiddleware, async (c) => {
 
     const fileName = c.req.param("file");
     if (fileName.toLowerCase() !== SETTINGS_FILE) {
@@ -77,7 +78,7 @@ app.get("/fortnite/api/cloudstorage/user/:accountId/:file", acidMiddleware, asyn
     }
 });
 
-app.get("/fortnite/api/cloudstorage/user/:accountId", acidMiddleware, async (c) => {
+app.get("/fortnite/api/cloudstorage/user/:accountId", ratelimitMiddleware(), acidMiddleware, async (c) => {
 
     try {
         const fileData = await c.env.r2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
@@ -109,7 +110,7 @@ app.get("/fortnite/api/cloudstorage/user/:accountId", acidMiddleware, async (c) 
     }
 });
 
-app.put("/fortnite/api/cloudstorage/user/:accountId/:file", acidMiddleware, async (c) => {
+app.put("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(), acidMiddleware, async (c) => {
 
     const fileName = c.req.param("file");
     if (fileName.toLowerCase() !== SETTINGS_FILE) {

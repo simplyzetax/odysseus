@@ -4,10 +4,11 @@ import { isNull } from "drizzle-orm";
 import { app } from "@core/app";
 import { getDB } from "@core/db/client";
 import { CONTENT } from "@core/db/schemas/content";
+import { ratelimitMiddleware } from "@middleware/core/ratelimit";
 
 // Fuck you epicgames for adding another unnecessary slash to this endpoint
 // but ONLY this endpoint
-app.get("/content/api/pages/fortnite-game", async (c) => {
+app.get("/content/api/pages/fortnite-game", ratelimitMiddleware(), async (c) => {
 
     //TODO: Fix this bullshit or test it on S19+
     const contentpagesTemplate: Record<string, any> = {

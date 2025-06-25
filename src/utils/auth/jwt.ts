@@ -11,7 +11,7 @@ export enum GRANT_TYPES {
     exchange = "exchange_code",
 }
 
-export type PossibleGrantTypes = keyof typeof GRANT_TYPES;
+export type PossibleGrantTypes = `${GRANT_TYPES}`;
 
 export class JWT {
 
@@ -66,6 +66,24 @@ export class JWT {
             .setExpirationTime(expirationTime)
             .sign(this.encodedSecret);
 
+        return token;
+    }
+
+    static async createExchangeToken(account: Account, clientId: ClientId, deviceId: string, expiresIn: number) {
+        const expirationTime = Math.floor(Date.now() / 1000) + (expiresIn * 3600); // Convert hours to seconds
+        const token = await new SignJWT({
+            sub: account.id,
+            dvid: deviceId,
+            t: "s",
+            clid: clientId,
+            am: GRANT_TYPES.exchange,
+            jti: nanoid(),
+            creation_date: new Date(),
+            hours_expire: expiresIn
+        })
+            .setProtectedHeader({ alg: "HS256" })
+            .setExpirationTime(expirationTime)
+            .sign(this.encodedSecret);
         return token;
     }
 
