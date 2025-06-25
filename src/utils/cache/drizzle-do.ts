@@ -1,10 +1,11 @@
 import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
-import { CacheDurableObject } from "./cache-durable-object";
 import { env } from "cloudflare:workers";
 
-const DISABLE_CACHE = env.DISABLE_CACHE;
+const DISABLE_CACHE = env.DISABLE_CACHE === "true";
+
+console.log(`Cache is ${DISABLE_CACHE ? "disabled" : "enabled"} Raw value: ${env.DISABLE_CACHE}`);
 
 export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     private globalTtl: number = 1000;
@@ -29,9 +30,10 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
     // allowing you to retrieve response values for this query from the cache.
     override async get(key: string): Promise<any[] | undefined> {
         if (DISABLE_CACHE) {
+            console.log(`🚫 Cache GET disabled - Key: ${key}`);
             return undefined;
         }
-        
+
         try {
             // Use RPC call instead of fetch
             const result = await (this.durableObject as any).getCacheEntry(key);
@@ -57,6 +59,11 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         isTag: boolean,
         config?: CacheConfig,
     ): Promise<void> {
+        if (DISABLE_CACHE) {
+            console.log(`🚫 Cache PUT disabled - Key: ${key}, Tables: [${tables.join(', ')}]`);
+            return;
+        }
+
         try {
             const ttl = config?.ex ?? this.globalTtl;
 
@@ -85,6 +92,30 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         tags: string | string[];
         tables: string | string[] | Table<any> | Table<any>[];
     }): Promise<void> {
+        if (DISABLE_CACHE) {
+            const tagsArray = params.tags
+                ? Array.isArray(params.tags)
+                    ? params.tags
+                    : [params.tags]
+                : [];
+            const tablesArray = params.tables
+                ? Array.isArray(params.tables)
+                    ? params.tables
+                    : [params.tables]
+                : [];
+
+            const affectedTableNames: string[] = [];
+            for (const table of tablesArray) {
+                const tableName = is(table, Table)
+                    ? getTableName(table)
+                    : (table as string);
+                affectedTableNames.push(tableName);
+            }
+
+            console.log(`🚫 Cache INVALIDATION disabled - Tables: [${affectedTableNames.join(', ')}], Tags: [${tagsArray.join(', ')}]`);
+            return;
+        }
+
         try {
             const tagsArray = params.tags
                 ? Array.isArray(params.tags)

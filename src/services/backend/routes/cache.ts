@@ -1,6 +1,6 @@
 import { app } from "@core/app";
 import { odysseus } from "@core/error";
-import { CacheDurableObject } from "@utils/cache/cache-durable-object";
+import { CacheDurableObject } from "@utils/cache/do-sql-cache";
 
 app.delete("/cache", async (c) => {
 
@@ -12,7 +12,7 @@ app.delete("/cache", async (c) => {
     const cacheId = c.env.CACHE_DO.idFromName(colo);
     const cacheInstance = c.env.CACHE_DO.get(cacheId) as DurableObjectStub<CacheDurableObject>;
 
-    const cleanedEntriesAmount = await cacheInstance.emptyCache();
+    await cacheInstance.emptyCache();
 
     return c.json({
         deleted: true,

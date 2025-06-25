@@ -231,8 +231,6 @@ export class CacheDurableObject extends DurableObject {
 
     async emptyCache() {
         try {
-            const now = Date.now();
-
             // Use Cloudflare's transaction API
             await this.ctx.storage.transaction(async () => {
                 // Delete all cache entries

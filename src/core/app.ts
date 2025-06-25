@@ -5,10 +5,12 @@ import { mcpCorrectionMiddleware } from "@middleware/game/mcp-correction";
 import { responseEnhancementsMiddleware } from "@middleware/core/rem";
 import { odysseus } from "./error";
 import { logger } from "hono/logger";
+import { persistentDoMiddleware } from "@middleware/core/persistent-do";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.use(logger())
+app.use(persistentDoMiddleware);
 app.use(responseEnhancementsMiddleware);
 app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware)
 
