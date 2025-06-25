@@ -1,10 +1,10 @@
-import { SelectHotfix } from "@core/db/schemas/hotfixes";
+import { Hotfix } from "@core/db/schemas/hotfixes";
 
 export class HotfixParser {
 
-    private hotfixes: SelectHotfix[];
+    private hotfixes: Hotfix[];
 
-    constructor(hotfixes: SelectHotfix[]) {
+    constructor(hotfixes: Hotfix[]) {
         this.hotfixes = hotfixes;
     }
 
@@ -43,7 +43,7 @@ export class HotfixParser {
      * @param includeTimestamp Whether to include timestamp in generated file (default: true)
      * @returns .ini formatted string
      */
-    private transformFileToIni(hotfixes: SelectHotfix[], includeTimestamp: boolean = true): string {
+    private transformFileToIni(hotfixes: Hotfix[], includeTimestamp: boolean = true): string {
         const sections = this.groupBySection(hotfixes);
         const iniLines: string[] = [];
 
@@ -82,7 +82,7 @@ export class HotfixParser {
      * @param hotfix The hotfix to format
      * @returns Formatted .ini line
      */
-    private formatKeyValuePair(hotfix: SelectHotfix): string {
+    private formatKeyValuePair(hotfix: Hotfix): string {
         let line = `${hotfix.key}=${hotfix.value}`;
 
         // Add comment with metadata if needed
@@ -103,8 +103,8 @@ export class HotfixParser {
      * @param hotfixes Array of hotfixes to group
      * @returns Map of filename to hotfixes array
      */
-    private groupByFilename(hotfixes: SelectHotfix[]): Map<string, SelectHotfix[]> {
-        const grouped = new Map<string, SelectHotfix[]>();
+    private groupByFilename(hotfixes: Hotfix[]): Map<string, Hotfix[]> {
+        const grouped = new Map<string, Hotfix[]>();
 
         for (const hotfix of hotfixes) {
             if (!grouped.has(hotfix.filename)) {
@@ -121,8 +121,8 @@ export class HotfixParser {
      * @param hotfixes Array of hotfixes to group by section
      * @returns Map of section name to hotfixes array
      */
-    private groupBySection(hotfixes: SelectHotfix[]): Map<string, SelectHotfix[]> {
-        const grouped = new Map<string, SelectHotfix[]>();
+    private groupBySection(hotfixes: Hotfix[]): Map<string, Hotfix[]> {
+        const grouped = new Map<string, Hotfix[]>();
 
         for (const hotfix of hotfixes) {
             if (!grouped.has(hotfix.section)) {

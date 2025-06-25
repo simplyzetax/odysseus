@@ -3,8 +3,8 @@ import { getDB } from "@core/db/client";
 import { ACCOUNTS } from "@core/db/schemas/account";
 import { FRIENDS } from "@core/db/schemas/friends";
 import { odysseus } from "@core/error";
-import { acidMiddleware } from "@middleware/auth/acid";
-import { ratelimitMiddleware } from "@middleware/core/ratelimit";
+import { acidMiddleware } from "@middleware/auth/accountIdMiddleware";
+import { ratelimitMiddleware } from "@middleware/core/rateLimitMiddleware";
 import { eq, and, or } from "drizzle-orm";
 
 // Simple endpoints that return empty arrays/objects

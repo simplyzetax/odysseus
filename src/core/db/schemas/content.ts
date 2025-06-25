@@ -13,5 +13,5 @@ export const CONTENT = pgTable('content', {
     }
 });
 
-export type Attribute = typeof CONTENT.$inferSelect;
-export type NewAttribute = typeof CONTENT.$inferInsert;
+export type Content = typeof CONTENT.$inferSelect;
+export type NewContent = typeof CONTENT.$inferInsert;

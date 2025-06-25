@@ -1,5 +1,5 @@
 import { app } from "@core/app";
-import { clientTokenVerify } from "@middleware/auth/client";
+import { clientTokenVerify } from "@middleware/auth/clientAuthMiddleware";
 
 app.get("/lightswitch/api/service/:serviceName/status", clientTokenVerify, async (c) => {
 

@@ -1,5 +1,5 @@
 import { getDB } from "@core/db/client";
-import { ITEMS, itemSelectSchema, SelectItem } from "@core/db/schemas/items";
+import { ITEMS, itemSelectSchema, Item } from "@core/db/schemas/items";
 import { PROFILES, profileTypesEnum, Profile } from "@core/db/schemas/profile";
 import { and, eq, sql } from "drizzle-orm";
 import { Context } from "hono";
@@ -167,6 +167,8 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
             items: processedItems,
         };
 
+        this.getRevision();
+
         return profile;
     }
 
@@ -196,16 +198,16 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
     }
 
 
-    async getItemByKey<K extends keyof SelectItem>(
+    async getItemByKey<K extends keyof Item>(
         columnName: K,
-        value: SelectItem[K]
+        value: Item[K]
     ) {
         // Automatically generate column mapping from Zod schema shape
         const schemaShape = itemSelectSchema.shape;
         const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
-            acc[key as keyof SelectItem] = ITEMS[key as keyof typeof ITEMS];
+            acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
             return acc;
-        }, {} as Record<keyof SelectItem, any>);
+        }, {} as Record<keyof Item, any>);
 
         const column = columnMap[columnName];
         if (!column) {
@@ -219,7 +221,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
         return await this.db.select().from(ITEMS).where(eq(ITEMS.profileId, this.dbProfile.id));
     }
 
-    async processItems(items: SelectItem[]) {
+    async processItems(items: Item[]) {
         const itemsMap: ItemsMap = {};
 
         for (const dbItem of items) {

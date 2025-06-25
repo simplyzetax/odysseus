@@ -26,5 +26,5 @@ export const FRIENDS = pgTable('friends', {
 
 // Mutual friend status views can be created with a SQL view
 
-export type SelectFriend = typeof FRIENDS.$inferSelect;
-export type InsertFriend = typeof FRIENDS.$inferInsert; 
+export type Friend = typeof FRIENDS.$inferSelect;
+export type NewFriend = typeof FRIENDS.$inferInsert; 

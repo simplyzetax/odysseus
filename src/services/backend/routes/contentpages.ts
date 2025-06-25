@@ -4,7 +4,7 @@ import { isNull } from "drizzle-orm";
 import { app } from "@core/app";
 import { getDB } from "@core/db/client";
 import { CONTENT } from "@core/db/schemas/content";
-import { ratelimitMiddleware } from "@middleware/core/ratelimit";
+import { ratelimitMiddleware } from "@middleware/core/rateLimitMiddleware";
 
 // Fuck you epicgames for adding another unnecessary slash to this endpoint
 // but ONLY this endpoint

@@ -2,7 +2,7 @@ import { Cache } from "drizzle-orm/cache/core";
 import { is, Table, getTableName } from "drizzle-orm";
 import { CacheConfig } from "drizzle-orm/cache/core/types";
 import { env } from "cloudflare:workers";
-import { CacheDurableObject } from "./durableobjects/cache-durable-object";
+import { CacheDurableObject } from "./durableobjects/cacheDurableObject";
 
 const DISABLE_CACHE = env.DISABLE_CACHE === "true";
 

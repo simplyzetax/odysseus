@@ -23,7 +23,7 @@ export const ITEMS = pgTable('items', {
     }
 });
 
-export type SelectItem = typeof ITEMS.$inferSelect;
+export type Item = typeof ITEMS.$inferSelect;
 export type NewItem = typeof ITEMS.$inferInsert;
 
 export const itemSelectSchema = createSelectSchema(ITEMS);

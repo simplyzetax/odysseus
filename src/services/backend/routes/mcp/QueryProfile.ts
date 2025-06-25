@@ -1,6 +1,6 @@
 import { app } from "@core/app";
 import { odysseus } from "@core/error";
-import { acidMiddleware } from "@middleware/auth/acid";
+import { acidMiddleware } from "@middleware/auth/accountIdMiddleware";
 import { FortniteProfile } from "@utils/mcp/base-profile";
 
 app.post("/fortnite/api/game/v2/profile/:accountId/client/QueryProfile", acidMiddleware, async (c) => {

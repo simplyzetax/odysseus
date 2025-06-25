@@ -2,7 +2,7 @@ import { app } from "@core/app";
 import { getDB } from "@core/db/client";
 import { ACCOUNTS } from "@core/db/schemas/account";
 import { odysseus } from "@core/error";
-import { accountMiddleware } from "@middleware/auth/account";
+import { accountMiddleware } from "@middleware/auth/accountMiddleware";
 import { eq, inArray, sql } from "drizzle-orm";
 
 app.get("/account/api/public/account", async (c) => {

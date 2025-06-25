@@ -17,5 +17,5 @@ export const HOTFIXES = pgTable('hotfixes', {
     }
 });
 
-export type SelectHotfix = typeof HOTFIXES.$inferSelect;
+export type Hotfix = typeof HOTFIXES.$inferSelect;
 export type NewHotfix = typeof HOTFIXES.$inferInsert;

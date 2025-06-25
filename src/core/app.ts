@@ -2,11 +2,11 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { mcpCorrectionMiddleware } from "@middleware/game/mcp-correction";
-import { responseEnhancementsMiddleware } from "@middleware/core/rem";
+import { responseEnhancementsMiddleware } from "@middleware/core/remMiddleware";
 import { odysseus } from "./error";
 import { logger } from "hono/logger";
-import { persistentDoMiddleware } from "@middleware/core/cache-chooser";
-import { CacheDurableObject } from "@utils/cache/durableobjects/cache-durable-object";
+import { persistentDoMiddleware } from "@middleware/core/cacheIdentifierMiddleware";
+import { CacheDurableObject } from "@utils/cache/durableobjects/cacheDurableObject";
 
 interface Bindings extends Omit<Env, 'CACHE_DO'> {
     CACHE_DO: DurableObjectNamespace<CacheDurableObject>;
