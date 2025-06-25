@@ -13,8 +13,8 @@
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"cf-typegen": "wrangler types",
-		"push": "drizzle-kit push",
-		"push:do": "drizzle-kit generate --config=drizzle-do.config.ts"
+		"push": "drizzle-kit push --config=./drizzle/drizzle.config.ts",
+		"push:do": "drizzle-kit generate --config=./drizzle/drizzle-do.config.ts"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.7.4",
@@ -30,6 +30,7 @@
 	},
 	"dependencies": {
 		"@types/pg": "^8.15.4",
+		"dotenv": "^16.5.0",
 		"drizzle-kit": "^0.31.2",
 		"drizzle-orm": "^0.44.2",
 		"drizzle-zod": "^0.8.2",

@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
 import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
 import { eq, and, lt, gt, like } from 'drizzle-orm';
-import migrations from '../../../../drizzle-do/migrations';
+import migrations from '../../../../drizzle/migrations/drizzle-do/migrations';
 import { cacheEntries, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
 
 export interface CacheEntry {
