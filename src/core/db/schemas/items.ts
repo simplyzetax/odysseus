@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { pgTable, integer, uuid, text, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core"
 import { PROFILES } from "./profile";
+import { createSelectSchema } from "drizzle-zod";
 
 const defaultJsonAttributes = {
     item_seen: true,
@@ -24,3 +25,5 @@ export const ITEMS = pgTable('items', {
 
 export type SelectItem = typeof ITEMS.$inferSelect;
 export type NewItem = typeof ITEMS.$inferInsert;
+
+export const itemSelectSchema = createSelectSchema(ITEMS);
