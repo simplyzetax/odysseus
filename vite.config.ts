@@ -6,6 +6,9 @@ export default defineConfig({
     plugins: [
         cloudflare()
     ],
+    server: {
+        port: 8787,
+    },
     resolve: {
         alias: {
             "@core": path.resolve(__dirname, "./src/core"),
