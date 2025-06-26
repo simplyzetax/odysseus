@@ -3,11 +3,11 @@ import { ACCOUNTS } from "@core/db/schemas/account";
 import { ITEMS } from "@core/db/schemas/items";
 import { PROFILES } from "@core/db/schemas/profile";
 import { createDiscordAPI } from "@utils/discord/general";
-import { fetchCosmeticById } from "@utils/fortniteapi/general";
 import { FortniteProfile } from "@utils/mcp/base-profile";
 import { ApplicationCommandOptionType } from "discord-api-types/v10";
 import { and, eq } from "drizzle-orm";
 import type { CommandHandler } from "../types/interactions";
+import { fnApiClient } from "@utils/fortniteapi/general";
 
 export const additemCommand: CommandHandler = {
     name: 'additem',
@@ -31,7 +31,7 @@ export const additemCommand: CommandHandler = {
                 if (!itemTemplateId) throw new Error('You need to provide a valid item ID (e.g. AthenaCharacter:CID_012...)');
 
                 // Fetch item data from Fortnite API directly
-                const itemData = await fetchCosmeticById(itemTemplateId);
+                const itemData = (await fnApiClient.brCosmeticByID(itemTemplateId)).data;
                 if (!itemData) throw new Error(`Item with ID "${itemTemplateId}" not found`);
 
                 // Get user and find account

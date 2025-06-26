@@ -37,6 +37,7 @@
 		"drizzle-kit": "^0.31.2",
 		"drizzle-orm": "^0.44.2",
 		"drizzle-zod": "^0.8.2",
+		"fnapicom": "^2.1.0",
 		"hono": "^4.8.2",
 		"jose": "^6.0.11",
 		"nanoid": "^5.1.5",
