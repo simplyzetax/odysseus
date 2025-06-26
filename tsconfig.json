@@ -44,7 +44,7 @@
 			"@utils/*": [
 				"./src/utils/*"
 			],
-			"@types/*": [
+			"@otypes/*": [
 				"./src/types/*"
 			],
 			"@services/*": [

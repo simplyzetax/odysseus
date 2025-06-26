@@ -1,9 +1,10 @@
 import { odysseus } from "@core/error";
+import { Bindings } from "@otypes/bindings";
 import { JWT } from "@utils/auth/jwt";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
-export const acidMiddleware = createMiddleware(async (c: Context<{ Bindings: Env, Variables: { accountId: string, token: string } }>, next) => {
+export const acidMiddleware = createMiddleware(async (c: Context<{ Bindings: Bindings, Variables: { accountId: string, token: string } }>, next) => {
 
     const Authorization = c.req.header("Authorization");
     if (!Authorization?.startsWith("Bearer ")) {

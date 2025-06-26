@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
 import { eq, and, lt, gt, like } from 'drizzle-orm';
-import { cacheEntries, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
+import { cacheEntries, CacheEntry, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
 
 export class CacheDurableObject extends DurableObject {
     private db: DrizzleSqliteDODatabase;
@@ -52,11 +52,11 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    async getCacheEntry(key: string): Promise<any[] | null> {
+    async getCacheEntry(key: string) {
         try {
             const now = Date.now();
             
-            const results = await this.db
+            const [result] = await this.db
                 .select({ data: cacheEntries.data })
                 .from(cacheEntries)
                 .where(and(
@@ -64,9 +64,9 @@ export class CacheDurableObject extends DurableObject {
                     gt(cacheEntries.expiresAt, now)
                 ));
 
-            if (results.length > 0) {
+            if (result) {
                 console.log(`🎯 Cache HIT: ${key}`);
-                return JSON.parse(results[0].data);
+                return JSON.parse(result.data);
             } else {
                 console.log(`❌ Cache MISS: ${key}`);
                 return null;
@@ -214,6 +214,25 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    async emptyCache(): Promise<number> {
+        try {
+            const results = await this.db.select().from(cacheEntries);
+            
+            await this.db.transaction(async (tx) => {
+                // Delete all cache entries
+                await tx.delete(cacheEntries);
+                // Delete all table mappings
+                await tx.delete(tableKeys);
+            });
+
+            console.log(`🧹 Emptied entire cache: ${results.length} entries deleted`);
+            return results.length;
+        } catch (error) {
+            console.error("Error emptying cache:", error);
+            return 0;
+        }
+    }
+
     async getCacheStats(): Promise<{ totalEntries: number; expiredEntries: number }> {
         try {
             const now = Date.now();
@@ -232,6 +251,11 @@ export class CacheDurableObject extends DurableObject {
             console.error("Error getting cache stats:", error);
             return { totalEntries: 0, expiredEntries: 0 };
         }
+    }
+
+    async getCacheEntries(limit: number = 50): Promise<CacheEntry[]> {
+        const results = await this.db.select().from(cacheEntries).limit(limit);
+        return results;
     }
 
     // Simple alarm for cleanup every 5 minutes

@@ -3,6 +3,8 @@ import { is, Table, getTableName } from "drizzle-orm";
 import { Cache } from "drizzle-orm/cache/core";
 import type { CacheConfig } from "drizzle-orm/cache/core/types";
 import { CacheDurableObject } from "./durableobjects/cacheDurableObject";
+import { Context } from "hono";
+import { Bindings } from "@otypes/bindings";
 
 // Configuration constants
 const DISABLE_CACHE = env.DISABLE_CACHE === "true";
@@ -70,7 +72,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
      * @param globalTtl - Default TTL for cache entries in seconds (default: 1000)
      */
     constructor(
-        durableObjectNamespace: DurableObjectNamespace<CacheDurableObject>,
+        c: Context<{ Bindings: Bindings, Variables: { cacheIdentifier: string } }>,
         cacheName: string = DEFAULT_CACHE_NAME,
         cacheIdentifier: string,
         globalTtl: number = DEFAULT_TTL_SECONDS
@@ -81,8 +83,8 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         this.cacheIdentifier = cacheIdentifier;
         
         // Create a consistent Durable Object ID for this cache instance
-        const durableObjectId = durableObjectNamespace.idFromName(cacheName);
-        this.durableObject = durableObjectNamespace.get(durableObjectId);
+        const durableObjectId = c.env.CACHE_DO.idFromName(cacheName);
+        this.durableObject = c.env.CACHE_DO.get(durableObjectId);
     }
 
     /**
@@ -115,13 +117,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         }
 
         try {
-            // Add timeout to prevent 30-second hangs  
-            const result: any[] | null = await Promise.race([
-                this.durableObject.getCacheEntry(prefixedKey),
-                new Promise<null>((_, reject) => 
-                    setTimeout(() => reject(new Error('Cache RPC timeout after 5 seconds')), 5000)
-                )
-            ]);
+            const result = await this.durableObject.getCacheEntry(prefixedKey);
             
             if (result) {
                 console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
@@ -222,11 +218,6 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             console.log(`🗑️  Cache INVALIDATION started - Tables: [${normalizedTables.join(', ')}], Tags: [${normalizedTags.join(', ')}]`);
 
             const invalidationPromises: Promise<any>[] = [];
-
-            // Invalidate by tags if any are provided
-            if (normalizedTags.length > 0) {
-                invalidationPromises.push(this.durableObject.invalidateByTags(normalizedTags));
-            }
 
             // Invalidate by tables if any are provided
             if (normalizedTables.length > 0) {
