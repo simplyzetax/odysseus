@@ -6,6 +6,7 @@ export const ACCOUNTS = pgTable('accounts', {
     displayName: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
     banned: boolean('banned').default(false),
+    discordId: text('discord_id').notNull().unique(),
 });
 
 export type Account = typeof ACCOUNTS.$inferSelect;

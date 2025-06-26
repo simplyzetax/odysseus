@@ -1,6 +1,7 @@
 import { odysseus } from "@core/error";
+import { JWT } from "@utils/auth/jwt";
 import type { Context } from "hono";
-import { getSignedCookie, setSignedCookie } from "hono/cookie";
+import { getCookie, getSignedCookie, setCookie, setSignedCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { nanoid } from "nanoid";
 
@@ -22,6 +23,29 @@ export const persistentDoMiddleware = createMiddleware(async (c: Context<{ Bindi
     }
 
     c.set("cacheIdentifier", cacheIdentifier);
+
+    if (!getCookie(c, "cacheAssociatedWithAccountId")) {
+        const Authorization = c.req.header("Authorization");
+        if (Authorization?.startsWith("Bearer ")) {
+            const token = Authorization.split(" ")[1];
+            if (token) {
+                try {
+                    const verifiedToken = await JWT.verifyToken(token);
+                    if (verifiedToken?.sub) {
+                        const accountId = verifiedToken.sub;
+                        setCookie(c, "cacheAssociatedWithAccountId", accountId);
+                        
+                        // Associate the cache identifier with the account id
+                        c.executionCtx.waitUntil(
+                            c.env.KV.put(accountId, cacheIdentifier)
+                        );
+                    }
+                } catch {
+                    // JWT verification failed, continue without association
+                }
+            }
+        }
+    }
 
     await next();
 });

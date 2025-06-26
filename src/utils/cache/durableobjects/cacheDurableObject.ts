@@ -45,7 +45,7 @@ export class CacheDurableObject extends DurableObject {
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_table_keys_table_name ON table_keys (table_name)`);
             
             this.initialized = true;
-            console.log("✅ Cache tables created successfully");
+            //console.log("✅ Cache tables created successfully");
         } catch (error) {
             console.error("❌ Failed to create cache tables:", error);
             throw error;
@@ -65,10 +65,10 @@ export class CacheDurableObject extends DurableObject {
                 ));
 
             if (result) {
-                console.log(`🎯 Cache HIT: ${key}`);
+                //console.log(`🎯 Cache HIT: ${key}`);
                 return JSON.parse(result.data);
             } else {
-                console.log(`❌ Cache MISS: ${key}`);
+                //console.log(`❌ Cache MISS: ${key}`);
                 return null;
             }
         } catch (error) {
@@ -119,7 +119,7 @@ export class CacheDurableObject extends DurableObject {
                 }
             });
 
-            console.log(`💾 Cache PUT: ${key} (TTL: ${ttl}s, Tables: [${tables.join(', ')}])`);
+            //console.log(`💾 Cache PUT: ${key} (TTL: ${ttl}s, Tables: [${tables.join(', ')}])`);
         } catch (error) {
             console.error(`💥 Cache PUT error for ${key}:`, error);
             throw error;
@@ -149,7 +149,7 @@ export class CacheDurableObject extends DurableObject {
                 }
             });
 
-            console.log(`🗑️ Cache invalidated for tables [${tableNames.join(', ')}]: ${deletedCount} entries deleted`);
+            //console.log(`🗑️ Cache invalidated for tables [${tableNames.join(', ')}]: ${deletedCount} entries deleted`);
             return deletedCount;
         } catch (error) {
             console.error('Cache invalidation error:', error);
@@ -179,7 +179,7 @@ export class CacheDurableObject extends DurableObject {
                 }
             });
 
-            console.log(`🧹 Cleaned up ${expiredResults.length} expired cache entries`);
+            //console.log(`🧹 Cleaned up ${expiredResults.length} expired cache entries`);
             return expiredResults.length;
         } catch (error) {
             console.error("Error cleaning up expired entries:", error);
@@ -206,7 +206,7 @@ export class CacheDurableObject extends DurableObject {
                 }
             });
 
-            console.log(`🧹 Emptied cache for identifier "${identifier}": ${results.length} entries deleted`);
+            //console.log(`🧹 Emptied cache for identifier "${identifier}": ${results.length} entries deleted`);
             return results.length;
         } catch (error) {
             console.error("Error emptying cache:", error);
@@ -225,7 +225,7 @@ export class CacheDurableObject extends DurableObject {
                 await tx.delete(tableKeys);
             });
 
-            console.log(`🧹 Emptied entire cache: ${results.length} entries deleted`);
+            //console.log(`🧹 Emptied entire cache: ${results.length} entries deleted`);
             return results.length;
         } catch (error) {
             console.error("Error emptying cache:", error);

@@ -39,6 +39,11 @@ export const responseEnhancementsMiddleware = createMiddleware(async (c: Context
         return c.body(null);
     };
 
+    c.unsafeVariables = {
+        rawBody: undefined,
+        timestamp: 0,
+    };
+
     c.id = nanoid();
 
     c.misc = {

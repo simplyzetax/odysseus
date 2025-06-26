@@ -120,10 +120,10 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             const result = await this.durableObject.getCacheEntry(prefixedKey);
             
             if (result) {
-                console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
+                // console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
                 this.cacheHealthy = true;
             } else {
-                console.log(`❌ Cache MISS - Key: ${prefixedKey}`);
+                // console.log(`❌ Cache MISS - Key: ${prefixedKey}`);
             }
             
             return result ?? undefined;
@@ -182,7 +182,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
                 )
             ]);
 
-            console.log(`💾 Cache PUT - Key: ${prefixedKey}, Tables: [${tables.join(', ')}], TTL: ${ttl}s, Size: ${serializedResponse.length} bytes`);
+            // console.log(`💾 Cache PUT - Key: ${prefixedKey}, Tables: [${tables.join(', ')}], TTL: ${ttl}s, Size: ${serializedResponse.length} bytes`);
         } catch (error) {
             console.error(`❗ Cache PUT error for key "${prefixedKey}":`, error);
         }
@@ -215,7 +215,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         }
 
         try {
-            console.log(`🗑️  Cache INVALIDATION started - Tables: [${normalizedTables.join(', ')}], Tags: [${normalizedTags.join(', ')}]`);
+            // console.log(`🗑️  Cache INVALIDATION started - Tables: [${normalizedTables.join(', ')}], Tags: [${normalizedTags.join(', ')}]`);
 
             const invalidationPromises: Promise<any>[] = [];
 
@@ -229,8 +229,8 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             // Log results
             results.forEach((result, index) => {
                 if (result.status === 'fulfilled') {
-                    const deletedCount = typeof result.value === 'number' ? result.value : 'unknown';
-                    console.log(`✅ Cache invalidation completed - Operation ${index + 1}: ${deletedCount} entries deleted`);
+                    //const deletedCount = typeof result.value === 'number' ? result.value : 'unknown';
+                    // console.log(`✅ Cache invalidation completed - Operation ${index + 1}: ${deletedCount} entries deleted`);
                 } else {
                     console.error(`❗ Cache invalidation failed - Operation ${index + 1}:`, result.reason);
                 }

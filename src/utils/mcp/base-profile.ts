@@ -94,18 +94,6 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
         return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile) as ProfileClassMap[T];
     }
 
-    // Base methods that all profiles share
-    async getRevision(): Promise<number> {
-        const [profile] = await this.db.select({ rvn: PROFILES.rvn })
-            .from(PROFILES)
-            .where(and(
-                eq(PROFILES.accountId, this.accountId),
-                eq(PROFILES.type, this.profileType)
-            ));
-
-        return profile?.rvn ?? 0;
-    }
-
     async incrementRevision(): Promise<void> {
         await this.db.update(PROFILES)
             .set({ rvn: sql`${PROFILES.rvn} + 1` })
@@ -162,7 +150,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
             stats: {
                 attributes: processedAttributes,
             },
-            commandRevision: 0,
+            commandRevision: this.dbProfile.rvn,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
             wipeNumber: 0,
@@ -170,8 +158,6 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
             version: 0,
             items: processedItems,
         };
-
-        await this.incrementRevision();
 
         return profile;
     }

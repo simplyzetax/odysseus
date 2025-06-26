@@ -9,5 +9,9 @@ declare module "hono" {
         id: string;
         flags: Flags;
         misc: Misc;
+        unsafeVariables: {
+            rawBody: any;
+            timestamp: number;
+        }
     }
 }

@@ -35,7 +35,7 @@
 		"skipLibCheck": true,
 		"types": [
 			"./worker-configuration.d.ts",
-			"@cloudflare/vitest-pool-workers", // provides `cloudflare:test` types
+			"node"
 		],
 		"paths": {
 			"@core/*": [
