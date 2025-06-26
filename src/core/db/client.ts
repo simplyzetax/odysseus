@@ -5,6 +5,11 @@ import { CloudflareDurableObjectRPCDrizzleCache } from "../../utils/cache/drizzl
 import { env } from "cloudflare:workers";
 import { Bindings } from "@otypes/bindings";
 
+/**
+ * Gets the database client
+ * @param c - The context
+ * @returns The database client
+ */
 export const getDB = (c: Context<{ Bindings: Bindings, Variables: { cacheIdentifier: string } }> | Context<any, any, any>) => {
 
     const colo = String(c.req.raw.cf?.colo);

@@ -7,6 +7,11 @@ export const CLIENTS = {
     },
 } as const;
 
+/**
+ * Checks if a client ID is valid
+ * @param id - The client ID to check
+ * @returns true if the client ID is valid and contained inside {@link CLIENTS}
+ */
 export const isValidClientId = (id: string): id is keyof typeof CLIENTS => {
     return Object.keys(CLIENTS).includes(id);
 };

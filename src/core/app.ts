@@ -8,6 +8,9 @@ import { logger } from "hono/logger";
 import { odysseus } from "./error";
 import { Bindings } from "@otypes/bindings";
 
+/**
+ * The main app
+ */
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(responseEnhancementsMiddleware);

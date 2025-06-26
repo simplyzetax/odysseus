@@ -1,245 +1,346 @@
-import { getDB } from "@core/db/client";
-import type { Attribute} from "@core/db/schemas/attributes";
-import { ATTRIBUTES } from "@core/db/schemas/attributes";
-import type { Item } from "@core/db/schemas/items";
-import { ITEMS, itemSelectSchema } from "@core/db/schemas/items";
-import type { Profile } from "@core/db/schemas/profile";
-import { PROFILES, profileTypesEnum } from "@core/db/schemas/profile";
-import { odysseus } from "@core/error";
-import { FormattedItem } from "@otypes/fortnite/item";
-import { ProfileChange } from "@otypes/fortnite/profileChanges";
-import { ProfileType } from "@otypes/fortnite/profiles";
-import { and, eq, sql } from "drizzle-orm";
-import type { Context } from "hono";
+import { getDB } from '@core/db/client';
+import type { Attribute } from '@core/db/schemas/attributes';
+import { ATTRIBUTES } from '@core/db/schemas/attributes';
+import type { Item } from '@core/db/schemas/items';
+import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
+import type { Profile } from '@core/db/schemas/profile';
+import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
+import { odysseus } from '@core/error';
+import { Bindings } from '@otypes/bindings';
+import { FormattedItem } from '@otypes/fortnite/item';
+import { ProfileChange } from '@otypes/fortnite/profileChanges';
+import { ProfileType } from '@otypes/fortnite/profiles';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import type { Context } from 'hono';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrection';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
 interface ProfileClassMap {
-    athena: FortniteProfileWithDBProfile<'athena'>;
-    common_core: FortniteProfileWithDBProfile<'common_core'>;
-    common_public: FortniteProfileWithDBProfile<'common_public'>;
-    creative: FortniteProfileWithDBProfile<'creative'>;
-    profile0: FortniteProfileWithDBProfile<'profile0'>;
+	athena: FortniteProfileWithDBProfile<'athena'>;
+	common_core: FortniteProfileWithDBProfile<'common_core'>;
+	common_public: FortniteProfileWithDBProfile<'common_public'>;
+	creative: FortniteProfileWithDBProfile<'creative'>;
+	profile0: FortniteProfileWithDBProfile<'profile0'>;
 }
 
 // Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
 
 export class FortniteProfile<T extends ProfileType = ProfileType> {
+	/**
+	 * Checks if the given profile type is valid
+	 * @param profileType - The profile type to check
+	 * @returns true if the profile type is valid
+	 */
+	static isValidProfileType(profileType: string): profileType is ProfileType {
+		return Object.keys(profileTypesEnum).includes(profileType);
+	}
 
-    static isValidProfileType(profileType: string): profileType is ProfileType {
-        return Object.keys(profileTypesEnum).includes(profileType);
-    }
+	/**
+	 * Checks if the given profileId exactly matches the specified profile type
+	 * @param profileId - The profile ID to check (e.g., from c.req.query("profileId"))
+	 * @param expectedType - The expected profile type to match against
+	 * @returns true if profileId exactly matches the expected type
+	 */
+	static isExactProfileType<T extends ProfileType>(profileId: string | undefined, expectedType: T): profileId is T {
+		return profileId === expectedType;
+	}
 
-    // Static factory method with perfect type safety
-    static async construct<T extends ProfileType>(
-        c: Context<any, any, any>,
-        accountId: string,
-        profileType: T
-    ): Promise<ProfileClassMap[T]> {
-        const baseProfile = new FortniteProfile(c, accountId, profileType);
-        return baseProfile.get();
-    }
+	/**
+	 * Constructs a new profile instance
+	 * @param c - The context
+	 * @param accountId - The account ID
+	 * @param profileType - The profile type, from {@link ProfileType}
+	 * @returns The profile instance
+	 */
+	static async construct<T extends ProfileType>(
+		c: Context<{ Bindings: Bindings }>,
+		accountId: string,
+		profileType: T
+	): Promise<ProfileClassMap[T]> {
+		const baseProfile = new FortniteProfile(c, accountId, profileType);
+		return baseProfile.get();
+	}
 
-    public c: Context<any, any, any>;
-    public accountId: string;
-    public profileType: T;
-    public db: ReturnType<typeof getDB>;
+	public c: Context<{ Bindings: Bindings }>;
+	public accountId: string;
+	public profileType: T;
+	public db: ReturnType<typeof getDB>;
 
-    constructor(c: Context<any, any, any>, accountId: string, profileType: T) {
-        this.c = c;
-        this.accountId = accountId;
-        this.profileType = profileType;
-        this.db = getDB(c);
-    }
+	/**
+	 * Constructs a new profile instance
+	 * @param c - The context
+	 * @param accountId - The account ID
+	 * @param profileType - The profile type, from {@link ProfileType}
+	 */
+	constructor(c: Context<any, any, any>, accountId: string, profileType: T) {
+		this.c = c;
+		this.accountId = accountId;
+		this.profileType = profileType;
+		this.db = getDB(c);
+	}
 
-    /**
-     * Gets the profile for the account from the database and returns the specialized profile class
-     * @returns The specialized profile class instance
-     */
-    public async get(): Promise<ProfileClassMap[T]> {
-        const [dbProfile] = await this.db.select().from(PROFILES).where(
-            and(
-                eq(PROFILES.accountId, this.accountId),
-                eq(PROFILES.type, this.profileType)
-            )
-        );
+	/**
+	 * Gets the profile for the account from the database and returns the specialized profile class
+	 * @returns The specialized profile class instance
+	 */
+	public async get(): Promise<ProfileClassMap[T]> {
+		const [dbProfile] = await this.db
+			.select()
+			.from(PROFILES)
+			.where(and(eq(PROFILES.accountId, this.accountId), eq(PROFILES.type, this.profileType)));
 
-        if (!dbProfile) {
-            odysseus.mcp.profileNotFound.variable([this.accountId]).throwHttpException();
-        }
+		if (!dbProfile) {
+			odysseus.mcp.profileNotFound.variable([this.accountId]).throwHttpException();
+		}
 
-        // For athena profile, we need to dynamically import to avoid circular dependency
-        if (this.profileType === "athena") {
-            const { AthenaProfile } = await import("./profiles/athena");
-            return new AthenaProfile(this.c, this.accountId, this as any, dbProfile) as any;
-        }
+		// For athena profile, we need to dynamically import to avoid circular dependency
+		if (this.profileType === 'athena') {
+			const { AthenaProfile } = await import('./profiles/athena');
+			return new AthenaProfile(this.c, this.accountId, this as any, dbProfile) as any;
+		}
 
-        // For other profile types, use the base class
-        return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile) as ProfileClassMap[T];
-    }
+		// For other profile types, use the base class
+		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile) as ProfileClassMap[T];
+	}
 
-    async incrementRevision(): Promise<void> {
-        await this.db.update(PROFILES)
-            .set({ rvn: sql`${PROFILES.rvn} + 1` })
-            .where(and(
-                eq(PROFILES.accountId, this.accountId),
-                eq(PROFILES.type, this.profileType)
-            ));
-    }
+	/**
+	 * @deprecated Don't use this until further notice.
+	 * This fucks up the cache on use, because it invalidates it every
+	 * time we call this, due to the rvn being updated.
+	 * {@link mcpCorrectionMiddleware} should handle the rvn correctly anyway
+	 */
+	async incrementRevision(): Promise<void> {
+		await this.db
+			.update(PROFILES)
+			.set({ rvn: sql`${PROFILES.rvn} + 1` })
+			.where(and(eq(PROFILES.accountId, this.accountId), eq(PROFILES.type, this.profileType)));
+	}
 }
 
+/**
+ * A profile with a database profile, seperated into two classes to make it type safe
+ * and to avoid circular dependencies
+ */
 export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> extends FortniteProfile<T> {
-    dbProfile: Profile;
-    changes: ProfileChange[] = [];
+	dbProfile: Profile;
+	changes: ProfileChange[] = [];
 
-    constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile) {
-        super(c, accountId, baseProfile.profileType);
-        this.dbProfile = dbProfile;
-    }
+	constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile) {
+		super(c, accountId, baseProfile.profileType);
+		this.dbProfile = dbProfile;
+	}
 
-    async buildProfileObject() {
-        const items = await this.getItems();
-        const processedItems = await this.processItems(items);
-        const attributes = await this.getAttributes();
-        const processedAttributes = await this.processAttributes(attributes);
+	/**
+	 * Builds a fortnite compatible profile object from the database profile
+	 * @returns The profile object
+	 */
+	async buildProfileObject() {
+		const items = await this.getItems();
+		const processedItems = await this.processItems(items);
+		const attributes = await this.getAttributes();
+		const processedAttributes = await this.processAttributes(attributes);
 
-        const profile = {
-            accountId: this.accountId,
-            profileUniqueId: this.dbProfile.id,
-            stats: {
-                attributes: processedAttributes,
-            },
-            commandRevision: this.dbProfile.rvn,
-            created: new Date().toISOString(),
-            updated: new Date().toISOString(),
-            wipeNumber: 0,
-            profileId: this.profileType,
-            version: 0,
-            items: processedItems,
-        };
+		const profile = {
+			accountId: this.accountId,
+			profileUniqueId: this.dbProfile.id,
+			stats: {
+				attributes: processedAttributes,
+			},
+			commandRevision: this.dbProfile.rvn,
+			created: new Date().toISOString(),
+			updated: new Date().toISOString(),
+			wipeNumber: 0,
+			profileId: this.profileType,
+			version: 0,
+			items: processedItems,
+		};
 
-        return profile;
-    }
+		return profile;
+	}
 
-    /**
-     * Tracks a change to the profile
-     * @param change 
-     */
-    public trackChange(change: ProfileChange) {
-        // Ensure all changes are of the same type (might need to remove this in the future)
-        if (this.changes.length > 0 && this.changes[0].changeType !== change.changeType) {
-            throw new Error("Cannot mix different change types in one response. All changes are: " + this.changes.map(c => c.changeType).join(", ") + " and new change is: " + change.changeType);
-        }
-        this.changes.push(change);
-    }
+	/**
+	 * Tracks a change to the profile that will be returned in the response
+	 * Used in combination with {@link createResponse} to return the changes in the response
+	 * @param change
+	 */
+	public trackChange(change: ProfileChange) {
+		// Ensure all changes are of the same type (might need to remove this in the future)
+		if (this.changes.length > 0 && this.changes[0].changeType !== change.changeType) {
+			throw new Error(
+				'Cannot mix different change types in one response. All changes are: ' +
+					this.changes.map((c) => c.changeType).join(', ') +
+					' and new change is: ' +
+					change.changeType
+			);
+		}
+		this.changes.push(change);
+	}
 
-    /**
-     * Creates a response object for the profile
-     */
-    public createResponse() {
-        return {
-            profileId: this.profileType,              // The profile type (e.g. "athena")
-            profileChanges: this.changes,      // Array of tracked changes
-            serverTime: new Date().toISOString(),
-            multiUpdate: [],                   // For updating multiple profiles at once
-            responseVersion: 1                 // Standard API version
-        };
-    }
+	/**
+	 * Creates a response object for the profile
+	 * @returns The response object
+	 */
+	public createResponse() {
+		return {
+			profileId: this.profileType, // The profile type (e.g. "athena")
+			profileChanges: this.changes, // Array of tracked changes
+			serverTime: new Date().toISOString(),
+			multiUpdate: [], // For updating multiple profiles at once
+			responseVersion: 1, // Standard API version
+		};
+	}
 
-    async getItemByKey<K extends keyof Item>(
-        columnName: K,
-        value: Item[K]
-    ) {
-        // Automatically generate column mapping from Zod schema shape
-        const schemaShape = itemSelectSchema.shape;
-        const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
-            acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
-            return acc;
-        }, {} as Record<keyof Item, any>);
+	/**
+	 * Gets an item from the database by a given key
+	 * @param columnName - The column name to search by
+	 * @param value - The value to search for
+	 * @returns The item
+	 */
+	async getItemByKey<K extends keyof Item>(columnName: K, value: Item[K]) {
+		// Automatically generate column mapping from Zod schema shape
+		const schemaShape = itemSelectSchema.shape;
+		const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
+			acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
+			return acc;
+		}, {} as Record<keyof Item, any>);
 
-        const column = columnMap[columnName];
-        if (!column) {
-            throw new Error(`Invalid column name: ${String(columnName)}`);
-        }
+		const column = columnMap[columnName];
+		if (!column) {
+			throw new Error(`Invalid column name: ${String(columnName)}`);
+		}
 
-        return await this.db.select().from(ITEMS).where(eq(column, value));
-    }
+		return await this.db.select().from(ITEMS).where(eq(column, value));
+	}
 
-    async getItems() {
-        return await this.db.select().from(ITEMS).where(eq(ITEMS.profileId, this.dbProfile.id));
-    }
+	/**
+	 * Gets all items from the database for the profile
+	 * @returns The items
+	 */
+	async getItems() {
+		return await this.db.select().from(ITEMS).where(eq(ITEMS.profileId, this.dbProfile.id));
+	}
 
-    async processItems(items: Item[]) {
-        const itemsMap: ItemsMap = {};
+	/**
+	 * Processes the items to be returned in the response, making it compatible with the MCP response
+	 * @param items - The items to process
+	 * @returns The processed items
+	 */
+	async processItems(items: Item[]) {
+		const itemsMap: ItemsMap = {};
 
-        for (const dbItem of items) {
-            // Ensure jsonAttributes is treated as an object, with fallback
-            const jsonAttrs = (dbItem.jsonAttributes as Record<string, any>) ?? {};
+		for (const dbItem of items) {
+			// Ensure jsonAttributes is treated as an object, with fallback
+			const jsonAttrs = (dbItem.jsonAttributes as Record<string, any>) ?? {};
 
-            // Base attributes that are always included
-            const baseAttributes: FormattedItem['attributes'] = {
-                ...jsonAttrs,
-                quantity: dbItem.quantity ?? 1, // Ensure quantity is always present
-            };
+			// Base attributes that are always included
+			const baseAttributes: FormattedItem['attributes'] = {
+				...jsonAttrs,
+				quantity: dbItem.quantity ?? 1, // Ensure quantity is always present
+			};
 
-            // Only add favorite and item_seen attributes for Athena profile type
-            if (this.profileType === 'athena') {
-                baseAttributes.favorite = dbItem.favorite ?? false;
-                baseAttributes.item_seen = dbItem.seen ? 1 : 0;
-            }
+			// Only add favorite and item_seen attributes for Athena profile type
+			if (this.profileType === 'athena') {
+				baseAttributes.favorite = dbItem.favorite ?? false;
+				baseAttributes.item_seen = dbItem.seen ? 1 : 0;
+			}
 
-            itemsMap[dbItem.id] = {
-                templateId: dbItem.templateId,
-                attributes: baseAttributes,
-            };
-        }
+			itemsMap[dbItem.id] = {
+				templateId: dbItem.templateId,
+				attributes: baseAttributes,
+			};
+		}
 
-        return itemsMap;
-    }
+		return itemsMap;
+	}
 
-    async getAttributes() {
-        return await this.db.select().from(ATTRIBUTES).where(eq(ATTRIBUTES.profileId, this.dbProfile.id));
-    }
+	/**
+	 * Gets all attributes from the database for the profile
+	 * @returns The attributes
+	 */
+	async getAttributes() {
+		return await this.db.select().from(ATTRIBUTES).where(eq(ATTRIBUTES.profileId, this.dbProfile.id));
+	}
 
-    async processAttributes(attributes: Attribute[]) {
-        const attributesMap: Record<string, any> = {};
+	/**
+	 * Processes the attributes to be returned in the response, making it compatible with the MCP response
+	 * @param attributes - The attributes to process
+	 * @returns The processed attributes
+	 */
+	async processAttributes(attributes: Attribute[]) {
+		const attributesMap: Record<string, any> = {};
 
-        for (const dbAttribute of attributes) {
-            attributesMap[dbAttribute.key] = {
-                value: dbAttribute.valueJSON,
-            };
-        }
+		for (const dbAttribute of attributes) {
+			attributesMap[dbAttribute.key] = {
+				value: dbAttribute.valueJSON,
+			};
+		}
 
-        return attributesMap;
-    }
+		return attributesMap;
+	}
 
-    async updateAttribute<K extends keyof Omit<Attribute, "profileId">>(
-        key: K, 
-        value: Attribute[K]
-    ) {
-        await this.db.update(ATTRIBUTES).set({ valueJSON: value }).where(and(
-            eq(ATTRIBUTES.profileId, this.dbProfile.id),
-            eq(ATTRIBUTES.key, key)
-        ));
-    }
+	/**
+	 * Updates an attribute in the database
+	 * @param key - The key of the attribute to update
+	 * @param value - The value to update the attribute to
+	 */
+	async updateAttribute<K extends keyof Omit<Attribute, 'profileId'>>(key: K, value: Attribute[K]) {
+		await this.db
+			.update(ATTRIBUTES)
+			.set({ valueJSON: value })
+			.where(and(eq(ATTRIBUTES.profileId, this.dbProfile.id), eq(ATTRIBUTES.key, key)));
+	}
 
-    async addItem(itemId: string, attributes: Record<string, any>) {
-        await this.db.insert(ITEMS).values({
-            profileId: this.dbProfile.id,
-            templateId: itemId,
-            jsonAttributes: attributes,
-        });
-    }
+	/**
+	 * Adds an item to the database
+	 * @param itemId - The ID of the item to add
+	 * @param attributes - The attributes json value of the item
+	 */
+	async addItem(itemId: string, attributes: Record<string, any>) {
+		await this.db.insert(ITEMS).values({
+			profileId: this.dbProfile.id,
+			templateId: itemId,
+			jsonAttributes: attributes,
+		});
+	}
 
-    async modifyItem<K extends keyof Omit<Item, "id" | "profileId">>(
-        itemId: string, 
-        key: K, 
-        value: Item[K]
-    ) {
-        await this.db.update(ITEMS).set({ [key]: value }).where(and(
-            eq(ITEMS.profileId, this.dbProfile.id),
-            eq(ITEMS.id, itemId)
-        ));
-    }
+	/**
+	 * Modifies an item in the database
+	 * @param itemId - The ID of the item to modify
+	 * @param key - The key of the item to modify
+	 * @param value - The value to modify the item to
+	 */
+	async modifyItem<K extends keyof Omit<Item, 'id' | 'profileId'>>(itemId: string, key: K, value: Item[K]) {
+		await this.db
+			.update(ITEMS)
+			.set({ [key]: value })
+			.where(and(eq(ITEMS.profileId, this.dbProfile.id), eq(ITEMS.id, itemId)));
+	}
+
+	/**
+	 * Marks one or more items as favorite in the database
+	 * @param itemId - The ID of the item to mark as favorite
+	 * @param favorite - Whether the item should be marked as favorite
+	 */
+	async markItemsFavorite(itemId: string | string[], favorite: boolean = true) {
+		if (typeof itemId === 'string') {
+			await this.db.update(ITEMS).set({ favorite }).where(eq(ITEMS.id, itemId));
+		} else {
+			await this.db.update(ITEMS).set({ favorite }).where(inArray(ITEMS.id, itemId));
+		}
+	}
+
+	/**
+	 * Marks one or more items as seen in the database
+	 * @param itemId - The ID of the item to mark as seen
+	 */
+	async markItemAsSeen(itemId: string | string[]) {
+		if (typeof itemId === 'string') {
+			await this.db.update(ITEMS).set({ seen: true }).where(eq(ITEMS.id, itemId));
+		} else {
+			await this.db.update(ITEMS).set({ seen: true }).where(inArray(ITEMS.id, itemId));
+		}
+	}
 }

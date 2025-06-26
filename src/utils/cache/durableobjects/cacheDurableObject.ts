@@ -3,6 +3,9 @@ import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlit
 import { eq, and, lt, gt, like } from 'drizzle-orm';
 import { cacheEntries, CacheEntry, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
 
+/**
+ * A Durable Object that stores the cache in a SQLite database
+ */
 export class CacheDurableObject extends DurableObject {
     private db: DrizzleSqliteDODatabase;
     private initialized = false;
@@ -16,6 +19,9 @@ export class CacheDurableObject extends DurableObject {
         });
     }
 
+    /**
+     * Ensures the tables are created in the database
+     */
     private async ensureTables(): Promise<void> {
         if (this.initialized) return;
         
@@ -52,7 +58,12 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    async getCacheEntry(key: string) {
+    /**
+     * Gets a cache entry from the database
+     * @param key - The key of the cache entry
+     * @returns The cache entry
+     */
+    async getCacheEntry(key: string): Promise<unknown | null> {
         try {
             const now = Date.now();
             
@@ -66,7 +77,7 @@ export class CacheDurableObject extends DurableObject {
 
             if (result) {
                 //console.log(`🎯 Cache HIT: ${key}`);
-                return JSON.parse(result.data);
+                return JSON.parse(result.data) as unknown;
             } else {
                 //console.log(`❌ Cache MISS: ${key}`);
                 return null;
@@ -77,6 +88,13 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Puts a cache entry into the database
+     * @param key - The key of the cache entry
+     * @param data - The data of the cache entry
+     * @param tables - The tables of the cache entry
+     * @param ttl - The time to live of the cache entry in seconds
+     */
     async putCacheEntry(key: string, data: string, tables: string[], ttl: number): Promise<void> {
         try {
             const now = Date.now();
@@ -126,6 +144,11 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Invalidates the cache by table names
+     * @param tableNames - The names of the tables to invalidate
+     * @returns The number of entries deleted
+     */
     async invalidateByTables(tableNames: string[]): Promise<number> {
         try {
             let deletedCount = 0;
@@ -157,6 +180,10 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Cleans up expired entries from the database
+     * @returns The number of entries deleted
+     */
     async cleanupExpiredEntries(): Promise<number> {
         try {
             const now = Date.now();
@@ -187,6 +214,11 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Empties the cache for a given identifier
+     * @param identifier - The identifier to empty the cache for
+     * @returns The number of entries deleted
+     */
     async emptyCacheForIdentifier(identifier: string): Promise<number> {
         try {
             const results = await this.db
@@ -214,6 +246,10 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Purges the entire cache
+     * @returns The number of entries deleted
+     */
     async emptyCache(): Promise<number> {
         try {
             const results = await this.db.select().from(cacheEntries);
@@ -233,6 +269,10 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Gets the stats of the cache
+     * @returns The stats of the cache
+     */
     async getCacheStats(): Promise<{ totalEntries: number; expiredEntries: number }> {
         try {
             const now = Date.now();
@@ -253,12 +293,19 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
+    /**
+     * Gets the cache entries from the database
+     * @param limit - The limit of entries to get
+     * @returns The cache entries
+     */
     async getCacheEntries(limit: number = 50): Promise<CacheEntry[]> {
         const results = await this.db.select().from(cacheEntries).limit(limit);
         return results;
     }
 
-    // Simple alarm for cleanup every 5 minutes
+    /**
+     * Simple alarm for cleanup every 5 minutes
+     */
     async alarm(): Promise<void> {
         try {
             await this.cleanupExpiredEntries();

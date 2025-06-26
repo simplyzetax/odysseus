@@ -1,13 +1,7 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { odysseus } from "../../core/error";
-
-interface McpResponseBody {
-    [key: string]: unknown;
-    profileRevision?: number;
-    profileChangesBaseRevision?: number;
-    profileCommandRevision?: number;
-}
+import type { McpResponseBody } from "../../types/fortnite/mcp";
 
 /**
  * Validates and parses revision number from query parameter
@@ -36,8 +30,9 @@ function isJsonResponse(response: Response): boolean {
 }
 
 /**
- * Middleware that adds MCP (Model Context Protocol) correction data to JSON responses
- * Adds profile revision information based on the request's revision number
+ * Middleware that parses and validates the revision number from the request
+ * and adds profile revision information to the response so we don't have to handle
+ * it manually in the routes.
  */
 export const mcpCorrectionMiddleware = createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
     await next();
@@ -59,6 +54,10 @@ export const mcpCorrectionMiddleware = createMiddleware(async (c: Context<{ Bind
         // Clone response to avoid consuming the original stream
         const responseClone = c.res.clone();
         const responseBody = await responseClone.json();
+
+        if(typeof responseBody !== "object" || responseBody === null) {
+            return;
+        }
 
         // Add MCP revision data to the response body
         const enhancedBody: McpResponseBody = {

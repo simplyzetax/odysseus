@@ -117,6 +117,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
         }
 
         try {
+            //VSCode is lying, we need the await here
             const result = await this.durableObject.getCacheEntry(prefixedKey);
             
             if (result) {
