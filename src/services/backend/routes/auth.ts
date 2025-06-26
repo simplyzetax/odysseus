@@ -105,7 +105,7 @@ app.post("/account/api/oauth/token", ratelimitMiddleware({
 
             const db = getDB(c);
 
-            [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, "b28cc89d-6af0-497d-87e0-58c895be4f73"));
+            [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, "b2cdd628-ab99-4ba4-864b-cc7463f261a3"));
             break;
         }
         default: {

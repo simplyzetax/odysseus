@@ -8,7 +8,7 @@ export type ProfileType = typeof profileTypes.enumValues.entries;
 export const PROFILES = pgTable('profiles', {
     id: uuid('id').primaryKey().defaultRandom(),
     type: profileTypes('type').notNull().default('common_core'),
-    accountId: uuid('account_id').notNull().unique().references(() => ACCOUNTS.id),
+    accountId: uuid('account_id').notNull().references(() => ACCOUNTS.id),
     rvn: integer('rvn').notNull().default(0),
 });
 
