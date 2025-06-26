@@ -6,6 +6,9 @@ import { ITEMS, itemSelectSchema } from "@core/db/schemas/items";
 import type { Profile } from "@core/db/schemas/profile";
 import { PROFILES, profileTypesEnum } from "@core/db/schemas/profile";
 import { odysseus } from "@core/error";
+import { FormattedItem } from "@otypes/fortnite/item";
+import { ProfileChange } from "@otypes/fortnite/profileChanges";
+import { ProfileType } from "@otypes/fortnite/profiles";
 import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
 
@@ -17,19 +20,6 @@ interface ProfileClassMap {
     common_public: FortniteProfileWithDBProfile<'common_public'>;
     creative: FortniteProfileWithDBProfile<'creative'>;
     profile0: FortniteProfileWithDBProfile<'profile0'>;
-}
-
-// Extract profile type from the enum
-type ProfileType = keyof typeof profileTypesEnum;
-
-// Type for the formatted item structure that matches Fortnite's MCP format
-export interface FormattedItem {
-    templateId: string;
-    attributes: Record<string, any> & {
-        quantity: number;
-        favorite?: boolean;
-        item_seen?: 0 | 1;
-    };
 }
 
 // Type for the items map returned by getItems
@@ -49,11 +39,6 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
     ): Promise<ProfileClassMap[T]> {
         const baseProfile = new FortniteProfile(c, accountId, profileType);
         return baseProfile.get();
-    }
-
-    // Convenience methods for specific profiles with perfect IntelliSense
-    static async athena(c: Context<any, any, any>, accountId: string): Promise<ProfileClassMap['athena']> {
-        return FortniteProfile.construct(c, accountId, 'athena');
     }
 
     public c: Context<any, any, any>;
@@ -104,31 +89,6 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
     }
 }
 
-export interface BaseProfileChange {
-    changeType: string;
-}
-
-export type FullProfileUpdateChange = BaseProfileChange & {
-    changeType: "fullProfileUpdate";
-    profile: any;
-};
-
-export type StatModifiedChange = BaseProfileChange & {
-    changeType: "statModified";
-    name: string;
-    value: any;
-};
-
-export type ItemAttrChangedChange = BaseProfileChange & {
-    changeType: "itemAttrChanged";
-    itemId: string;
-    attributeName: string;
-    attributeValue: any;
-};
-
-export type ProfileChange = FullProfileUpdateChange | StatModifiedChange | ItemAttrChangedChange;
-
-
 export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> extends FortniteProfile<T> {
     dbProfile: Profile;
     changes: ProfileChange[] = [];
@@ -167,7 +127,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
      * @param change 
      */
     public trackChange(change: ProfileChange) {
-        // Ensure all changes are of the same type
+        // Ensure all changes are of the same type (might need to remove this in the future)
         if (this.changes.length > 0 && this.changes[0].changeType !== change.changeType) {
             throw new Error("Cannot mix different change types in one response. All changes are: " + this.changes.map(c => c.changeType).join(", ") + " and new change is: " + change.changeType);
         }
@@ -186,7 +146,6 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
             responseVersion: 1                 // Standard API version
         };
     }
-
 
     async getItemByKey<K extends keyof Item>(
         columnName: K,
@@ -253,5 +212,34 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
         }
 
         return attributesMap;
+    }
+
+    async updateAttribute<K extends keyof Omit<Attribute, "profileId">>(
+        key: K, 
+        value: Attribute[K]
+    ) {
+        await this.db.update(ATTRIBUTES).set({ valueJSON: value }).where(and(
+            eq(ATTRIBUTES.profileId, this.dbProfile.id),
+            eq(ATTRIBUTES.key, key)
+        ));
+    }
+
+    async addItem(itemId: string, attributes: Record<string, any>) {
+        await this.db.insert(ITEMS).values({
+            profileId: this.dbProfile.id,
+            templateId: itemId,
+            jsonAttributes: attributes,
+        });
+    }
+
+    async modifyItem<K extends keyof Omit<Item, "id" | "profileId">>(
+        itemId: string, 
+        key: K, 
+        value: Item[K]
+    ) {
+        await this.db.update(ITEMS).set({ [key]: value }).where(and(
+            eq(ITEMS.profileId, this.dbProfile.id),
+            eq(ITEMS.id, itemId)
+        ));
     }
 }

@@ -6,7 +6,6 @@ import {
     InteractionType,
     type APIInteraction,
     type APIApplicationCommandInteraction,
-    type APIApplicationCommandAutocompleteInteraction,
     type APIMessageComponentInteraction
 } from "discord-api-types/v10";
 
@@ -26,7 +25,7 @@ export async function handleInteraction(rawBody: string, c: any): Promise<Respon
     // Route interactions based on type
     switch (interaction.type) {
         case InteractionType.ApplicationCommandAutocomplete:
-            return handleAutocomplete(interaction as APIApplicationCommandAutocompleteInteraction, c);
+            return handleAutocomplete(interaction);
 
         case InteractionType.ApplicationCommand: {
             const commandInteraction = interaction as APIApplicationCommandInteraction;

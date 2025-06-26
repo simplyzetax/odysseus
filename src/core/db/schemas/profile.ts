@@ -3,7 +3,6 @@ import { createSelectSchema } from 'drizzle-zod';
 import { ACCOUNTS } from './account';
 
 export const profileTypes = pgEnum('profile_type_enum', ['athena', 'common_core', 'common_public', 'creative', 'profile0']);
-export type ProfileType = typeof profileTypes.enumValues.entries;
 
 export const PROFILES = pgTable('profiles', {
     id: uuid('id').primaryKey().defaultRandom(),

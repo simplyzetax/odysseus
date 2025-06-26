@@ -1,6 +1,6 @@
 import { persistentDoMiddleware } from "@middleware/core/cacheIdentifierMiddleware";
 import { responseEnhancementsMiddleware } from "@middleware/core/remMiddleware";
-import { mcpCorrectionMiddleware } from "@middleware/game/mcp-correction";
+import { mcpCorrectionMiddleware } from "@middleware/game/mcpCorrection";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
