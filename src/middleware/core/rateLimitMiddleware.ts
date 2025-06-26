@@ -94,7 +94,7 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
 
         try {
             // Get existing bucket data from KV
-            const existingData = await c.env.kv.get(kvKey, "json") as TokenBucketData | null;
+            const existingData = await c.env.KV.get(kvKey, "json") as TokenBucketData | null;
 
             let currentTokens: number;
 
@@ -155,7 +155,7 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
                         const timeToRefill = Math.ceil((config.capacity - tokensAfterRequest) / config.refillRate);
                         const ttl = Math.max(timeToRefill + 300, 3600); // At least 1 hour, or refill time + 5 minutes
 
-                        await c.env.kv.put(kvKey, JSON.stringify(newData), { expirationTtl: ttl });
+                        await c.env.KV.put(kvKey, JSON.stringify(newData), { expirationTtl: ttl });
                     } catch (error) {
                         console.error('Failed to update token bucket in KV:', error);
                     }

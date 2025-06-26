@@ -125,6 +125,7 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             
             if (result) {
                 console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
+                this.cacheHealthy = true;
             } else {
                 console.log(`❌ Cache MISS - Key: ${prefixedKey}`);
             }
@@ -132,6 +133,10 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
             return result ?? undefined;
         } catch (error) {
             console.error(`❗ Cache GET error for key "${prefixedKey}":`, error);
+            this.cacheHealthy = false;
+            this.lastHealthCheck = Date.now();
+            
+            // Always return undefined for cache errors to let queries proceed without cache
             return undefined;
         }
     }

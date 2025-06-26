@@ -171,7 +171,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
             items: processedItems,
         };
 
-        this.getRevision();
+        await this.incrementRevision();
 
         return profile;
     }

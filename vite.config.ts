@@ -9,6 +9,9 @@ export default defineConfig({
     server: {
         port: 8787,
     },
+    build: {
+        sourcemap: true,
+    },
     assetsInclude: ['**/*.sql'],
     resolve: {
         alias: {
@@ -18,5 +21,5 @@ export default defineConfig({
             "@services": path.resolve(__dirname, "./src/services"),
             "@middleware": path.resolve(__dirname, "./src/middleware")
         }
-    }
+    },
 });

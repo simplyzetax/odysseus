@@ -25,12 +25,12 @@
 	"r2_buckets": [
 		{
 			"bucket_name": "odysseus",
-			"binding": "r2"
+			"binding": "R2"
 		}
 	],
 	"kv_namespaces": [
 		{
-			"binding": "kv",
+			"binding": "KV",
 			"id": "148ab769ecc34b5f96ac6a9f38a946be"
 		}
 	],
@@ -46,10 +46,8 @@
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": [
-				"CacheDurableObject"
-			]
-		},
+			"new_sqlite_classes": ["CacheDurableObject"]
+		}
 	],
 	/**
 	 * Smart Placement

@@ -14,9 +14,9 @@ interface Bindings extends Omit<Env, 'CACHE_DO'> {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+app.use(responseEnhancementsMiddleware);
 app.use(logger())
 app.use(persistentDoMiddleware);
-app.use(responseEnhancementsMiddleware);
 app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware)
 
 app.onError((err, c) => {

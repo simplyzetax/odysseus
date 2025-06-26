@@ -65,13 +65,13 @@ app.get("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(
 
     try {
         // First check if file exists using head() for better performance
-        const fileData = await c.env.r2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
+        const fileData = await c.env.R2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
         if (!fileData) {
             return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
         }
 
         // File exists, now get the actual content
-        const file = await c.env.r2.get(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
+        const file = await c.env.R2.get(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
         if (!file) {
             // This shouldn't happen since head() succeeded, but defensive programming
             return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
@@ -88,7 +88,7 @@ app.get("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(
 app.get("/fortnite/api/cloudstorage/user/:accountId", ratelimitMiddleware(), acidMiddleware, async (c) => {
 
     try {
-        const fileData = await c.env.r2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
+        const fileData = await c.env.R2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
         if (!fileData) {
             // Return empty array for client to enable saving settings
             return c.json([]);
@@ -133,7 +133,7 @@ app.put("/fortnite/api/cloudstorage/user/:accountId/:file", ratelimitMiddleware(
         // Calculate md5 hash for the file
         const fileHash = await md5(body);
 
-        await c.env.r2.put(`settings/${c.var.accountId}/${SETTINGS_FILE}`, body, {
+        await c.env.R2.put(`settings/${c.var.accountId}/${SETTINGS_FILE}`, body, {
             httpMetadata: {
                 contentType: "application/octet-stream",
             },

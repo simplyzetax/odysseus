@@ -1,67 +1,57 @@
 import { DurableObject } from "cloudflare:workers";
 import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
-import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
 import { eq, and, lt, gt, like } from 'drizzle-orm';
-import migrations from '../../../../drizzle/migrations/drizzle-do/migrations';
 import { cacheEntries, tableKeys, type NewCacheEntry, type NewTableKey } from '../../../core/db/schemas/cache/cache';
-
-export interface CacheEntry {
-    key: string;
-    data: string;
-    tables: string[];
-    expiresAt: number;
-    createdAt: number;
-}
-
-export interface TableKey {
-    tableName: string;
-    cacheKey: string;
-    createdAt: number;
-}
 
 export class CacheDurableObject extends DurableObject {
     private db: DrizzleSqliteDODatabase;
-    private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    private initialized = false;
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
         this.db = drizzle(ctx.storage, { logger: false });
         
-        // Add timeout to prevent constructor from hanging indefinitely
         this.ctx.blockConcurrencyWhile(async () => {
-            try {
-                await Promise.race([
-                    Promise.all([
-                        this.runMigrations(),
-                        this.scheduleCleanupAlarm()
-                    ]),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Durable Object initialization timeout after 10 seconds')), 10000)
-                    )
-                ]);
-            } catch (error) {
-                console.error("Error during Durable Object initialization:", error);
-                // Don't rethrow - allow the object to continue with degraded functionality
-            }
+            await this.ensureTables();
         });
-        console.log("Cache Durable Object initialized with Drizzle ORM");
     }
 
-    private async runMigrations(): Promise<void> {
+    private async ensureTables(): Promise<void> {
+        if (this.initialized) return;
+        
         try {
-            await Promise.race([
-                migrate(this.db, migrations),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Migration timeout')), 5000)
+            // Create tables with raw SQL - much simpler than migrations
+            await this.db.run(`
+                CREATE TABLE IF NOT EXISTS cache_entries (
+                    key TEXT PRIMARY KEY NOT NULL,
+                    data TEXT NOT NULL,
+                    tables TEXT NOT NULL,
+                    expires_at INTEGER NOT NULL,
+                    created_at INTEGER NOT NULL
                 )
-            ]);
+            `);
+            
+            await this.db.run(`
+                CREATE TABLE IF NOT EXISTS table_keys (
+                    table_name TEXT NOT NULL,
+                    cache_key TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    PRIMARY KEY(table_name, cache_key)
+                )
+            `);
+            
+            // Create indexes
+            await this.db.run(`CREATE INDEX IF NOT EXISTS idx_cache_expires_at ON cache_entries (expires_at)`);
+            await this.db.run(`CREATE INDEX IF NOT EXISTS idx_table_keys_table_name ON table_keys (table_name)`);
+            
+            this.initialized = true;
+            console.log("✅ Cache tables created successfully");
         } catch (error) {
-            console.error("Error running migrations:", error);
-            // Don't rethrow - let the Durable Object continue with potentially existing tables
+            console.error("❌ Failed to create cache tables:", error);
+            throw error;
         }
     }
 
-    // RPC Methods for cache operations
     async getCacheEntry(key: string): Promise<any[] | null> {
         try {
             const now = Date.now();
@@ -75,14 +65,14 @@ export class CacheDurableObject extends DurableObject {
                 ));
 
             if (results.length > 0) {
-                console.log(`🎯 Cache HIT for key: ${key}`);
+                console.log(`🎯 Cache HIT: ${key}`);
                 return JSON.parse(results[0].data);
             } else {
-                console.log(`❌ Cache MISS for key: ${key}`);
+                console.log(`❌ Cache MISS: ${key}`);
                 return null;
             }
         } catch (error) {
-            console.error('Cache get error:', error);
+            console.error(`💥 Cache GET error for ${key}:`, error);
             return null;
         }
     }
@@ -93,7 +83,7 @@ export class CacheDurableObject extends DurableObject {
             const expiresAt = now + (ttl * 1000);
 
             await this.db.transaction(async (tx) => {
-                // Store the cache entry
+                // Insert/update cache entry
                 const newCacheEntry: NewCacheEntry = {
                     key,
                     data,
@@ -114,10 +104,10 @@ export class CacheDurableObject extends DurableObject {
                         }
                     });
 
-                // Remove existing table key mappings for this cache key
+                // Remove old table mappings for this key
                 await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, key));
 
-                // Track table associations
+                // Add new table mappings
                 if (tables.length > 0) {
                     const tableKeyEntries: NewTableKey[] = tables.map(table => ({
                         tableName: table,
@@ -129,9 +119,9 @@ export class CacheDurableObject extends DurableObject {
                 }
             });
 
-            console.log(`💾 Cache PUT - Key: ${key}, Tables: [${tables.join(', ')}], TTL: ${ttl}s`);
+            console.log(`💾 Cache PUT: ${key} (TTL: ${ttl}s, Tables: [${tables.join(', ')}])`);
         } catch (error) {
-            console.error('Cache put error:', error);
+            console.error(`💥 Cache PUT error for ${key}:`, error);
             throw error;
         }
     }
@@ -139,52 +129,30 @@ export class CacheDurableObject extends DurableObject {
     async invalidateByTables(tableNames: string[]): Promise<number> {
         try {
             let deletedCount = 0;
-            const keysToDelete = new Set<string>();
 
             await this.db.transaction(async (tx) => {
                 for (const tableName of tableNames) {
-                    // Get all cache keys for this table
+                    // Get cache keys for this table
                     const results = await tx
                         .select({ cacheKey: tableKeys.cacheKey })
                         .from(tableKeys)
                         .where(eq(tableKeys.tableName, tableName));
 
+                    // Delete cache entries
                     for (const row of results) {
-                        keysToDelete.add(row.cacheKey);
+                        await tx.delete(cacheEntries).where(eq(cacheEntries.key, row.cacheKey));
+                        deletedCount++;
                     }
-                }
 
-                // Delete cache entries
-                for (const cacheKey of keysToDelete) {
-                    await tx.delete(cacheEntries).where(eq(cacheEntries.key, cacheKey));
-                    deletedCount++;
-                }
-
-                // Remove table associations for the affected tables
-                for (const tableName of tableNames) {
+                    // Remove table mappings
                     await tx.delete(tableKeys).where(eq(tableKeys.tableName, tableName));
                 }
             });
 
-            console.log(`🗑️  Cache INVALIDATION - Tables: [${tableNames.join(', ')}], Keys deleted: ${deletedCount}`);
+            console.log(`🗑️ Cache invalidated for tables [${tableNames.join(', ')}]: ${deletedCount} entries deleted`);
             return deletedCount;
         } catch (error) {
             console.error('Cache invalidation error:', error);
-            throw error;
-        }
-    }
-
-    async invalidateByTags(tags: string[]): Promise<void> {
-        try {
-            await this.db.transaction(async (tx) => {
-                for (const tag of tags) {
-                    await tx.delete(cacheEntries).where(eq(cacheEntries.key, tag));
-                }
-            });
-
-            console.log(`🗑️  Cache TAG INVALIDATION - Tags: [${tags.join(', ')}]`);
-        } catch (error) {
-            console.error('Cache tag invalidation error:', error);
             throw error;
         }
     }
@@ -193,7 +161,7 @@ export class CacheDurableObject extends DurableObject {
         try {
             const now = Date.now();
 
-            // Get expired cache keys
+            // Get expired keys
             const expiredResults = await this.db
                 .select({ key: cacheEntries.key })
                 .from(cacheEntries)
@@ -202,10 +170,10 @@ export class CacheDurableObject extends DurableObject {
             if (expiredResults.length === 0) return 0;
 
             await this.db.transaction(async (tx) => {
-                // Delete expired cache entries
+                // Delete expired entries
                 await tx.delete(cacheEntries).where(lt(cacheEntries.expiresAt, now));
 
-                // Clean up associated table keys
+                // Clean up table mappings
                 for (const row of expiredResults) {
                     await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, row.key));
                 }
@@ -219,35 +187,27 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    async emptyCacheForIdentifier(identifier: string) {
+    async emptyCacheForIdentifier(identifier: string): Promise<number> {
         try {
-            let deletedCount = 0;
+            const results = await this.db
+                .select({ key: cacheEntries.key })
+                .from(cacheEntries)
+                .where(like(cacheEntries.key, `${identifier}%`));
+
+            if (results.length === 0) return 0;
 
             await this.db.transaction(async (tx) => {
-                // Get all cache keys that start with the identifier
-                const results = await tx
-                    .select({ key: cacheEntries.key })
-                    .from(cacheEntries)
-                    .where(like(cacheEntries.key, `${identifier}%`));
+                // Delete cache entries
+                await tx.delete(cacheEntries).where(like(cacheEntries.key, `${identifier}%`));
 
-                const keysToDelete = results.map(row => row.key);
-
-                // Delete cache entries that start with the identifier
-                if (keysToDelete.length > 0) {
-                    await tx.delete(cacheEntries).where(like(cacheEntries.key, `${identifier}%`));
-
-                    // Delete associated table keys for the deleted cache entries
-                    for (const key of keysToDelete) {
-                        await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, key));
-                    }
-
-                    deletedCount = keysToDelete.length;
+                // Delete table mappings
+                for (const row of results) {
+                    await tx.delete(tableKeys).where(eq(tableKeys.cacheKey, row.key));
                 }
             });
 
-            console.log(`🧹 Emptied cache for identifier "${identifier}" - deleted ${deletedCount} entries`);
-            return deletedCount;
-
+            console.log(`🧹 Emptied cache for identifier "${identifier}": ${results.length} entries deleted`);
+            return results.length;
         } catch (error) {
             console.error("Error emptying cache:", error);
             return 0;
@@ -258,10 +218,7 @@ export class CacheDurableObject extends DurableObject {
         try {
             const now = Date.now();
 
-            const totalResults = await this.db
-                .select()
-                .from(cacheEntries);
-
+            const totalResults = await this.db.select().from(cacheEntries);
             const expiredResults = await this.db
                 .select()
                 .from(cacheEntries)
@@ -277,52 +234,16 @@ export class CacheDurableObject extends DurableObject {
         }
     }
 
-    private async scheduleCleanupAlarm(): Promise<void> {
-        try {
-            // Check if an alarm is already scheduled
-            const existingAlarm = await this.ctx.storage.getAlarm();
-            if (existingAlarm) {
-                console.log(`⏰ Cleanup alarm already scheduled for ${new Date(existingAlarm).toISOString()}`);
-                return;
-            }
-
-            // Schedule next cleanup
-            const nextCleanup = Date.now() + this.CLEANUP_INTERVAL;
-            await this.ctx.storage.setAlarm(nextCleanup);
-
-            console.log(`🔔 Scheduled cleanup alarm for ${new Date(nextCleanup).toISOString()}`);
-        } catch (error) {
-            console.error("Error scheduling cleanup alarm:", error);
-        }
-    }
-
-    // Alarm handler - called automatically by Cloudflare Workers
+    // Simple alarm for cleanup every 5 minutes
     async alarm(): Promise<void> {
         try {
-            console.log("🔔 Cleanup alarm triggered");
             await this.cleanupExpiredEntries();
-
-            // Schedule the next cleanup
-            await this.scheduleCleanupAlarm();
+            
+            // Schedule next cleanup
+            const nextCleanup = Date.now() + (5 * 60 * 1000);
+            await this.ctx.storage.setAlarm(nextCleanup);
         } catch (error) {
             console.error("Error in alarm handler:", error);
-            // Still try to reschedule even if cleanup failed
-            try {
-                await this.scheduleCleanupAlarm();
-            } catch (scheduleError) {
-                console.error("Error rescheduling alarm:", scheduleError);
-            }
-        }
-    }
-
-    async forceCleanup(): Promise<number> {
-        try {
-            const deletedCount = await this.cleanupExpiredEntries();
-            console.log(`🧹 Manual cleanup completed, deleted ${deletedCount} entries`);
-            return deletedCount;
-        } catch (error) {
-            console.error("Error in manual cleanup:", error);
-            throw error;
         }
     }
 }

@@ -15,7 +15,7 @@ export const getDB = (c: Context<{ Bindings: Env, Variables: { cacheIdentifier: 
     const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(c.env.CACHE_DO, colo, c.var.cacheIdentifier);
 
     //TODO: Replace with hyperdrive in prod
-    return drizzle(env.DATABASE_URL, {
+    return drizzle(env.DB.connectionString, {
         cache: durableObjectCache,
         logger: {
             logQuery: (query, params) => {

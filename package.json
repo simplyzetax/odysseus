@@ -37,7 +37,6 @@
 		"hono": "^4.8.2",
 		"jose": "^6.0.11",
 		"nanoid": "^5.1.5",
-		"oslo": "^1.2.1",
 		"pg": "^8.16.2",
 		"postgres": "^3.4.7",
 		"vite-plugin-checker": "^0.9.3",
