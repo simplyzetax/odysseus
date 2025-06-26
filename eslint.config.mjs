@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
     {
-        ignores: ["dist/**", "./drizzle/**", "vite.config.ts", "eslint.config.mjs"],
+        ignores: ["dist/**", "./drizzle/**", "vite.config.ts", "eslint.config.mjs", "worker-configuration.d.ts"],
     },
     ...tseslint.configs.recommended,
     {

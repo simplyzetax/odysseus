@@ -3,7 +3,6 @@ import type { Attribute } from '@core/db/schemas/attributes';
 import { ATTRIBUTES } from '@core/db/schemas/attributes';
 import type { Item } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
-import type { Profile } from '@core/db/schemas/profile';
 import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
 import { Bindings } from '@otypes/bindings';
@@ -103,7 +102,16 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		}
 
 		// For other profile types, use the base class
-		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile.id) as ProfileClassMap[T];
+	}
+
+	/**
+	 * Gets a profile with a specific profile unique id
+	 * @param profileId - The profile unique id
+	 * @returns The profile
+	 */
+	public getWithProfileUniqueId(profileId: string): ProfileClassMap[T] {
+		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, profileId) as ProfileClassMap[T];
 	}
 
 	/**
@@ -125,12 +133,12 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
  * and to avoid circular dependencies
  */
 export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> extends FortniteProfile<T> {
-	dbProfile: Profile;
 	changes: ProfileChange[] = [];
+	profileId: string;
 
-	constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile) {
+	constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, profileId: string) {
 		super(c, accountId, baseProfile.profileType);
-		this.dbProfile = dbProfile;
+		this.profileId = profileId;
 	}
 
 	/**
@@ -145,11 +153,11 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 
 		const profile = {
 			accountId: this.accountId,
-			profileUniqueId: this.dbProfile.id,
+			profileUniqueId: this.profileId,
 			stats: {
 				attributes: processedAttributes,
 			},
-			commandRevision: this.dbProfile.rvn,
+			commandRevision: 0,
 			created: new Date().toISOString(),
 			updated: new Date().toISOString(),
 			wipeNumber: 0,
@@ -220,7 +228,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @returns The items
 	 */
 	async getItems() {
-		return await this.db.select().from(ITEMS).where(eq(ITEMS.profileId, this.dbProfile.id));
+		return await this.db.select().from(ITEMS).where(eq(ITEMS.profileId, this.profileId));
 	}
 
 	/**
@@ -261,7 +269,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @returns The attributes
 	 */
 	async getAttributes() {
-		return await this.db.select().from(ATTRIBUTES).where(eq(ATTRIBUTES.profileId, this.dbProfile.id));
+		return await this.db.select().from(ATTRIBUTES).where(eq(ATTRIBUTES.profileId, this.profileId));
 	}
 
 	/**
@@ -282,15 +290,23 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	}
 
 	/**
-	 * Updates an attribute in the database
-	 * @param key - The key of the attribute to update
+	 * Updates an attribute in the database, creating it if it doesn't exist
+	 * @param attributeName - The key of the attribute to update
 	 * @param value - The value to update the attribute to
 	 */
-	async updateAttribute<K extends keyof Omit<Attribute, 'profileId'>>(key: K, value: Attribute[K]) {
+	async updateAttribute<K extends keyof Omit<Attribute, 'profileId'>>(attributeName: string, value: Attribute[K]) {
 		await this.db
-			.update(ATTRIBUTES)
-			.set({ valueJSON: value })
-			.where(and(eq(ATTRIBUTES.profileId, this.dbProfile.id), eq(ATTRIBUTES.key, key)));
+			.insert(ATTRIBUTES)
+			.values({
+				profileId: this.profileId,
+				type: this.profileType,
+				key: attributeName as string,
+				valueJSON: value,
+			})
+			.onConflictDoUpdate({
+				target: [ATTRIBUTES.profileId, ATTRIBUTES.key],
+				set: { valueJSON: value },
+			});
 	}
 
 	/**
@@ -300,7 +316,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 */
 	async addItem(itemId: string, attributes: Record<string, any>) {
 		await this.db.insert(ITEMS).values({
-			profileId: this.dbProfile.id,
+			profileId: this.profileId,
 			templateId: itemId,
 			jsonAttributes: attributes,
 		});
@@ -316,19 +332,19 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 		await this.db
 			.update(ITEMS)
 			.set({ [key]: value })
-			.where(and(eq(ITEMS.profileId, this.dbProfile.id), eq(ITEMS.id, itemId)));
+			.where(and(eq(ITEMS.profileId, this.profileId), eq(ITEMS.id, itemId)));
 	}
 
 	/**
 	 * Marks one or more items as favorite in the database
-	 * @param itemId - The ID of the item to mark as favorite
-	 * @param favorite - Whether the item should be marked as favorite
+	 * @param itemIds - The IDs of the items to mark as favorite
+	 * @param favorite - Whether the items should be marked as favorite
 	 */
-	async markItemsFavorite(itemId: string | string[], favorite: boolean = true) {
-		if (typeof itemId === 'string') {
-			await this.db.update(ITEMS).set({ favorite }).where(eq(ITEMS.id, itemId));
+	async updateFavoriteStatus(itemIds: string | string[], favorite: boolean = true) {
+		if (typeof itemIds === 'string') {
+			await this.db.update(ITEMS).set({ favorite }).where(eq(ITEMS.id, itemIds));
 		} else {
-			await this.db.update(ITEMS).set({ favorite }).where(inArray(ITEMS.id, itemId));
+			await this.db.update(ITEMS).set({ favorite }).where(inArray(ITEMS.id, itemIds));
 		}
 	}
 
@@ -336,11 +352,11 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * Marks one or more items as seen in the database
 	 * @param itemId - The ID of the item to mark as seen
 	 */
-	async markItemAsSeen(itemId: string | string[]) {
-		if (typeof itemId === 'string') {
-			await this.db.update(ITEMS).set({ seen: true }).where(eq(ITEMS.id, itemId));
+	async updateSeenStatus(itemIds: string | string[]) {
+		if (typeof itemIds === 'string') {
+			await this.db.update(ITEMS).set({ seen: true }).where(eq(ITEMS.id, itemIds));
 		} else {
-			await this.db.update(ITEMS).set({ seen: true }).where(inArray(ITEMS.id, itemId));
+			await this.db.update(ITEMS).set({ seen: true }).where(inArray(ITEMS.id, itemIds));
 		}
 	}
 }
