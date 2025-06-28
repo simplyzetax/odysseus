@@ -25,9 +25,6 @@ app.onError((err, c) => {
 		if (err.message.includes('Failed query:')) {
 			return c.sendError(odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.'));
 		}
-		if (err.message.includes('Failed query:')) {
-			return c.sendError(odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.'));
-		}
 		return c.sendError(odysseus.internal.serverError.withMessage(err.message));
 	}
 	return c.sendError(odysseus.internal.serverError.withMessage('An unknown error occurred'));
