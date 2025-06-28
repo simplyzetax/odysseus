@@ -13,13 +13,21 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"cf-typegen": "wrangler types",
-		"push": "drizzle-kit push --config=./drizzle/drizzle.config.ts"
+		"push": "drizzle-kit push --config=./drizzle/drizzle.config.ts",
+		"prepare": "husky"
+	},
+	"lint-staged": {
+		"*.{ts,tsx,js,jsx,mjs,cjs}": "eslint --fix",
+		"*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}": "prettier --write"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.7.4",
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@types/node": "^24.0.3",
+		"@types/xml-parser": "^1.2.33",
 		"eslint": "^9.29.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.2",
 		"node": "link:@†ypes/node",
 		"prettier": "^3.0.0",
 		"typescript": "^5.5.2",
@@ -47,6 +55,8 @@
 		"nanoid": "^5.1.5",
 		"pg": "^8.16.2",
 		"postgres": "^3.4.7",
-		"tweetnacl": "^1.0.3"
+		"tweetnacl": "^1.0.3",
+		"xml-parser": "^1.2.1",
+		"xmlbuilder": "^15.1.1"
 	}
 }

@@ -29,3 +29,9 @@ export const getDB = (c: Context<{ Bindings: Bindings; Variables: { cacheIdentif
 		},
 	});
 };
+
+export const getDBSimple = (env: Bindings) => {
+	return drizzle(env.DB.connectionString);
+};
+
+export type DB = ReturnType<typeof getDB>;
