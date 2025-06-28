@@ -39,12 +39,17 @@
 				"class_name": "CacheDurableObject",
 				"script_name": "odysseus",
 			},
+			{
+				"name": "XmppServer",
+				"class_name": "XMPPServer",
+				"script_name": "odysseus",
+			},
 		],
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["CacheDurableObject"],
+			"new_sqlite_classes": ["CacheDurableObject", "XMPPServer"],
 		},
 	],
 	/**

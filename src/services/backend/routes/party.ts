@@ -49,6 +49,7 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 			},
 		},
 		c.env.KV,
+		c,
 	);
 
 	// Store user -> party mapping
@@ -88,6 +89,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 			},
 		},
 		c.env.KV,
+		c,
 	);
 
 	return c.sendStatus(204);
@@ -130,7 +132,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', rate
 		return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
 	}
 
-	await party.updateMember(member.account_id, requestAccountId, body, c.env.KV);
+	await party.updateMember(member.account_id, requestAccountId, body, c.env.KV, c);
 
 	return c.sendStatus(204);
 });

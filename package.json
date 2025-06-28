@@ -47,6 +47,8 @@
 		"nanoid": "^5.1.5",
 		"pg": "^8.16.2",
 		"postgres": "^3.4.7",
-		"tweetnacl": "^1.0.3"
+		"tweetnacl": "^1.0.3",
+		"xml-parser": "^1.2.1",
+		"xmlbuilder": "^15.1.1"
 	}
 }

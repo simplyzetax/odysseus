@@ -5,6 +5,7 @@ import { getDB } from '@core/db/client';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { eq, and } from 'drizzle-orm';
 import type { Context } from 'hono';
+import { Bindings } from '@otypes/bindings';
 
 export class Party implements PartyData {
 	id!: string;
@@ -109,7 +110,7 @@ export class Party implements PartyData {
 		return this.members.filter((member) => invitedFriends.includes(member.account_id)).map((member) => member.account_id);
 	}
 
-	async update(updated: PartyUpdate, kv: KVNamespace) {
+	async update(updated: PartyUpdate, kv: KVNamespace, c: Context) {
 		Object.assign(this.config, updated.config);
 		Object.assign(this.meta, updated.meta.update);
 
@@ -126,27 +127,30 @@ export class Party implements PartyData {
 
 		await this.saveToKV(kv);
 
-		this.broadcastMessage({
-			sent: new Date().toISOString(),
-			type: 'com.epicgames.social.party.notification.v0.PARTY_UPDATED',
-			revision: this.revision,
-			ns: 'Fortnite',
-			party_id: this.id,
-			captain_id: captain.account_id,
-			party_state_removed: updated.meta.delete,
-			party_state_updated: updated.meta.update,
-			party_state_overridden: {},
-			party_privacy_type: this.config.joinability,
-			party_type: this.config.type,
-			party_sub_type: this.config.sub_type,
-			max_number_of_members: this.config.max_size,
-			invite_ttl_seconds: this.config.invite_ttl,
-			created_at: this.created_at,
-			updated_at: this.updated_at,
-		});
+		this.broadcastMessage(
+			{
+				sent: new Date().toISOString(),
+				type: 'com.epicgames.social.party.notification.v0.PARTY_UPDATED',
+				revision: this.revision,
+				ns: 'Fortnite',
+				party_id: this.id,
+				captain_id: captain.account_id,
+				party_state_removed: updated.meta.delete,
+				party_state_updated: updated.meta.update,
+				party_state_overridden: {},
+				party_privacy_type: this.config.joinability,
+				party_type: this.config.type,
+				party_sub_type: this.config.sub_type,
+				max_number_of_members: this.config.max_size,
+				invite_ttl_seconds: this.config.invite_ttl,
+				created_at: this.created_at,
+				updated_at: this.updated_at,
+			},
+			c,
+		);
 	}
 
-	async updateMember(memberId: string, memberDn: string, meta: PartyData['meta'], kv: KVNamespace) {
+	async updateMember(memberId: string, memberDn: string, meta: PartyData['meta'], kv: KVNamespace, c: Context) {
 		const member = this.members.find((x) => x.account_id == memberId);
 
 		if (!member) {
@@ -162,19 +166,22 @@ export class Party implements PartyData {
 
 		await this.saveToKV(kv);
 
-		this.broadcastMessage({
-			sent: new Date(),
-			type: 'com.epicgames.social.party.notification.v0.MEMBER_STATE_UPDATED',
-			revision: member.revision,
-			ns: 'Fortnite',
-			party_id: this.id,
-			account_id: member.account_id,
-			account_dn: memberDn,
-			member_state_removed: meta.delete || [],
-			member_state_updated: meta.update || {},
-			joined_at: member.joined_at,
-			updated_at: member.updated_at,
-		});
+		this.broadcastMessage(
+			{
+				sent: new Date(),
+				type: 'com.epicgames.social.party.notification.v0.MEMBER_STATE_UPDATED',
+				revision: member.revision,
+				ns: 'Fortnite',
+				party_id: this.id,
+				account_id: member.account_id,
+				account_dn: memberDn,
+				member_state_removed: meta.delete || [],
+				member_state_updated: meta.update || {},
+				joined_at: member.joined_at,
+				updated_at: member.updated_at,
+			},
+			c,
+		);
 	}
 
 	async inviteUser(invitedId: string, inviterId: string, meta: Record<string, string>, kv: KVNamespace, c: Context) {
@@ -207,20 +214,23 @@ export class Party implements PartyData {
 		// Get mutual friends for the notification
 		const mutualFriends = await this.getMutualFriends(c, invitedId);
 
-		this.broadcastMessage({
-			sent: new Date(),
-			type: 'com.epicgames.social.party.notification.v0.INITIAL_INVITE',
-			meta: meta,
-			ns: 'Fortnite',
-			party_id: this.id,
-			inviter_id: inviterId,
-			inviter_dn: inviter.meta['urn:epic:member:dn_s'] || inviterId,
-			invitee_id: invitedId,
-			sent_at: invite.sent_at,
-			updated_at: invite.updated_at,
-			friends_ids: mutualFriends,
-			members_count: this.members.length,
-		});
+		this.broadcastMessage(
+			{
+				sent: new Date(),
+				type: 'com.epicgames.social.party.notification.v0.INITIAL_INVITE',
+				meta: meta,
+				ns: 'Fortnite',
+				party_id: this.id,
+				inviter_id: inviterId,
+				inviter_dn: inviter.meta['urn:epic:member:dn_s'] || inviterId,
+				invitee_id: invitedId,
+				sent_at: invite.sent_at,
+				updated_at: invite.updated_at,
+				friends_ids: mutualFriends,
+				members_count: this.members.length,
+			},
+			c,
+		);
 
 		/*xmppApi.sendMesage(`${invitedId}@xmpp.neonitedev.live`, {
 			sent: new Date(),
@@ -253,19 +263,22 @@ export class Party implements PartyData {
 
 		const inviter = this.members.find((x) => x.account_id == invite.sent_by);
 
-		this.broadcastMessage({
-			sent: new Date(),
-			type: 'com.epicgames.social.party.notification.v0.INVITE_CANCELLED',
-			meta: invite.meta,
-			ns: 'Fortnite',
-			party_id: this.id,
-			inviter_id: invite.sent_by,
-			inviter_dn: inviter ? inviter.meta['urn:epic:member:dn_s'] || invite.sent_by : '',
-			invitee_id: invite.sent_to,
-			sent_at: invite.sent_at,
-			updated_at: new Date(),
-			expires_at: invite.expires_at,
-		});
+		this.broadcastMessage(
+			{
+				sent: new Date(),
+				type: 'com.epicgames.social.party.notification.v0.INVITE_CANCELLED',
+				meta: invite.meta,
+				ns: 'Fortnite',
+				party_id: this.id,
+				inviter_id: invite.sent_by,
+				inviter_dn: inviter ? inviter.meta['urn:epic:member:dn_s'] || invite.sent_by : '',
+				invitee_id: invite.sent_to,
+				sent_at: invite.sent_at,
+				updated_at: new Date(),
+				expires_at: invite.expires_at,
+			},
+			c,
+		);
 
 		/*
 		xmppApi.sendMesage(`${sent_to}@xmpp.neonitedev.live`, {
@@ -371,12 +384,15 @@ export class Party implements PartyData {
 		await kv.delete(`party:${this.id}`);
 	}
 
-	broadcastMessage(message: object) {
-		console.log(this.members.flatMap((x) => x.connections).map((x) => x.id));
-		// TODO: Implement XMPP/WebSocket broadcasting
-		// return xmppApi.sendMesageMulti(
-		// 	this.members.flatMap((x) => x.connections).map((x) => x.id),
-		// 	message,
-		// );
+	broadcastMessage(message: object, c: Context<{ Bindings: Bindings }>) {
+		const connectionIds = this.members.flatMap((x) => x.connections).map((x) => x.id);
+		console.log('Broadcasting party message to connections:', connectionIds);
+
+		// Send to XMPP Durable Object
+		const xmppId = c.env.XmppServer.idFromName('global');
+		const xmppStub = c.env.XmppServer.get(xmppId);
+
+		// Call the sendMessageMulti method on the XMPP server
+		return xmppStub.sendMessageMulti(connectionIds, message);
 	}
 }
