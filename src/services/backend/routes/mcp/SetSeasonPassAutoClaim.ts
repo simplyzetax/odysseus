@@ -30,17 +30,17 @@ app.post(
 		const profile = await fp.get();
 
 		const seasonIdsAttribute =
-			(await profile.getAttribute('auto_spend_season_currency_ids')) ||
-			(await profile.createAttribute('auto_spend_season_currency_ids', seasonIds));
+			(await profile.getAttribute('auto_spend_season_currency_ids')) || profile.createAttribute('auto_spend_season_currency_ids', []);
+
+		if (!Array.isArray(seasonIdsAttribute.valueJSON)) {
+			seasonIdsAttribute.valueJSON = [];
+		}
 
 		if (bEnabled) {
-			seasonIdsAttribute.valueJSON.push(...seasonIds);
+			const newSeasonIds = seasonIds.filter((id: string) => !seasonIdsAttribute.valueJSON.includes(id));
+			seasonIdsAttribute.valueJSON.push(...newSeasonIds);
 		} else {
-			if (Array.isArray(seasonIdsAttribute.valueJSON)) {
-				seasonIdsAttribute.valueJSON = seasonIdsAttribute.valueJSON.filter((id) => !seasonIds.includes(id));
-			} else {
-				seasonIdsAttribute.valueJSON = [];
-			}
+			seasonIdsAttribute.valueJSON = seasonIdsAttribute.valueJSON.filter((id: string) => !seasonIds.includes(id));
 		}
 
 		profile.trackChange({
