@@ -18,7 +18,7 @@ export const ITEMS = pgTable(
 		profileId: uuid('profile_id')
 			.references(() => PROFILES.id)
 			.notNull(),
-		jsonAttributes: jsonb('attributes').notNull().default(defaultJsonAttributes),
+		jsonAttributes: jsonb('attributes').notNull().default(defaultJsonAttributes).$type<Record<string, any>>(),
 		quantity: integer('quantity').notNull().default(1),
 		favorite: boolean('favorite').default(false),
 		seen: boolean('has_seen').default(false),

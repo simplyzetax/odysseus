@@ -18,6 +18,15 @@ export const VALID_COSMETIC_SLOTS = [
 	'ItemWrap',
 ] as const;
 
+// Define which slots are required and cannot be empty
+export const REQUIRED_SLOTS = ['Pickaxe', 'Glider'] as const;
+
+// Define slot configurations for multi-slot items
+export const SLOT_CONFIGS = {
+	ItemWrap: { maxSlots: 7, maxIndex: 6 },
+	Dance: { maxSlots: 6, maxIndex: 5 },
+} as const;
+
 const equipBattleRoyaleCustomizationSchema = type({
 	indexWithinSlot: 'number', // -1 = fill all slots for multi-slot items, 0+ = specific slot index
 	itemToSlot: 'string',
@@ -44,63 +53,85 @@ app.post(
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
 
+		// Normalize itemToSlot - trim whitespace and treat empty strings as null
+		const normalizedItemToSlot = itemToSlot?.trim() || '';
+
 		// Only validate item if we're actually equipping something (not unequipping)
-		if (itemToSlot && itemToSlot !== '') {
-			const item = await profile.getItemBy('id', itemToSlot);
+		if (normalizedItemToSlot) {
+			const item = await profile.getItemBy('id', normalizedItemToSlot);
 			if (!item) {
 				return c.sendError(odysseus.mcp.invalidPayload.withMessage('Item not found'));
 			}
 
-			if (!item.templateId.startsWith(slotName)) {
-				return c.sendError(
-					odysseus.mcp.invalidPayload.withMessage(
-						`Cannot slot item of type ${item.templateId.split(':')[0]} in slot of category ${slotName}`
-					)
-				);
+			// More robust template ID validation - check if the item type matches the slot category
+			const itemType = item.templateId.split(':')[0];
+			const expectedPrefix = slotName.toLowerCase();
+
+			if (!itemType.toLowerCase().startsWith(expectedPrefix)) {
+				return c.sendError(odysseus.mcp.invalidPayload.withMessage(`Cannot slot item of type ${itemType} in slot of category ${slotName}`));
 			}
 		}
 
 		// Required slots can't be empty
-		if ((slotName === 'Pickaxe' || slotName === 'Glider') && !itemToSlot) {
+		if (REQUIRED_SLOTS.includes(slotName as (typeof REQUIRED_SLOTS)[number]) && !normalizedItemToSlot) {
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage(`${slotName} cannot be empty`));
 		}
 
 		if (await profile.isMultiSlotItem(slotName)) {
-			// Allow -1 for "fill all slots" functionality
-			const maxIndex = slotName === 'ItemWrap' ? 6 : 5; // ItemWrap has 7 slots (0-6), Dance has 6 slots (0-5)
-			if (indexWithinSlot < -1 || indexWithinSlot > maxIndex) {
+			// Get slot configuration
+			const slotConfig = SLOT_CONFIGS[slotName as keyof typeof SLOT_CONFIGS];
+			if (!slotConfig) {
+				return c.sendError(odysseus.mcp.invalidPayload.withMessage(`Invalid multi-slot item type: ${slotName}`));
+			}
+
+			// Validate index range
+			if (indexWithinSlot < -1 || indexWithinSlot > slotConfig.maxIndex) {
 				return c.sendError(
-					odysseus.mcp.invalidPayload.withMessage(`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${maxIndex}`)
+					odysseus.mcp.invalidPayload.withMessage(
+						`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${slotConfig.maxIndex}`
+					)
 				);
 			}
 
-			const emptyArray = new Array(slotName === 'ItemWrap' ? 7 : 6).fill('');
-
+			const emptyArray = new Array(slotConfig.maxSlots).fill('');
 			const attributeName = FortniteProfile.getFavoriteAttributeKey(slotName);
-
-			const currentAttribute = await profile.getAttribute(attributeName);
-			const value = currentAttribute ? currentAttribute.valueJSON : emptyArray;
-
-			const updatedValue = FortniteProfile.updateMultiSlotValue(slotName, value, itemToSlot, indexWithinSlot);
+			const currentAttribute = (await profile.getAttribute(attributeName)) || profile.createAttribute(attributeName, emptyArray);
+			const updatedValue = FortniteProfile.updateMultiSlotValue(
+				slotName,
+				currentAttribute.valueJSON,
+				normalizedItemToSlot,
+				indexWithinSlot
+			);
 
 			await profile.updateAttribute(attributeName, updatedValue);
-
 			profile.trackChange({
 				changeType: 'statModified',
 				name: attributeName,
 				value: updatedValue,
 			});
 		} else {
-			await profile.updateAttribute(FortniteProfile.getFavoriteAttributeKey(slotName), itemToSlot);
+			await profile.updateAttribute(FortniteProfile.getFavoriteAttributeKey(slotName), normalizedItemToSlot);
 
 			profile.trackChange({
 				changeType: 'statModified',
 				name: FortniteProfile.getFavoriteAttributeKey(slotName),
-				value: itemToSlot,
+				value: normalizedItemToSlot,
 			});
 		}
 
-		// TODO: Handle variant updates
+		// Handle variant updates if provided
+		if (variantUpdates && variantUpdates.length > 0 && normalizedItemToSlot) {
+			for (const variantUpdate of variantUpdates) {
+				const variantAttributeName = `${normalizedItemToSlot}_variants_${variantUpdate.channel}`;
+				await profile.updateAttribute(variantAttributeName, variantUpdate.active);
+
+				profile.trackChange({
+					changeType: 'statModified',
+					name: variantAttributeName,
+					value: variantUpdate.active,
+				});
+			}
+		}
 
 		const response = profile.createResponse();
 		return c.json(response);

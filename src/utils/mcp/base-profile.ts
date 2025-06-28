@@ -331,9 +331,21 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 		return attributesMap;
 	}
 
-	async getAttribute(attributeName: string) {
-		const [attribute] = await this.db.select().from(ATTRIBUTES).where(eq(ATTRIBUTES.key, attributeName));
+	async getAttribute(attributeName: string): Promise<Attribute | undefined> {
+		const [attribute] = await this.db
+			.select()
+			.from(ATTRIBUTES)
+			.where(and(eq(ATTRIBUTES.key, attributeName), eq(ATTRIBUTES.profileId, this.profileId)));
 		return attribute;
+	}
+
+	createAttribute(attributeName: string, value: any) {
+		return {
+			key: attributeName,
+			valueJSON: value,
+			profileId: this.profileId,
+			type: this.profileType,
+		};
 	}
 
 	/**
@@ -367,6 +379,10 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			templateId: itemId,
 			jsonAttributes: attributes,
 		});
+	}
+
+	async updateItem(itemId: string, attributes: Record<string, any>) {
+		await this.db.update(ITEMS).set({ jsonAttributes: attributes }).where(eq(ITEMS.id, itemId));
 	}
 
 	/**
