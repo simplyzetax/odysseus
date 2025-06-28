@@ -10,6 +10,8 @@ import { buildXML, parseXML } from '@utils/xmpp/xml';
 import type { Document, Node } from 'xml-parser';
 import xmlbuilder from 'xmlbuilder';
 import { ArkError, type } from 'arktype';
+import { Party } from '@utils/party/base';
+import type { Bindings } from 'src/types/bindings';
 
 const XMPP_DOMAIN = 'prod.ol.epicgames.com';
 
@@ -33,7 +35,7 @@ type XMPPClient = typeof xmppClientSchema.infer;
  * XMPP Durable Object for handling real-time messaging and presence
  * Re-implemented to use Cloudflare Workers infrastructure and fix logic flaws
  */
-export class XMPPServer extends DurableObject {
+export class XMPPServer extends DurableObject<Bindings> {
 	private clientsByAccountId: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private clientsByJid: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private mapsInitialized = false;
@@ -462,6 +464,9 @@ export class XMPPServer extends DurableObject {
 		const clientData = this.getClientData(ws);
 		if (clientData?.authenticated) {
 			console.log(`XMPP client disconnected: ${clientData.account.displayName} (${clientData.accountId})`);
+
+			await this.handlePartyExit(clientData);
+
 			// Clean up from connection maps
 			this.clientsByAccountId.delete(clientData.accountId);
 			this.clientsByJid.delete(clientData.jid);
@@ -480,12 +485,66 @@ export class XMPPServer extends DurableObject {
 		const clientData = this.getClientData(ws);
 		if (clientData?.authenticated) {
 			console.log(`Cleaning up client due to error: ${clientData.account.displayName} (${clientData.accountId})`);
+
+			await this.handlePartyExit(clientData);
+
 			this.clientsByAccountId.delete(clientData.accountId);
 			this.clientsByJid.delete(clientData.jid);
 			await this.broadcastPresenceUpdate(ws, clientData, '{}', false, true);
 		}
 
 		// The runtime will close the socket automatically.
+	}
+
+	/**
+	 * On disconnect, check if the user was in a party and notify other members.
+	 */
+	private async handlePartyExit(clientData: XMPPClient): Promise<void> {
+		let partyId: string | undefined;
+
+		try {
+			const presenceStatus = JSON.parse(clientData.lastPresenceUpdate.status);
+			if (presenceStatus.Properties && typeof presenceStatus.Properties === 'object') {
+				for (const key in presenceStatus.Properties) {
+					if (key.toLowerCase().startsWith('party.joininfo')) {
+						partyId = presenceStatus.Properties[key]?.partyId;
+						if (partyId) break;
+					}
+				}
+			}
+		} catch {
+			// Not a valid JSON or doesn't have the expected structure, ignore.
+			return;
+		}
+
+		if (!partyId) {
+			return;
+		}
+
+		const party = await Party.loadFromKV(this.env.KV, partyId);
+		if (!party) {
+			return;
+		}
+
+		const remainingMembers = party.members.filter((m) => m.account_id !== clientData.accountId);
+		if (remainingMembers.length === 0) {
+			return;
+		}
+
+		const memberExitMessage = {
+			type: 'com.epicgames.party.memberexited',
+			payload: {
+				partyId: party.id,
+				memberId: clientData.accountId,
+				wasKicked: false,
+			},
+			timestamp: new Date().toISOString(),
+		};
+
+		const recipientIds = remainingMembers.map((m) => m.account_id);
+		this.sendMessageMulti(recipientIds, memberExitMessage);
+
+		console.log(`Sent MemberExited notification for ${clientData.accountId} from party ${party.id}`);
 	}
 
 	/**
