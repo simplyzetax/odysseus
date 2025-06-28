@@ -4,22 +4,13 @@ import { ACCOUNTS } from '@core/db/schemas/account';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
+import { accountMiddleware } from '@middleware/auth/accountMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { eq, and, or } from 'drizzle-orm';
 
 // Simple endpoints that return empty arrays/objects
-app.get('/friends/api/v1/:accountId/settings', ratelimitMiddleware(), acidMiddleware, async (c) => {
-	const db = getDB(c);
-
-	const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, c.var.accountId));
-	if (!account) {
-		return c.sendError(odysseus.account.accountNotFound.variable([c.var.accountId]));
-	}
-
-	return c.json({
-		acceptInvites: account.settings.friends.acceptInvites,
-		mutualPrivacy: account.settings.friends.mutualPrivacy,
-	});
+app.get('/friends/api/v1/:accountId/settings', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	return c.json(c.var.account.settings.friends);
 });
 
 app.get('/friends/api/v1/:accountId/blocklist', ratelimitMiddleware(), (c) => {
@@ -39,7 +30,7 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 		return c.sendError(odysseus.friends.friendshipNotFound.withMessage('Friend ID is required'));
 	}
 
-	const db = getDB(c as any);
+	const db = getDB(c);
 
 	// Check if friendship exists (only check accepted friends where user is accountId)
 	const [friendship] = await db
