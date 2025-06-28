@@ -1,14 +1,14 @@
-import type { Context } from 'hono';
+import { app } from '@core/app';
 import { odysseus } from '@core/error';
 import { Party } from '@utils/party/base';
 import { accountMiddleware } from '@middleware/auth/accountMiddleware';
-import { app } from '@core/app';
+import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 
 /**
  * Create a new party
  */
-app.post('/api/v1/:deploymentId/parties', accountMiddleware, async (c: Context) => {
-	const accountId = c.get('account').id;
+app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const accountId = c.var.account.id;
 	const body = await c.req.json();
 
 	if (!body.join_info?.connection?.id) {
@@ -57,8 +57,8 @@ app.post('/api/v1/:deploymentId/parties', accountMiddleware, async (c: Context) 
 /**
  * Update party configuration
  */
-app.patch('/api/v1/:deploymentId/parties/:partyId', accountMiddleware, async (c: Context) => {
-	const accountId = c.get('account').id;
+app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const accountId = c.var.account.id;
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
 
@@ -87,13 +87,13 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', accountMiddleware, async (c:
 		c.env.KV,
 	);
 
-	return new Response(null, { status: 204 });
+	return c.sendStatus(204);
 });
 
 /**
  * Get party information
  */
-app.get('/api/v1/:deploymentId/parties/:partyId', accountMiddleware, async (c: Context) => {
+app.get('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const partyId = c.req.param('partyId');
 
 	const party = await Party.loadFromKV(c.env.KV, partyId);
@@ -107,8 +107,8 @@ app.get('/api/v1/:deploymentId/parties/:partyId', accountMiddleware, async (c: C
 /**
  * Update party member metadata
  */
-app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
+app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
@@ -129,14 +129,14 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', acco
 
 	await party.updateMember(member.account_id, requestAccountId, body, c.env.KV);
 
-	return new Response(null, { status: 204 });
+	return c.sendStatus(204);
 });
 
 /**
  * Join party by ID
  */
-app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
+app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
@@ -172,8 +172,8 @@ app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', accountMid
 /**
  * Leave party
  */
-app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
+app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
 
@@ -206,14 +206,14 @@ app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', accountMiddle
 		await party.removeMember(targetAccountId, c.env.KV);
 	}
 
-	return new Response(null, { status: 204 });
+	return c.sendStatus(204);
 });
 
 /**
  * Get current user's parties and invites
  */
-app.get('/api/v1/:deploymentId/user/:accountId', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
+app.get('/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 
 	if (targetAccountId !== requestAccountId) {
@@ -230,7 +230,7 @@ app.get('/api/v1/:deploymentId/user/:accountId', accountMiddleware, async (c: Co
 		}
 	}
 
-	// TODO: Implement pings system with KV
+	//TODO: Implement pings system with KV
 	return c.json({
 		current: currentParties,
 		pending: [],
@@ -242,8 +242,8 @@ app.get('/api/v1/:deploymentId/user/:accountId', accountMiddleware, async (c: Co
 /**
  * Invite user to party
  */
-app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
+app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+	const requestAccountId = c.var.account.id;
 	const inviteeAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
@@ -264,37 +264,40 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', accountMid
 
 	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.env.KV);
 
-	return new Response(null, { status: 204 });
+	return c.sendStatus(204);
 });
 
 /**
  * Voice chat connection endpoint
  */
-app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/conferences/connection', accountMiddleware, async (c: Context) => {
-	const requestAccountId = c.get('account').id;
-	const targetAccountId = c.req.param('accountId');
-	const partyId = c.req.param('partyId');
+app.post(
+	'/api/v1/Fortnite/parties/:partyId/members/:accountId/conferences/connection',
+	ratelimitMiddleware(),
+	accountMiddleware,
+	async (c) => {
+		const requestAccountId = c.var.account.id;
+		const targetAccountId = c.req.param('accountId');
+		const partyId = c.req.param('partyId');
 
-	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
-	}
+		if (targetAccountId !== requestAccountId) {
+			return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		}
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
-	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
-	}
+		const party = await Party.loadFromKV(c.env.KV, partyId);
+		if (!party) {
+			return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		}
 
-	const partyMember = party.members.find((x) => x.account_id === targetAccountId);
-	if (!partyMember) {
-		return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
-	}
+		const partyMember = party.members.find((x) => x.account_id === targetAccountId);
+		if (!partyMember) {
+			return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
+		}
 
-	// TODO: Implement voice chat providers (Vivox, RTCP)
-	const providers = {};
+		//TODO: Implement voice chat providers (Vivox, RTCP)
+		const providers = {};
 
-	return c.json({
-		providers,
-	});
-});
-
-export default app;
+		return c.json({
+			providers,
+		});
+	},
+);
