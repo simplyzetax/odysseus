@@ -389,7 +389,7 @@ export class Party implements PartyData {
 		console.log('Broadcasting party message to connections:', connectionIds);
 
 		// Send to XMPP Durable Object
-		const xmppId = c.env.XmppServer.idFromName('global');
+		const xmppId = c.env.XmppServer.idFromName('xmpp-server');
 		const xmppStub = c.env.XmppServer.get(xmppId);
 
 		// Call the sendMessageMulti method on the XMPP server
