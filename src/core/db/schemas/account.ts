@@ -1,5 +1,6 @@
 import { pgTable, uuid, boolean, text, jsonb } from 'drizzle-orm/pg-core';
 import { type } from 'arktype';
+import { createSelectSchema } from 'drizzle-arktype';
 
 export const privacySettingsSchema = type({
 	optOutOfPublicLeaderboards: 'boolean',
@@ -40,3 +41,4 @@ export const ACCOUNTS = pgTable('accounts', {
 
 export type Account = typeof ACCOUNTS.$inferSelect;
 export type NewAccount = typeof ACCOUNTS.$inferInsert;
+export const accountSchema = createSelectSchema(ACCOUNTS);

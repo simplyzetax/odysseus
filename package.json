@@ -19,6 +19,7 @@
 		"@cloudflare/vite-plugin": "^1.7.4",
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@types/node": "^24.0.3",
+		"@types/xml-parser": "^1.2.33",
 		"eslint": "^9.29.0",
 		"node": "link:@†ypes/node",
 		"prettier": "^3.0.0",

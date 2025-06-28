@@ -1,36 +1,33 @@
 import { DurableObject } from 'cloudflare:workers';
 import { nanoid } from 'nanoid';
 import { JWT } from '@utils/auth/jwt';
-import { getDB } from '@core/db/client';
-import { ACCOUNTS } from '@core/db/schemas/account';
+import { DB, getDBSimple } from '@core/db/client';
+import { ACCOUNTS, accountSchema } from '@core/db/schemas/account';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { eq, and } from 'drizzle-orm';
 import type { Account } from '@core/db/schemas/account';
+import { buildXML, parseXML } from '@utils/xmpp/xml';
+import type { Document, Node } from 'xml-parser';
+import xmlbuilder from 'xmlbuilder';
+import { ArkError, type } from 'arktype';
 
-interface XMPPClient {
-	accountId: string;
-	account: Account;
-	jid: string;
-	id: string;
-	sessionId: string;
-	authenticated: boolean;
-	friends: string[]; // List of accepted friend account IDs
-	lastPresenceUpdate: {
-		away: boolean;
-		status: string;
-	};
-}
+const XMPP_DOMAIN = 'prod.ol.epicgames.com';
 
-interface XMLElement {
-	name: string;
-	attributes: Record<string, string>;
-	content: string;
-	children: XMLElement[];
-}
+const xmppClientSchema = type({
+	accountId: 'string',
+	account: accountSchema,
+	jid: 'string',
+	id: 'string',
+	sessionId: 'string',
+	authenticated: 'boolean',
+	friends: 'string[]',
+	lastPresenceUpdate: type({
+		away: 'boolean',
+		status: 'string',
+	}),
+});
 
-interface ParsedXML {
-	root: XMLElement | null;
-}
+type XMPPClient = typeof xmppClientSchema.infer;
 
 /**
  * XMPP Durable Object for handling real-time messaging and presence
@@ -41,13 +38,6 @@ export class XMPPServer extends DurableObject {
 	 * Handle WebSocket upgrade requests and other HTTP requests
 	 */
 	async fetch(request: Request): Promise<Response> {
-		const url = new URL(request.url);
-
-		// Handle HTTP endpoints
-		if (request.method === 'POST' && url.pathname === '/send') {
-			return this.handleHttpSend(request);
-		}
-
 		// Handle WebSocket upgrade
 		const upgradeHeader = request.headers.get('Upgrade');
 		if (!upgradeHeader || upgradeHeader !== 'websocket') {
@@ -60,6 +50,7 @@ export class XMPPServer extends DurableObject {
 		}
 
 		const webSocketPair = new WebSocketPair();
+		// The server *should* be the one we can do ws.close on etc, needs testing
 		const [client, server] = Object.values(webSocketPair);
 
 		this.handleWebSocket(server);
@@ -71,31 +62,6 @@ export class XMPPServer extends DurableObject {
 				'Sec-WebSocket-Protocol': 'xmpp',
 			},
 		});
-	}
-
-	/**
-	 * Handle HTTP send endpoint for sending messages to multiple clients
-	 */
-	private async handleHttpSend(request: Request): Promise<Response> {
-		try {
-			const body = (await request.json()) as { accountIds: string[]; message: object };
-
-			if (!body.accountIds || !body.message) {
-				return new Response('Missing accountIds or message', { status: 400 });
-			}
-
-			this.sendMessageMulti(body.accountIds, body.message);
-
-			return new Response(JSON.stringify({ success: true }), {
-				headers: { 'Content-Type': 'application/json' },
-			});
-		} catch (error) {
-			console.error('Error handling HTTP send:', error);
-			return new Response(JSON.stringify({ error: 'Failed to process request' }), {
-				status: 500,
-				headers: { 'Content-Type': 'application/json' },
-			});
-		}
 	}
 
 	/**
@@ -126,7 +92,7 @@ export class XMPPServer extends DurableObject {
 	 */
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const messageStr = typeof message === 'string' ? message : new TextDecoder().decode(message);
-		const parsedXML = this.parseXML(messageStr);
+		const parsedXML = parseXML(messageStr);
 
 		if (!parsedXML.root) {
 			this.sendErrorAndClose(ws, 'bad-format');
@@ -135,7 +101,7 @@ export class XMPPServer extends DurableObject {
 
 		const clientData = this.getClientData(ws);
 		if (!clientData) {
-			this.sendErrorAndClose(ws, 'internal-server-error');
+			this.sendErrorAndClose(ws, 'missing-client-data');
 			return;
 		}
 
@@ -175,12 +141,12 @@ export class XMPPServer extends DurableObject {
 	 * Handle XMPP stream open
 	 */
 	private async handleOpen(ws: WebSocket, clientData: XMPPClient): Promise<void> {
-		const openResponse = this.buildXML('open')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-framing')
-			.attribute('from', 'prod.ol.epicgames.com')
-			.attribute('id', clientData.sessionId)
-			.attribute('version', '1.0')
-			.attribute('xml:lang', 'en');
+		const openResponse = buildXML('open')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-framing')
+			.att('from', XMPP_DOMAIN)
+			.att('id', clientData.sessionId)
+			.att('version', '1.0')
+			.att('xml:lang', 'en');
 
 		this.sendToClient(ws, openResponse);
 
@@ -192,7 +158,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Handle XMPP authentication with proper JWT validation
 	 */
-	private async handleAuth(ws: WebSocket, parsedXML: ParsedXML, clientData: XMPPClient): Promise<void> {
+	private async handleAuth(ws: WebSocket, parsedXML: Document, clientData: XMPPClient): Promise<void> {
 		if (!parsedXML.root?.content) {
 			this.sendSaslError(ws, 'malformed-request');
 			return;
@@ -205,16 +171,16 @@ export class XMPPServer extends DurableObject {
 		}
 
 		// SASL PLAIN: authorization-id\0authentication-id\0password
+		// (but in this case it should be an access token)
 		const authParts = decodedAuth.split('\u0000');
 		if (authParts.length !== 3) {
 			this.sendSaslError(ws, 'malformed-request');
 			return;
 		}
 
-		const [, _, password] = authParts;
+		const [, , token] = authParts;
 
-		// Validate JWT token as password
-		const payload = await JWT.verifyToken(password);
+		const payload = await JWT.verifyToken(token);
 		if (!payload || !payload.sub) {
 			this.sendSaslError(ws, 'not-authorized');
 			return;
@@ -229,10 +195,7 @@ export class XMPPServer extends DurableObject {
 		}
 
 		// Fetch account from database
-		const db = getDB({
-			req: { raw: { cf: { colo: 'DFW' } } },
-			var: { cacheIdentifier: nanoid() },
-		} as any);
+		const db = getDBSimple();
 
 		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, accountId)).limit(1);
 		if (!account) {
@@ -255,9 +218,9 @@ export class XMPPServer extends DurableObject {
 		clientData.friends = friends;
 		this.setClientData(ws, clientData);
 
-		console.log(`XMPP client authenticated: ${account.displayName} (${accountId})`);
+		console.log(`XMPP client authenticated with displayName ${account.displayName} and accountId (${accountId})`);
 
-		const successResponse = this.buildXML('success').attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
+		const successResponse = buildXML('success').att('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl');
 
 		this.sendToClient(ws, successResponse);
 	}
@@ -265,7 +228,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Handle IQ (Info/Query) stanzas
 	 */
-	private async handleIQ(ws: WebSocket, parsedXML: ParsedXML, clientData: XMPPClient): Promise<void> {
+	private async handleIQ(ws: WebSocket, parsedXML: Document, clientData: XMPPClient): Promise<void> {
 		if (!clientData.authenticated) {
 			this.sendErrorAndClose(ws, 'not-authorized');
 			return;
@@ -291,12 +254,12 @@ export class XMPPServer extends DurableObject {
 			default:
 				// Generic IQ response for unknown requests
 				if (iqType === 'get' || iqType === 'set') {
-					const response = this.buildXML('iq')
-						.attribute('to', clientData.jid)
-						.attribute('from', 'prod.ol.epicgames.com')
-						.attribute('id', iqId)
-						.attribute('xmlns', 'jabber:client')
-						.attribute('type', 'result');
+					const response = buildXML('iq')
+						.att('to', clientData.jid)
+						.att('from', XMPP_DOMAIN)
+						.att('id', iqId)
+						.att('xmlns', 'jabber:client')
+						.att('type', 'result');
 
 					this.sendToClient(ws, response);
 				}
@@ -306,7 +269,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Handle resource binding with conflict checking
 	 */
-	private async handleBind(ws: WebSocket, parsedXML: ParsedXML, clientData: XMPPClient): Promise<void> {
+	private async handleBind(ws: WebSocket, parsedXML: Document, clientData: XMPPClient): Promise<void> {
 		const bindElement = this.findElement(parsedXML.root!, 'bind');
 		if (!bindElement) {
 			this.sendStanzaError(ws, clientData.jid, 'modify', 'bad-request');
@@ -317,23 +280,23 @@ export class XMPPServer extends DurableObject {
 		let resource = resourceElement?.content || `OdysseusPC-${nanoid()}`;
 
 		// Check for resource conflicts and generate unique resource if needed
-		const proposedJid = `${clientData.accountId}@prod.ol.epicgames.com/${resource}`;
+		const proposedJid = `${clientData.accountId}@${XMPP_DOMAIN}/${resource}`;
 		if (this.isJidInUse(proposedJid)) {
 			resource = `${resource}-${nanoid()}`;
 		}
 
-		clientData.jid = `${clientData.accountId}@prod.ol.epicgames.com/${resource}`;
-		clientData.id = `${clientData.accountId}@prod.ol.epicgames.com`;
+		clientData.jid = `${clientData.accountId}@${XMPP_DOMAIN}/${resource}`;
+		clientData.id = `${clientData.accountId}@${XMPP_DOMAIN}`;
 		this.setClientData(ws, clientData);
 
-		const bindResponse = this.buildXML('iq')
-			.attribute('to', clientData.jid)
-			.attribute('id', '_xmpp_bind1')
-			.attribute('xmlns', 'jabber:client')
-			.attribute('type', 'result')
-			.element('bind')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-bind')
-			.element('jid', clientData.jid);
+		const bindResponse = buildXML('iq')
+			.att('to', clientData.jid)
+			.att('id', '_xmpp_bind1')
+			.att('xmlns', 'jabber:client')
+			.att('type', 'result')
+			.ele('bind')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-bind')
+			.ele('jid', clientData.jid);
 
 		this.sendToClient(ws, bindResponse);
 	}
@@ -342,12 +305,12 @@ export class XMPPServer extends DurableObject {
 	 * Handle session establishment
 	 */
 	private async handleSession(ws: WebSocket, clientData: XMPPClient): Promise<void> {
-		const sessionResponse = this.buildXML('iq')
-			.attribute('to', clientData.jid)
-			.attribute('from', 'prod.ol.epicgames.com')
-			.attribute('id', '_xmpp_session1')
-			.attribute('xmlns', 'jabber:client')
-			.attribute('type', 'result');
+		const sessionResponse = buildXML('iq')
+			.att('to', clientData.jid)
+			.att('from', XMPP_DOMAIN)
+			.att('id', '_xmpp_session1')
+			.att('xmlns', 'jabber:client')
+			.att('type', 'result');
 
 		this.sendToClient(ws, sessionResponse);
 
@@ -358,7 +321,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Handle XMPP messages with proper validation
 	 */
-	private async handleXMPPMessage(ws: WebSocket, parsedXML: ParsedXML, clientData: XMPPClient): Promise<void> {
+	private async handleXMPPMessage(ws: WebSocket, parsedXML: Document, clientData: XMPPClient): Promise<void> {
 		if (!clientData.authenticated) {
 			this.sendErrorAndClose(ws, 'not-authorized');
 			return;
@@ -397,17 +360,17 @@ export class XMPPServer extends DurableObject {
 			return; // Silently ignore non-friends
 		}
 
-		const chatMessage = this.buildXML('message')
-			.attribute('to', receiver.data.jid)
-			.attribute('from', sender.jid)
-			.attribute('xmlns', 'jabber:client')
-			.attribute('type', 'chat');
+		const chatMessage = buildXML('message')
+			.att('to', receiver.data.jid)
+			.att('from', sender.jid)
+			.att('xmlns', 'jabber:client')
+			.att('type', 'chat');
 
 		if (messageId) {
-			chatMessage.attribute('id', messageId);
+			chatMessage.att('id', messageId);
 		}
 
-		chatMessage.element('body', body);
+		chatMessage.ele('body', body);
 
 		this.sendToClient(receiver.ws, chatMessage);
 	}
@@ -435,31 +398,25 @@ export class XMPPServer extends DurableObject {
 							return; // Silently ignore non-friends
 						}
 
-						const partyMessage = this.buildXML('message')
-							.attribute('from', sender.jid)
-							.attribute('to', receiver.data.jid)
-							.attribute('xmlns', 'jabber:client');
+						const partyMessage = buildXML('message').att('from', sender.jid).att('to', receiver.data.jid).att('xmlns', 'jabber:client');
 
 						if (messageId) {
-							partyMessage.attribute('id', messageId);
+							partyMessage.att('id', messageId);
 						}
 
-						partyMessage.element('body', body);
+						partyMessage.ele('body', body);
 						this.sendToClient(receiver.ws, partyMessage);
 					}
 				}
 			} else {
 				// Echo back unknown message types to sender only
-				const echoMessage = this.buildXML('message')
-					.attribute('from', sender.jid)
-					.attribute('to', sender.jid)
-					.attribute('xmlns', 'jabber:client');
+				const echoMessage = buildXML('message').att('from', sender.jid).att('to', sender.jid).att('xmlns', 'jabber:client');
 
 				if (messageId) {
-					echoMessage.attribute('id', messageId);
+					echoMessage.att('id', messageId);
 				}
 
-				echoMessage.element('body', body);
+				echoMessage.ele('body', body);
 				this.sendToClient(ws, echoMessage);
 			}
 		} catch (error) {
@@ -470,7 +427,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Handle presence updates
 	 */
-	private async handlePresence(ws: WebSocket, parsedXML: ParsedXML, clientData: XMPPClient): Promise<void> {
+	private async handlePresence(ws: WebSocket, parsedXML: Document, clientData: XMPPClient): Promise<void> {
 		if (!clientData.authenticated) {
 			this.sendErrorAndClose(ws, 'not-authorized');
 			return;
@@ -521,17 +478,17 @@ export class XMPPServer extends DurableObject {
 			// Only send presence to friends
 			if (!sender.friends.includes(clientData.accountId)) continue;
 
-			const presence = this.buildXML('presence')
-				.attribute('to', clientData.jid)
-				.attribute('xmlns', 'jabber:client')
-				.attribute('from', sender.jid)
-				.attribute('type', offline ? 'unavailable' : 'available');
+			const presence = buildXML('presence')
+				.att('to', clientData.jid)
+				.att('xmlns', 'jabber:client')
+				.att('from', sender.jid)
+				.att('type', offline ? 'unavailable' : 'available');
 
 			if (!offline) {
 				if (away) {
-					presence.element('show', 'away');
+					presence.ele('show', 'away');
 				}
-				presence.element('status', status);
+				presence.ele('status', status);
 			}
 
 			this.sendToClient(connectedWs, presence);
@@ -554,16 +511,16 @@ export class XMPPServer extends DurableObject {
 			// Only send presence from friends
 			if (!newClientData.friends.includes(clientData.accountId)) continue;
 
-			const presence = this.buildXML('presence')
-				.attribute('to', newClientData.jid)
-				.attribute('xmlns', 'jabber:client')
-				.attribute('from', clientData.jid)
-				.attribute('type', 'available');
+			const presence = buildXML('presence')
+				.att('to', newClientData.jid)
+				.att('xmlns', 'jabber:client')
+				.att('from', clientData.jid)
+				.att('type', 'available');
 
 			if (clientData.lastPresenceUpdate.away) {
-				presence.element('show', 'away');
+				presence.ele('show', 'away');
 			}
-			presence.element('status', clientData.lastPresenceUpdate.status);
+			presence.ele('status', clientData.lastPresenceUpdate.status);
 
 			this.sendToClient(newClientWs, presence);
 		}
@@ -579,11 +536,11 @@ export class XMPPServer extends DurableObject {
 		for (const accountId of accountIds) {
 			const client = this.findClientByIdentifier(accountId);
 			if (client?.data.authenticated) {
-				const xmppMessage = this.buildXML('message')
-					.attribute('from', 'prod.ol.epicgames.com')
-					.attribute('to', client.data.jid)
-					.attribute('xmlns', 'jabber:client')
-					.element('body', messageBody);
+				const xmppMessage = buildXML('message')
+					.att('from', XMPP_DOMAIN)
+					.att('to', client.data.jid)
+					.att('xmlns', 'jabber:client')
+					.ele('body', messageBody);
 
 				this.sendToClient(client.ws, xmppMessage);
 			}
@@ -595,7 +552,7 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Load friends list for an account
 	 */
-	private async loadFriendsList(db: any, accountId: string): Promise<string[]> {
+	private async loadFriendsList(db: DB, accountId: string): Promise<string[]> {
 		// Get friends where this user is the accountId and status is ACCEPTED
 		const outgoingFriends = await db
 			.select({ targetId: FRIENDS.targetId })
@@ -696,85 +653,84 @@ export class XMPPServer extends DurableObject {
 	 * Send various XMPP error types
 	 */
 	private sendSaslError(ws: WebSocket, condition: string): void {
-		const error = this.buildXML('failure').attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl').element(condition);
+		const error = buildXML('failure').att('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl').ele(condition);
 
 		this.sendToClient(ws, error);
 		ws.close();
 	}
 
 	private sendStanzaError(ws: WebSocket, to: string, type: string, condition: string): void {
-		const error = this.buildXML('iq')
-			.attribute('to', to)
-			.attribute('type', 'error')
-			.element('error')
-			.attribute('type', type)
-			.element(condition)
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-stanzas');
+		const error = buildXML('iq')
+			.att('to', to)
+			.att('type', 'error')
+			.ele('error')
+			.att('type', type)
+			.ele(condition)
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-stanzas');
 
 		this.sendToClient(ws, error);
 	}
 
 	private sendErrorAndClose(ws: WebSocket, condition: string): void {
-		const closeXML = this.buildXML('close').attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-framing');
-
+		const closeXML = buildXML('close').att('xmlns', 'urn:ietf:params:xml:ns:xmpp-framing');
 		this.sendToClient(ws, closeXML);
-		ws.close();
+		ws.close(1000, condition);
 	}
 
 	/**
 	 * Build authenticated stream features
 	 */
-	private buildAuthenticatedFeatures(): any {
-		return this.buildXML('stream:features')
-			.attribute('xmlns:stream', 'http://etherx.jabber.org/streams')
-			.element('ver')
-			.attribute('xmlns', 'urn:xmpp:features:rosterver')
+	private buildAuthenticatedFeatures(): xmlbuilder.XMLElement {
+		return buildXML('stream:features')
+			.att('xmlns:stream', 'http://etherx.jabber.org/streams')
+			.ele('ver')
+			.att('xmlns', 'urn:xmpp:features:rosterver')
 			.up()
-			.element('starttls')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls')
+			.ele('starttls')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls')
 			.up()
-			.element('bind')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-bind')
+			.ele('bind')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-bind')
 			.up()
-			.element('compression')
-			.attribute('xmlns', 'http://jabber.org/features/compress')
-			.element('method', 'zlib')
+			.ele('compression')
+			.att('xmlns', 'http://jabber.org/features/compress')
+			.ele('method', 'zlib')
 			.up()
 			.up()
-			.element('session')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-session');
+			.ele('session')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-session');
 	}
 
 	/**
 	 * Build unauthenticated stream features
 	 */
-	private buildUnauthenticatedFeatures(): any {
-		return this.buildXML('stream:features')
-			.attribute('xmlns:stream', 'http://etherx.jabber.org/streams')
-			.element('mechanisms')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl')
-			.element('mechanism', 'PLAIN')
+	private buildUnauthenticatedFeatures(): xmlbuilder.XMLElement {
+		return buildXML('stream:features')
+			.att('xmlns:stream', 'http://etherx.jabber.org/streams')
+			.ele('mechanisms')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-sasl')
+			.ele('mechanism', 'PLAIN')
 			.up()
 			.up()
-			.element('ver')
-			.attribute('xmlns', 'urn:xmpp:features:rosterver')
+			.ele('ver')
+			.att('xmlns', 'urn:xmpp:features:rosterver')
 			.up()
-			.element('starttls')
-			.attribute('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls')
+			.ele('starttls')
+			.att('xmlns', 'urn:ietf:params:xml:ns:xmpp-tls')
 			.up()
-			.element('compression')
-			.attribute('xmlns', 'http://jabber.org/features/compress')
-			.element('method', 'zlib')
+			.ele('compression')
+			.att('xmlns', 'http://jabber.org/features/compress')
+			.ele('method', 'zlib')
 			.up()
 			.up()
-			.element('auth')
-			.attribute('xmlns', 'http://jabber.org/features/iq-auth');
+			.ele('auth')
+			.att('xmlns', 'http://jabber.org/features/iq-auth');
 	}
 
 	/**
 	 * Safe send to client with error handling
 	 */
-	private sendToClient(ws: WebSocket, xmlBuilder: any): void {
+	private sendToClient(ws: WebSocket, xmlBuilder: xmlbuilder.XMLElement): void {
 		try {
 			if (ws.readyState === WebSocket.OPEN) {
 				ws.send(xmlBuilder.toString());
@@ -787,163 +743,8 @@ export class XMPPServer extends DurableObject {
 	/**
 	 * Find XML element by name
 	 */
-	private findElement(parent: XMLElement, name: string): XMLElement | null {
-		return parent.children.find((child) => child.name === name) || null;
-	}
-
-	/**
-	 * Improved XML builder (maintains existing interface)
-	 */
-	private buildXML(rootName: string): any {
-		const builder = {
-			_element: rootName,
-			_attributes: {} as Record<string, string>,
-			_children: [] as any[],
-			_content: '',
-
-			attribute(name: string, value: string) {
-				this._attributes[name] = value;
-				return this;
-			},
-
-			element(name: string, content?: string) {
-				const child = {
-					_element: name,
-					_attributes: {},
-					_children: [],
-					_content: content || '',
-					attribute: this.attribute,
-					element: this.element,
-					up: () => builder,
-					toString: this.toString,
-				};
-				this._children.push(child);
-				return child;
-			},
-
-			up() {
-				return this;
-			},
-
-			toString() {
-				let xml = `<${this._element}`;
-
-				for (const [name, value] of Object.entries(this._attributes)) {
-					xml += ` ${name}="${this.escapeXml(value)}"`;
-				}
-
-				if (this._children.length === 0 && !this._content) {
-					xml += '/>';
-				} else {
-					xml += '>';
-					xml += this.escapeXml(this._content);
-
-					for (const child of this._children) {
-						xml += child.toString();
-					}
-
-					xml += `</${this._element}>`;
-				}
-
-				return xml;
-			},
-
-			escapeXml(unsafe: string): string {
-				return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-			},
-		};
-
-		return builder;
-	}
-
-	/**
-	 * Improved XML parser (still basic but more robust)
-	 */
-	private parseXML(xmlString: string): ParsedXML {
-		// Remove XML declaration if present
-		xmlString = xmlString.replace(/<\?xml[^>]*\?>/i, '').trim();
-
-		if (!xmlString) {
-			return { root: null };
-		}
-
-		// Handle self-closing tags
-		const selfClosingTagRegex = /<(\w+)([^>]*?)\/>/g;
-		xmlString = xmlString.replace(selfClosingTagRegex, '<$1$2></$1>');
-
-		// Basic tag matching
-		const tagRegex = /<(\w+)([^>]*?)>(.*?)<\/\1>/s;
-		const match = xmlString.match(tagRegex);
-
-		if (!match) {
-			// Try to match opening tag without content
-			const openTagRegex = /<(\w+)([^>]*?)>/;
-			const openMatch = xmlString.match(openTagRegex);
-			if (openMatch) {
-				const attributes = this.parseAttributes(openMatch[2]);
-				return {
-					root: {
-						name: openMatch[1],
-						attributes,
-						content: '',
-						children: [],
-					},
-				};
-			}
-			return { root: null };
-		}
-
-		const [, tagName, attributeString, content] = match;
-		const attributes = this.parseAttributes(attributeString);
-		const children = this.parseChildren(content);
-
-		return {
-			root: {
-				name: tagName,
-				attributes,
-				content: children.length === 0 ? content.trim() : '',
-				children,
-			},
-		};
-	}
-
-	/**
-	 * Parse XML attributes
-	 */
-	private parseAttributes(attributeString: string): Record<string, string> {
-		const attributes: Record<string, string> = {};
-		const attrRegex = /(\w+(?::\w+)?)="([^"]*)"/g;
-		let match;
-
-		while ((match = attrRegex.exec(attributeString)) !== null) {
-			attributes[match[1]] = match[2];
-		}
-
-		return attributes;
-	}
-
-	/**
-	 * Parse XML children elements
-	 */
-	private parseChildren(content: string): XMLElement[] {
-		const children: XMLElement[] = [];
-		const tagRegex = /<(\w+)([^>]*?)>(.*?)<\/\1>/gs;
-		let match;
-
-		while ((match = tagRegex.exec(content)) !== null) {
-			const [, tagName, attributeString, tagContent] = match;
-			const attributes = this.parseAttributes(attributeString);
-			const grandchildren = this.parseChildren(tagContent);
-
-			children.push({
-				name: tagName,
-				attributes,
-				content: grandchildren.length === 0 ? tagContent.trim() : '',
-				children: grandchildren,
-			});
-		}
-
-		return children;
+	private findElement(parent: Node, name: string): Node | undefined {
+		return parent.children.find((child) => child.name === name);
 	}
 
 	/**
@@ -973,6 +774,11 @@ export class XMPPServer extends DurableObject {
 	 * Client data management
 	 */
 	private setClientData(ws: WebSocket, clientData: XMPPClient): void {
+		const validData = xmppClientSchema(clientData);
+		if (validData instanceof ArkError) {
+			console.error('Invalid client data:', validData.message);
+			return this.sendSaslError(ws, 'failed-data-parsing');
+		}
 		ws.serializeAttachment(clientData);
 	}
 
