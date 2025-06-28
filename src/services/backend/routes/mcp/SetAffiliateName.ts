@@ -7,6 +7,7 @@ import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { eq } from 'drizzle-orm';
 import { type } from 'arktype';
+import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 
 const setAffiliateNameSchema = type({
 	affiliateName: 'string',
@@ -16,6 +17,11 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetAffiliateName',
 	arktypeValidator('json', setAffiliateNameSchema),
 	acidMiddleware,
+	ratelimitMiddleware({
+		capacity: 10,
+		initialTokens: 3,
+		refillRate: 0.5,
+	}),
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {

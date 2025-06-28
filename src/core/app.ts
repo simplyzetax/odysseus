@@ -1,6 +1,6 @@
-import { persistentDoMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
+import { cacheIdentifierMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
 import { responseEnhancementsMiddleware } from '@middleware/core/remMiddleware';
-import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrection';
+import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -15,7 +15,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(responseEnhancementsMiddleware);
 app.use(logger());
-app.use(persistentDoMiddleware);
+app.use(cacheIdentifierMiddleware);
 app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {

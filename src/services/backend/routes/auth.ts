@@ -36,12 +36,12 @@ const oauthSchema = baseOauthSchema.narrow((data, ctx) => {
 
 app.post(
 	'/account/api/oauth/token',
+	arktypeValidator('form', oauthSchema),
 	ratelimitMiddleware({
 		capacity: 5,
-		refillRate: 1,
+		refillRate: 0.25,
 		initialTokens: 5,
 	}),
-	arktypeValidator('form', oauthSchema),
 	async (c) => {
 		const body = c.req.valid('form');
 

@@ -1,173 +1,192 @@
-import { odysseus } from "@core/error";
-import type { Context } from "hono";
-import { createMiddleware } from "hono/factory";
+import { odysseus } from '@core/error';
+import type { Context } from 'hono';
+import { createMiddleware } from 'hono/factory';
 
 /**
  * Configuration options for token bucket rate limiting
  */
 export interface RateLimitOptions {
-    /** Maximum number of tokens in the bucket (burst capacity) */
-    capacity?: number;
-    /** Number of tokens to refill per second */
-    refillRate?: number;
-    /** Initial number of tokens when bucket is created */
-    initialTokens?: number;
-    /** Custom key generator function - defaults to IP address */
-    keyGenerator?: (c: Context) => string | Promise<string>;
-    /** Custom message when rate limit is exceeded */
-    message?: string;
-    /** Skip rate limiting if this function returns true */
-    skip?: (c: Context) => boolean | Promise<boolean>;
-    /** Custom headers to include in rate limit responses */
-    standardHeaders?: boolean;
-    /** Prefix for KV keys to avoid collisions */
-    keyPrefix?: string;
+	/** Maximum number of tokens in the bucket (burst capacity) */
+	capacity?: number;
+	/** Number of tokens to refill per second */
+	refillRate?: number;
+	/** Initial number of tokens when bucket is created */
+	initialTokens?: number;
+	/** Custom key generator function - defaults to IP address */
+	keyGenerator?: (c: Context) => string | Promise<string>;
+	/** Custom message when rate limit is exceeded */
+	message?: string;
+	/** Skip rate limiting if this function returns true */
+	skip?: (c: Context) => boolean | Promise<boolean>;
+	/** Custom headers to include in rate limit responses */
+	standardHeaders?: boolean;
+	/** Prefix for KV keys to avoid collisions */
+	keyPrefix?: string;
+	/** If true, rate limiting is applied separately for each route */
+	perRoute?: boolean;
+	/** If true, automatically generates keyPrefix from route path (first 2 segments) */
+	autoKeyPrefix?: boolean;
 }
 
 /**
  * Token bucket data stored in KV
  */
 interface TokenBucketData {
-    /** Number of tokens available at lastUpdate time */
-    tokens: number;
-    /** Unix timestamp (seconds) of last update */
-    lastUpdate: number;
+	/** Number of tokens available at lastUpdate time */
+	tokens: number;
+	/** Unix timestamp (seconds) of last update */
+	lastUpdate: number;
 }
 
 /**
  * Default token bucket configuration
  */
 const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
-    capacity: 10, // Maximum tokens in bucket (burst capacity)
-    refillRate: 1, // Tokens added per second
-    initialTokens: 10, // Start with full bucket
-    keyGenerator: (c: Context) => {
-        // Try to get real IP from Cloudflare headers, fallback to connection IP
-        return c.req.header('CF-Connecting-IP') ||
-            c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() ||
-            c.req.header('X-Real-IP') ||
-            'unknown';
-    },
-    message: "Too many requests, please try again later.",
-    skip: () => false,
-    standardHeaders: true,
-    keyPrefix: "tokenbucket"
+	capacity: 10, // Maximum tokens in bucket (burst capacity)
+	refillRate: 1, // Tokens added per second
+	initialTokens: 10, // Start with full bucket
+	keyGenerator: (c: Context) => {
+		// Try to get real IP from Cloudflare headers, fallback to connection IP
+		return (
+			c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() || c.req.header('X-Real-IP') || 'unknown'
+		);
+	},
+	message: 'Too many requests, please try again later.',
+	skip: () => false,
+	standardHeaders: true,
+	keyPrefix: 'tokenbucket',
+	perRoute: false,
+	autoKeyPrefix: true,
 };
+
+/**
+ * Generates automatic keyPrefix from route path (first 1-2 segments)
+ */
+function generateAutoKeyPrefix(path: string): string {
+	const segments = path.split('/').filter((segment) => segment.length > 0);
+
+	if (segments.length === 0) {
+		return 'root';
+	} else if (segments.length === 1) {
+		return segments[0];
+	} else {
+		return `${segments[0]}-${segments[1]}`;
+	}
+}
 
 /**
  * Calculates current token count based on time elapsed since last update
  */
 function calculateCurrentTokens(
-    storedTokens: number,
-    lastUpdate: number,
-    currentTime: number,
-    refillRate: number,
-    capacity: number
+	storedTokens: number,
+	lastUpdate: number,
+	currentTime: number,
+	refillRate: number,
+	capacity: number
 ): number {
-    const timeElapsed = currentTime - lastUpdate;
-    const tokensToAdd = timeElapsed * refillRate;
-    const newTokenCount = storedTokens + tokensToAdd;
+	const timeElapsed = currentTime - lastUpdate;
+	const tokensToAdd = timeElapsed * refillRate;
+	const newTokenCount = storedTokens + tokensToAdd;
 
-    // Cap at maximum capacity
-    return Math.min(newTokenCount, capacity);
+	// Cap at maximum capacity
+	return Math.min(newTokenCount, capacity);
 }
 
 /**
  * Creates a token bucket rate limiting middleware using Cloudflare KV for storage
  */
 export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
-    const config = { ...DEFAULT_OPTIONS, ...options };
+	const config = { ...DEFAULT_OPTIONS, ...options };
 
-    return createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
-        // Check if we should skip rate limiting
-        if (await config.skip(c)) {
-            await next();
-            return;
-        }
+	return createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
+		// Check if we should skip rate limiting
+		if (await config.skip(c)) {
+			await next();
+			return;
+		}
 
-        // Generate the key for this request
-        const key = await config.keyGenerator(c);
-        const kvKey = `${config.keyPrefix}:${key}`;
+		// Generate the key for this request
+		const baseKey = await config.keyGenerator(c);
+		const key = config.perRoute ? `${baseKey}:${c.req.path}` : baseKey;
 
-        // Get current time in seconds with high precision
-        const now = Date.now() / 1000;
+		// Determine the prefix to use
+		const prefix = config.autoKeyPrefix ? generateAutoKeyPrefix(c.req.path) : config.keyPrefix;
+		const kvKey = `${prefix}:${key}`;
 
-        try {
-            // Get existing bucket data from KV
-            const existingData = await c.env.KV.get(kvKey, "json") as TokenBucketData | null;
+		// Get current time in seconds with high precision
+		const now = Date.now() / 1000;
 
-            let currentTokens: number;
+		try {
+			// Get existing bucket data from KV
+			const existingData = (await c.env.KV.get(kvKey, 'json')) as TokenBucketData | null;
 
-            if (existingData && typeof existingData === 'object' && 'tokens' in existingData && 'lastUpdate' in existingData) {
-                // Calculate current tokens based on time elapsed
-                currentTokens = calculateCurrentTokens(
-                    existingData.tokens,
-                    existingData.lastUpdate,
-                    now,
-                    config.refillRate,
-                    config.capacity
-                );
-            } else {
-                // First request - start with initial token count
-                currentTokens = config.initialTokens;
-            }
+			let currentTokens: number;
 
-            // Check if we have enough tokens for this request
-            if (currentTokens < 1) {
-                // Calculate when next token will be available
-                const timeUntilNextToken = (1 - currentTokens) / config.refillRate;
-                const retryAfter = Math.ceil(timeUntilNextToken);
+			if (existingData && typeof existingData === 'object' && 'tokens' in existingData && 'lastUpdate' in existingData) {
+				// Calculate current tokens based on time elapsed
+				currentTokens = calculateCurrentTokens(existingData.tokens, existingData.lastUpdate, now, config.refillRate, config.capacity);
+			} else {
+				// First request - start with initial token count
+				currentTokens = config.initialTokens;
+			}
 
-                // Set standard headers if enabled
-                if (config.standardHeaders) {
-                    c.res.headers.set('X-RateLimit-Limit', config.capacity.toString());
-                    c.res.headers.set('X-RateLimit-Remaining', '0');
-                    c.res.headers.set('X-RateLimit-Reset', Math.ceil(now + timeUntilNextToken).toString());
-                }
+			// Check if we have enough tokens for this request
+			if (currentTokens < 1) {
+				// Calculate when next token will be available
+				const timeUntilNextToken = (1 - currentTokens) / config.refillRate;
+				const retryAfter = Math.ceil(timeUntilNextToken);
 
-                c.res.headers.set('Retry-After', retryAfter.toString());
-                return c.sendError(odysseus.basic.throttled.withMessage(config.message));
-            }
+				// Set standard headers if enabled
+				if (config.standardHeaders) {
+					c.res.headers.set('X-RateLimit-Limit', config.capacity.toString());
+					c.res.headers.set('X-RateLimit-Remaining', '0');
+					c.res.headers.set('X-RateLimit-Reset', Math.ceil(now + timeUntilNextToken).toString());
+				}
 
-            // Consume one token
-            const tokensAfterRequest = currentTokens - 1;
+				c.res.headers.set('Retry-After', retryAfter.toString());
+				return c.sendError(odysseus.basic.throttled.withMessage(config.message));
+			}
 
-            // Set standard headers if enabled
-            if (config.standardHeaders) {
-                c.res.headers.set('X-RateLimit-Limit', config.capacity.toString());
-                c.res.headers.set('X-RateLimit-Remaining', Math.floor(tokensAfterRequest).toString());
-                // Reset time is when bucket will be full again
-                const timeToFull = (config.capacity - tokensAfterRequest) / config.refillRate;
-                c.res.headers.set('X-RateLimit-Reset', Math.ceil(now + timeToFull).toString());
-            }
+			// Consume one token
+			const tokensAfterRequest = currentTokens - 1;
 
-            // Defer KV update until after response is sent for better performance
-            c.executionCtx.waitUntil(
-                (async () => {
-                    try {
-                        // Update the bucket data in KV
-                        const newData: TokenBucketData = {
-                            tokens: tokensAfterRequest,
-                            lastUpdate: now
-                        };
+			// Set standard headers if enabled
+			if (config.standardHeaders) {
+				c.res.headers.set('X-RateLimit-Limit', config.capacity.toString());
+				c.res.headers.set('X-RateLimit-Remaining', Math.floor(tokensAfterRequest).toString());
+				// Reset time is when bucket will be full again
 
-                        // Calculate TTL: time for bucket to completely refill + buffer
-                        const timeToRefill = Math.ceil((config.capacity - tokensAfterRequest) / config.refillRate);
-                        const ttl = Math.max(timeToRefill + 300, 3600); // At least 1 hour, or refill time + 5 minutes
+				//TOOD: Not really safe to tell the client when the bucket will be full again
+				//const timeToFull = (config.capacity - tokensAfterRequest) / config.refillRate;
+				//c.res.headers.set('X-RateLimit-Reset', Math.ceil(now + timeToFull).toString());
+			}
 
-                        await c.env.KV.put(kvKey, JSON.stringify(newData), { expirationTtl: ttl });
-                    } catch (error) {
-                        console.error('Failed to update token bucket in KV:', error);
-                    }
-                })()
-            );
+			// Defer KV update until after response is sent for better performance
+			c.executionCtx.waitUntil(
+				(async () => {
+					try {
+						// Update the bucket data in KV
+						const newData: TokenBucketData = {
+							tokens: tokensAfterRequest,
+							lastUpdate: now,
+						};
 
-            await next();
+						// Calculate TTL: time for bucket to completely refill + buffer
+						const timeToRefill = Math.ceil((config.capacity - tokensAfterRequest) / config.refillRate);
+						const ttl = Math.max(timeToRefill + 300, 3600); // At least 1 hour, or refill time + 5 minutes
 
-        } catch (error) {
-            // If KV operations fail, log the error but don't block the request
-            console.error('Token bucket middleware error:', error);
-            await next();
-        }
-    });
+						await c.env.KV.put(kvKey, JSON.stringify(newData), { expirationTtl: ttl });
+					} catch (error) {
+						console.error('Failed to update token bucket in KV:', error);
+					}
+				})()
+			);
+
+			await next();
+		} catch (error) {
+			// If KV operations fail, log the error but don't block the request
+			console.error('Token bucket middleware error:', error);
+			await next();
+		}
+	});
 };
