@@ -63,10 +63,6 @@ app.get('/Builds/Fortnite/Content/CloudDir/*.ini', async () => {
     */
 });
 
-app.get('/waitingroom/api/waitingroom', (c) => {
-	return c.sendStatus(204);
-});
-
 app.get('/socialban/api/public/v1/*', (c) => {
 	return c.json({
 		bans: [],

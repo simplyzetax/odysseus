@@ -23,6 +23,7 @@ export default tseslint.config(
 			'drizzle/enforce-delete-with-where': ['error', { drizzleObjectName: ['db'] }],
 			'drizzle/enforce-update-with-where': ['error', { drizzleObjectName: ['db'] }],
 			quotes: ['error', 'single', { avoidEscape: true }],
+			'@typescript-eslint/no-unused-vars': 'warn',
 		},
 	},
 );
