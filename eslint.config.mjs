@@ -14,9 +14,20 @@ export default tseslint.config(
                 tsconfigRootDir: import.meta.dirname,
             },
         },
+        plugins: {
+            drizzle: require('eslint-plugin-drizzle'),
+        },
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-empty-object-type': 'off',
+            'drizzle/enforce-delete-with-where': [
+                'error',
+                { drizzleObjectName: ['db'] }
+            ],
+            'drizzle/enforce-update-with-where': [
+                'error',
+                { drizzleObjectName: ['db'] }
+            ],
         },
     }
 ); 

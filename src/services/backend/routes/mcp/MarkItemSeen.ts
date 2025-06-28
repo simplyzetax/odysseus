@@ -6,11 +6,11 @@ import { validator } from 'hono/validator';
 import z from 'zod';
 
 const markItemSeenSchema = z.object({
-	itemIds: z.array(z.string()),
+	itemIds: z.array(z.string()).min(1),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:unsafeAccountId/client/MarkItemSeen',
+	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
 	validator('json', (value, c) => {
 		const result = markItemSeenSchema.safeParse(value);
 		return result.success
@@ -29,8 +29,9 @@ app.post(
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
 
-		const itemIds = c.req.valid('json').itemIds;
-		await profile.updateSeenStatus(itemIds);
+		const { itemIds } = c.req.valid('json');
+
+		c.executionCtx.waitUntil(profile.updateSeenStatus(itemIds));
 
 		for (const itemId of itemIds) {
 			profile.trackChange({

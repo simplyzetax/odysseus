@@ -11,6 +11,12 @@ importers:
       '@types/pg':
         specifier: ^8.15.4
         version: 8.15.4
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.35.0
+        version: 8.35.0(@typescript-eslint/parser@8.35.0(eslint@9.29.0)(typescript@5.8.3))(eslint@9.29.0)(typescript@5.8.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.35.0
+        version: 8.35.0(eslint@9.29.0)(typescript@5.8.3)
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -29,6 +35,9 @@ importers:
       drizzle-zod:
         specifier: ^0.8.2
         version: 0.8.2(drizzle-orm@0.44.2(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7))(zod@3.25.67)
+      eslint-plugin-drizzle:
+        specifier: ^0.2.3
+        version: 0.2.3(eslint@9.29.0)
       fnapicom:
         specifier: ^2.1.0
         version: 2.1.0
@@ -78,6 +87,9 @@ importers:
       vite:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@24.0.3)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@24.0.3)
       wrangler:
         specifier: ^4.21.1
         version: 4.21.1
@@ -1340,6 +1352,11 @@ packages:
   escape-string-regexp@4.0.0:
     resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
     engines: {node: '>=10'}
+
+  eslint-plugin-drizzle@0.2.3:
+    resolution: {integrity: sha512-BO+ymHo33IUNoJlC0rbd7HP9EwwpW4VIp49R/tWQF/d2E1K2kgTf0tCXT0v9MSiBr6gGR1LtPwMLapTKEWSg9A==}
+    peerDependencies:
+      eslint: '>=8.0.0'
 
   eslint-scope@8.4.0:
     resolution: {integrity: sha512-sNXOfKCn74rt8RICKMvJS7XKV/Xk9kA7DyJr8mJik3S7Cwgy3qlkkmyS2uQB3jiJg6VNdZd/pDBJu0nvG2NlTg==}
@@ -3114,6 +3131,10 @@ snapshots:
       '@esbuild/win32-x64': 0.25.5
 
   escape-string-regexp@4.0.0: {}
+
+  eslint-plugin-drizzle@0.2.3(eslint@9.29.0):
+    dependencies:
+      eslint: 9.29.0
 
   eslint-scope@8.4.0:
     dependencies:
