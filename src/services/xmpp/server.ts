@@ -44,16 +44,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	 * Handle WebSocket upgrade requests and other HTTP requests
 	 */
 	async fetch(request: Request): Promise<Response> {
-		// Handle WebSocket upgrade
-		const upgradeHeader = request.headers.get('Upgrade');
-		if (!upgradeHeader || upgradeHeader !== 'websocket') {
-			return new Response('Expected WebSocket upgrade', { status: 426 });
-		}
-
-		const protocol = request.headers.get('Sec-WebSocket-Protocol');
-		if (!protocol || protocol.toLowerCase() !== 'xmpp') {
-			return new Response('Expected XMPP protocol', { status: 400 });
-		}
+		console.log('XMPP client trying to connect');
 
 		const webSocketPair = new WebSocketPair();
 		// The server *should* be the one we can do ws.close on etc, needs testing

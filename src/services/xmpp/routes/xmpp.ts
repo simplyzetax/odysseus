@@ -20,6 +20,8 @@ app.get('/xmpp', async (c) => {
 	const durableObjectId = c.env.XmppServer.idFromName('xmpp-server');
 	const durableObject = c.env.XmppServer.get(durableObjectId);
 
+	console.log('XMPP client trying to connect in route');
+
 	// Forward the request to the Durable Object
 	return durableObject.fetch(c.req.raw);
 });
