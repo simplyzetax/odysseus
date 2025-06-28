@@ -12,7 +12,7 @@ import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrection';
+import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
@@ -27,13 +27,16 @@ interface ProfileClassMap {
 // Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
 
+export const MULTI_ITEM_SLOTS = ['Dance', 'ItemWrap'];
+
 export class FortniteProfile<T extends ProfileType = ProfileType> {
 	/**
 	 * Checks if the given profile type is valid
 	 * @param profileType - The profile type to check
 	 * @returns true if the profile type is valid
 	 */
-	static isValidProfileType(profileType: string): profileType is ProfileType {
+	static isValidProfileType(profileType: string | undefined): profileType is ProfileType {
+		if (!profileType) return false;
 		return Object.keys(profileTypesEnum).includes(profileType);
 	}
 
@@ -126,6 +129,30 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 			.set({ rvn: sql`${PROFILES.rvn} + 1` })
 			.where(and(eq(PROFILES.accountId, this.accountId), eq(PROFILES.type, this.profileType)));
 	}
+
+	public static getFavoriteAttributeKey(slotName: string): string {
+		return slotName.toLowerCase() === 'itemwrap' ? 'favorite_itemwraps' : `favorite_${slotName.toLowerCase()}`;
+	}
+
+	public static updateMultiSlotValue(slotName: string, currentValue: any, itemToSlot: string, indexWithinSlot: number): string[] {
+		if (!Array.isArray(currentValue)) {
+			currentValue = [];
+		}
+
+		// Fill all slots with the same item
+		if (indexWithinSlot === -1 && itemToSlot !== '') {
+			const length = slotName === 'ItemWrap' ? 7 : 6;
+			return new Array(length).fill(itemToSlot);
+		}
+		// Update a specific slot
+		else {
+			if (currentValue.length <= indexWithinSlot) {
+				currentValue = currentValue.concat(new Array(indexWithinSlot - currentValue.length + 1).fill(''));
+			}
+			currentValue[indexWithinSlot] = itemToSlot;
+			return currentValue;
+		}
+	}
 }
 
 /**
@@ -133,6 +160,10 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
  * and to avoid circular dependencies
  */
 export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> extends FortniteProfile<T> {
+	public static getVariantAttributeKey(itemId: string, channel: string): string {
+		return `${itemId}_variants_${channel}`;
+	}
+
 	changes: ProfileChange[] = [];
 	profileId: string;
 
@@ -207,9 +238,9 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param value - The value to search for
 	 * @returns The item
 	 */
-	async getItemByKey<K extends keyof Item>(columnName: K, value: Item[K]) {
-		// Automatically generate column mapping from Zod schema shape
-		const schemaShape = itemSelectSchema.shape;
+	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
+		// Automatically generate column mapping from Arktype schema shape
+		const schemaShape = itemSelectSchema.infer;
 		const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
 			acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
 			return acc;
@@ -220,7 +251,18 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			throw new Error(`Invalid column name: ${String(columnName)}`);
 		}
 
-		return await this.db.select().from(ITEMS).where(eq(column, value));
+		const [item] = await this.db.select().from(ITEMS).where(eq(column, value));
+
+		return item;
+	}
+
+	/**
+	 * Checks if the given slot name is a multi-slot item
+	 * @param slotName - The slot name to check
+	 * @returns true if the slot name is a multi-slot item
+	 */
+	async isMultiSlotItem(slotName: string) {
+		return MULTI_ITEM_SLOTS.includes(slotName);
 	}
 
 	/**
@@ -289,6 +331,23 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 		return attributesMap;
 	}
 
+	async getAttribute(attributeName: string): Promise<Attribute | undefined> {
+		const [attribute] = await this.db
+			.select()
+			.from(ATTRIBUTES)
+			.where(and(eq(ATTRIBUTES.key, attributeName), eq(ATTRIBUTES.profileId, this.profileId)));
+		return attribute;
+	}
+
+	createAttribute(attributeName: string, value: any) {
+		return {
+			key: attributeName,
+			valueJSON: value,
+			profileId: this.profileId,
+			type: this.profileType,
+		};
+	}
+
 	/**
 	 * Updates an attribute in the database, creating it if it doesn't exist
 	 * @param attributeName - The key of the attribute to update
@@ -320,6 +379,10 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			templateId: itemId,
 			jsonAttributes: attributes,
 		});
+	}
+
+	async updateItem(itemId: string, attributes: Record<string, any>) {
+		await this.db.update(ITEMS).set({ jsonAttributes: attributes }).where(eq(ITEMS.id, itemId));
 	}
 
 	/**

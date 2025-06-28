@@ -1,22 +1,17 @@
 import { app } from '@core/app';
 import { odysseus } from '@core/error';
+import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { validator } from 'hono/validator';
-import z from 'zod';
+import { type } from 'arktype';
 
-const markItemSeenSchema = z.object({
-	itemIds: z.array(z.string()),
+const markItemSeenSchema = type({
+	itemIds: 'string[]',
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:unsafeAccountId/client/MarkItemSeen',
-	validator('json', (value, c) => {
-		const result = markItemSeenSchema.safeParse(value);
-		return result.success
-			? result.data
-			: c.sendError(odysseus.mcp.invalidPayload.withMessage(result.error.errors.map((e) => e.message).join(', ')));
-	}),
+	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
+	arktypeValidator('json', markItemSeenSchema),
 	acidMiddleware,
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
@@ -29,8 +24,9 @@ app.post(
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
 
-		const itemIds = c.req.valid('json').itemIds;
-		await profile.updateSeenStatus(itemIds);
+		const { itemIds } = c.req.valid('json');
+
+		c.executionCtx.waitUntil(profile.updateSeenStatus(itemIds));
 
 		for (const itemId of itemIds) {
 			profile.trackChange({

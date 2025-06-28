@@ -1,6 +1,6 @@
-import { persistentDoMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
+import { cacheIdentifierMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
 import { responseEnhancementsMiddleware } from '@middleware/core/remMiddleware';
-import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrection';
+import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -15,13 +15,16 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(responseEnhancementsMiddleware);
 app.use(logger());
-app.use(persistentDoMiddleware);
+app.use(cacheIdentifierMiddleware);
 app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {
 	if (err instanceof HTTPException) {
 		return err.getResponse();
 	} else if (err instanceof Error) {
+		if (err.message.includes('Failed query:')) {
+			return c.sendError(odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.'));
+		}
 		return c.sendError(odysseus.internal.serverError.withMessage(err.message));
 	}
 	return c.sendError(odysseus.internal.serverError.withMessage('An unknown error occurred'));

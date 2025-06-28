@@ -1,17 +1,18 @@
 import { app } from '@core/app';
-import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
+import { type } from 'arktype';
+import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
+import { arktypeValidator } from '@hono/arktype-validator';
+
+const setPartyAssistQuestSchema = type({
+	questToPinAsPartyAssist: 'string',
+});
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/QueryProfile',
+	'/fortnite/api/game/v2/profile/:accountId/client/SetPartyAssistQuest',
+	arktypeValidator('json', setPartyAssistQuestSchema),
 	acidMiddleware,
-	ratelimitMiddleware({
-		capacity: 10,
-		initialTokens: 10,
-		refillRate: 0.5,
-	}),
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
@@ -22,14 +23,18 @@ app.post(
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
 		}
 
+		const { questToPinAsPartyAssist } = c.req.valid('json');
+
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
-		const profileObject = await profile.buildProfileObject();
 
 		profile.trackChange({
-			changeType: 'fullProfileUpdate',
-			profile: profileObject,
+			changeType: 'statModified',
+			name: 'mtx_party_assist_quest',
+			value: questToPinAsPartyAssist,
 		});
+
+		c.executionCtx.waitUntil(profile.updateAttribute('mtx_party_assist_quest', questToPinAsPartyAssist));
 
 		return c.json(profile.createResponse());
 	}

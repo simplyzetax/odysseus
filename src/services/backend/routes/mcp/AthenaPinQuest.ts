@@ -1,17 +1,18 @@
 import { app } from '@core/app';
-import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
+import { type } from 'arktype';
+import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
+import { arktypeValidator } from '@hono/arktype-validator';
+
+const athenaPinQuestSchema = type({
+	pinnedQuest: 'string',
+});
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/QueryProfile',
+	'/fortnite/api/game/v2/profile/:accountId/client/AthenaPinQuest',
+	arktypeValidator('json', athenaPinQuestSchema),
 	acidMiddleware,
-	ratelimitMiddleware({
-		capacity: 10,
-		initialTokens: 10,
-		refillRate: 0.5,
-	}),
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
@@ -22,14 +23,18 @@ app.post(
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
 		}
 
+		const { pinnedQuest } = c.req.valid('json');
+
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
-		const profileObject = await profile.buildProfileObject();
 
 		profile.trackChange({
-			changeType: 'fullProfileUpdate',
-			profile: profileObject,
+			changeType: 'statModified',
+			name: 'pinned_quest',
+			value: pinnedQuest,
 		});
+
+		c.executionCtx.waitUntil(profile.updateAttribute('pinned_quest', pinnedQuest));
 
 		return c.json(profile.createResponse());
 	}
