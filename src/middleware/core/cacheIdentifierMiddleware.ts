@@ -45,5 +45,5 @@ export const cacheIdentifierMiddleware = createMiddleware(
 		}*/
 
 		await next();
-	}
+	},
 );

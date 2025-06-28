@@ -22,6 +22,7 @@ export default tseslint.config(
 			'@typescript-eslint/no-empty-object-type': 'off',
 			'drizzle/enforce-delete-with-where': ['error', { drizzleObjectName: ['db'] }],
 			'drizzle/enforce-update-with-where': ['error', { drizzleObjectName: ['db'] }],
-			quotes: ['error', 'single', { avoidEscape: true }]		},
+			quotes: ['error', 'single', { avoidEscape: true }],
+		},
 	},
 );
