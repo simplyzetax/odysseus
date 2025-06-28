@@ -283,6 +283,32 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 
 	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.env.KV, c);
 
+	// Send XMPP notification for the invite
+	try {
+		const xmppStub = c.env.XmppServer.get(c.env.XmppServer.idFromName('xmpp-server'));
+		const inviterDisplayName = c.var.account.displayName;
+		const partyData = party.getData();
+
+		const inviteMessage = {
+			type: 'com.epicgames.party.invitation',
+			party_id: party.id,
+			sent_by: requestAccountId,
+			sent_by_dn: inviterDisplayName,
+			sent_at: new Date().toISOString(),
+			expires_at: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+			meta: {
+				'urn:epic:cfg:build-id_s': partyData.meta['urn:epic:cfg:build-id_s'] || '1:1:',
+				'urn:epic:conn:platform_s': member.meta['urn:epic:conn:platform_s'] || 'WIN',
+				'urn:epic:member:dn_s': inviterDisplayName,
+				'urn:epic:cfg:jId_s': `P-${party.id}`,
+			},
+		};
+
+		await xmppStub.sendMessageMulti([inviteeAccountId], inviteMessage);
+	} catch (error) {
+		console.error('Failed to send party invite XMPP notification:', error);
+	}
+
 	return c.sendStatus(204);
 });
 
@@ -373,7 +399,24 @@ app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddl
 	// Store ping with 1 hour expiration
 	await c.env.KV.put(pingKey, JSON.stringify(ping), { expirationTtl: 3600 });
 
-	//TODO: Send XMPP notification to friend
+	// Send XMPP notification to friend
+	try {
+		const xmppStub = c.env.XmppServer.get(c.env.XmppServer.idFromName('xmpp-server'));
+
+		const pingMessage = {
+			type: 'com.epicgames.social.party.notification.v0.PING',
+			pinger_id: requestAccountId,
+			pinger_dn: c.var.account.displayName,
+			sent: ping.sent_at,
+			expires: ping.expires_at,
+			ns: 'Fortnite',
+			meta: ping.meta || {},
+		};
+
+		await xmppStub.sendMessageMulti([friendId], pingMessage);
+	} catch (error) {
+		console.error('Failed to send ping XMPP notification:', error);
+	}
 
 	return c.json(ping);
 });

@@ -34,6 +34,10 @@ type XMPPClient = typeof xmppClientSchema.infer;
  * Re-implemented to use Cloudflare Workers infrastructure and fix logic flaws
  */
 export class XMPPServer extends DurableObject {
+	private clientsByAccountId: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
+	private clientsByJid: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
+	private mapsInitialized = false;
+
 	/**
 	 * Handle WebSocket upgrade requests and other HTTP requests
 	 */
@@ -53,6 +57,7 @@ export class XMPPServer extends DurableObject {
 		// The server *should* be the one we can do ws.close on etc, needs testing
 		const [client, server] = Object.values(webSocketPair);
 
+		this.ctx.acceptWebSocket(server);
 		this.handleWebSocket(server);
 
 		return new Response(null, {
@@ -190,7 +195,7 @@ export class XMPPServer extends DurableObject {
 
 		// Check if user is already connected (atomic check)
 		if (this.isAccountConnected(accountId)) {
-			this.sendSaslError(ws, 'resource-constraint');
+			this.sendSaslError(ws, 'conflict');
 			return;
 		}
 
@@ -288,6 +293,11 @@ export class XMPPServer extends DurableObject {
 		clientData.jid = `${clientData.accountId}@${XMPP_DOMAIN}/${resource}`;
 		clientData.id = `${clientData.accountId}@${XMPP_DOMAIN}`;
 		this.setClientData(ws, clientData);
+
+		// Now that the client is fully authenticated and bound, add to maps
+		const clientInfo = { ws, data: clientData };
+		this.clientsByAccountId.set(clientData.accountId, clientInfo);
+		this.clientsByJid.set(clientData.jid, clientInfo);
 
 		const bindResponse = buildXML('iq')
 			.att('to', clientData.jid)
@@ -450,11 +460,32 @@ export class XMPPServer extends DurableObject {
 	 */
 	async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
 		const clientData = this.getClientData(ws);
-		if (clientData && clientData.authenticated) {
+		if (clientData?.authenticated) {
 			console.log(`XMPP client disconnected: ${clientData.account.displayName} (${clientData.accountId})`);
+			// Clean up from connection maps
+			this.clientsByAccountId.delete(clientData.accountId);
+			this.clientsByJid.delete(clientData.jid);
 			this.broadcastPresenceUpdate(ws, clientData, '{}', false, true).catch(console.error);
 		}
-		return ws.close(code, reason);
+		// Acknowledge the close event.
+		ws.close(code, 'Connection closed');
+	}
+
+	/**
+	 * Handle low-level WebSocket errors
+	 */
+	async webSocketError(ws: WebSocket, error: Error) {
+		console.error('WebSocket error occurred:', error);
+
+		const clientData = this.getClientData(ws);
+		if (clientData?.authenticated) {
+			console.log(`Cleaning up client due to error: ${clientData.account.displayName} (${clientData.accountId})`);
+			this.clientsByAccountId.delete(clientData.accountId);
+			this.clientsByJid.delete(clientData.jid);
+			await this.broadcastPresenceUpdate(ws, clientData, '{}', false, true);
+		}
+
+		// The runtime will close the socket automatically.
 	}
 
 	/**
@@ -579,54 +610,41 @@ export class XMPPServer extends DurableObject {
 	 * Check if an account is already connected
 	 */
 	private isAccountConnected(accountId: string): boolean {
-		for (const ws of this.ctx.getWebSockets()) {
-			const clientData = this.getClientData(ws);
-			if (clientData?.accountId === accountId && clientData.authenticated) {
-				return true;
-			}
-		}
-		return false;
+		this.ensureClientMapsPopulated();
+		return this.clientsByAccountId.has(accountId);
 	}
 
 	/**
 	 * Check if a JID is already in use
 	 */
 	private isJidInUse(jid: string): boolean {
-		for (const ws of this.ctx.getWebSockets()) {
-			const clientData = this.getClientData(ws);
-			if (clientData?.jid === jid) {
-				return true;
-			}
-		}
-		return false;
+		this.ensureClientMapsPopulated();
+		return this.clientsByJid.has(jid);
 	}
 
 	/**
 	 * Find client by various identifiers (fixed ambiguity issue)
 	 */
 	private findClientByIdentifier(identifier: string): { ws: WebSocket; data: XMPPClient } | null {
-		// First try exact JID match (most specific)
-		for (const ws of this.ctx.getWebSockets()) {
-			const data = this.getClientData(ws);
-			if (data?.jid === identifier) {
-				return { ws, data };
-			}
+		this.ensureClientMapsPopulated();
+
+		// Try full JID match first (e.g., accountId@domain/resource)
+		const clientByJid = this.clientsByJid.get(identifier);
+		if (clientByJid) {
+			return clientByJid;
 		}
 
-		// Then try account ID match
-		for (const ws of this.ctx.getWebSockets()) {
-			const data = this.getClientData(ws);
-			if (data?.accountId === identifier) {
-				return { ws, data };
-			}
+		// Try accountId match
+		const clientByAccountId = this.clientsByAccountId.get(identifier);
+		if (clientByAccountId) {
+			return clientByAccountId;
 		}
 
-		// Finally try base ID match
-		for (const ws of this.ctx.getWebSockets()) {
-			const data = this.getClientData(ws);
-			if (data?.id === identifier) {
-				return { ws, data };
-			}
+		// Fallback for bare JID (e.g., accountId@domain)
+		const accountId = identifier.split('@')[0];
+		const clientByBareJid = this.clientsByAccountId.get(accountId);
+		if (clientByBareJid) {
+			return clientByBareJid;
 		}
 
 		return null;
@@ -673,8 +691,9 @@ export class XMPPServer extends DurableObject {
 
 	private sendErrorAndClose(ws: WebSocket, condition: string): void {
 		const closeXML = buildXML('close').att('xmlns', 'urn:ietf:params:xml:ns:xmpp-framing');
+
 		this.sendToClient(ws, closeXML);
-		ws.close(1000, condition);
+		ws.close(1000, `Error: ${condition}`);
 	}
 
 	/**
@@ -777,12 +796,34 @@ export class XMPPServer extends DurableObject {
 		const validData = xmppClientSchema(clientData);
 		if (validData instanceof ArkError) {
 			console.error('Invalid client data:', validData.message);
-			return this.sendSaslError(ws, 'failed-data-parsing');
+			// Don't attach invalid data. The operation that triggered this should fail.
+			return;
 		}
 		ws.serializeAttachment(clientData);
 	}
 
 	private getClientData(ws: WebSocket): XMPPClient | null {
 		return ws.deserializeAttachment();
+	}
+
+	/**
+	 * Rebuilds in-memory maps after hibernation
+	 */
+	private ensureClientMapsPopulated(): void {
+		if (this.mapsInitialized) {
+			return;
+		}
+
+		console.log('Rebuilding client maps after potential hibernation...');
+		for (const ws of this.ctx.getWebSockets()) {
+			const clientData = this.getClientData(ws);
+			if (clientData && clientData.authenticated && clientData.jid) {
+				const clientInfo = { ws, data: clientData };
+				this.clientsByAccountId.set(clientData.accountId, clientInfo);
+				this.clientsByJid.set(clientData.jid, clientInfo);
+			}
+		}
+		this.mapsInitialized = true;
+		console.log(`Maps rebuilt. ${this.clientsByAccountId.size} clients tracked.`);
 	}
 }
