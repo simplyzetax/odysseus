@@ -240,7 +240,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 */
 	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
 		// Automatically generate column mapping from Zod schema shape
-		const schemaShape = itemSelectSchema.shape;
+		const schemaShape = itemSelectSchema.pick('id', 'templateId', 'profileId', 'jsonAttributes', 'quantity', 'favorite', 'seen');
 		const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
 			acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
 			return acc;

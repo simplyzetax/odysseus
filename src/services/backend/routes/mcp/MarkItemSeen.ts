@@ -1,22 +1,17 @@
 import { app } from '@core/app';
 import { odysseus } from '@core/error';
+import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { validator } from 'hono/validator';
-import z from 'zod';
+import { type } from 'arktype';
 
-const markItemSeenSchema = z.object({
-	itemIds: z.array(z.string()).min(1),
+const markItemSeenSchema = type({
+	itemIds: 'string[]',
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
-	validator('json', (value, c) => {
-		const result = markItemSeenSchema.safeParse(value);
-		return result.success
-			? result.data
-			: c.sendError(odysseus.mcp.invalidPayload.withMessage(result.error.errors.map((e) => e.message).join(', ')));
-	}),
+	arktypeValidator('json', markItemSeenSchema),
 	acidMiddleware,
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');

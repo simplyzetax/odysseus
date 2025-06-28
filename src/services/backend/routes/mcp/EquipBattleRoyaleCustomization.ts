@@ -3,8 +3,8 @@ import { profileTypesEnum } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { validator } from 'hono/validator';
-import { z } from 'zod';
+import { arktypeValidator } from '@hono/arktype-validator';
+import { type } from 'arktype';
 
 export const VALID_COSMETIC_SLOTS = [
 	'Character',
@@ -16,30 +16,21 @@ export const VALID_COSMETIC_SLOTS = [
 	'LoadingScreen',
 	'Dance',
 	'ItemWrap',
-];
+] as const;
 
-const equipBattleRoyaleCustomizationSchema = z.object({
-	indexWithinSlot: z.number(), // -1 = fill all slots for multi-slot items, 0+ = specific slot index
-	itemToSlot: z.string().or(z.literal('')),
-	slotName: z.string().refine((v) => VALID_COSMETIC_SLOTS.includes(v), { message: 'Invalid slot name' }),
-	variantUpdates: z
-		.array(
-			z.object({
-				channel: z.string(),
-				active: z.string(),
-			})
-		)
-		.optional(),
+const equipBattleRoyaleCustomizationSchema = type({
+	indexWithinSlot: 'number', // -1 = fill all slots for multi-slot items, 0+ = specific slot index
+	itemToSlot: 'string',
+	slotName: type(['===', ...VALID_COSMETIC_SLOTS]),
+	'variantUpdates?': type({
+		channel: 'string',
+		active: 'string',
+	}).array(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/EquipBattleRoyaleCustomization',
-	validator('json', (value, c) => {
-		const result = equipBattleRoyaleCustomizationSchema.safeParse(value);
-		return result.success
-			? result.data
-			: c.sendError(odysseus.mcp.invalidPayload.withMessage(result.error.errors.map((e) => e.message).join(', ')));
-	}),
+	arktypeValidator('json', equipBattleRoyaleCustomizationSchema),
 	acidMiddleware,
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');

@@ -2,22 +2,19 @@ import { app } from '@core/app';
 import { getDB } from '@core/db/client';
 import { ACCOUNTS } from '@core/db/schemas/account';
 import { odysseus } from '@core/error';
+import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { eq } from 'drizzle-orm';
-import { validator } from 'hono/validator';
-import z from 'zod';
+import { type } from 'arktype';
 
-const setAffiliateNameSchema = z.object({
-	affiliateName: z.string(),
+const setAffiliateNameSchema = type({
+	affiliateName: 'string',
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetAffiliateName',
-	validator('json', (value, c) => {
-		const result = setAffiliateNameSchema.safeParse(value);
-		return result.success ? result.data : c.sendError(odysseus.mcp.invalidPayload.withMessage(JSON.stringify(result.error.errors)));
-	}),
+	arktypeValidator('json', setAffiliateNameSchema),
 	acidMiddleware,
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
