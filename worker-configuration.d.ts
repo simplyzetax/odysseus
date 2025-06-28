@@ -27,7 +27,24 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "DATABASE_URL" | "JWT_SECRET" | "BASE_URL" | "DISABLE_CACHE" | "DEV_AUTH_TOKEN" | "CLOUDFLARE_EMAIL" | "CLOUDFLARE_API_KEY" | "CLOUDFLARE_ACCOUNT_ID" | "DISCORD_APPLICATION_ID" | "DISCORD_PUBLIC_KEY" | "DISCORD_CLIENT_SECRET" | "DISCORD_BOT_TOKEN">> {}
+	interface ProcessEnv
+		extends StringifyValues<
+			Pick<
+				Cloudflare.Env,
+				| 'DATABASE_URL'
+				| 'JWT_SECRET'
+				| 'BASE_URL'
+				| 'DISABLE_CACHE'
+				| 'DEV_AUTH_TOKEN'
+				| 'CLOUDFLARE_EMAIL'
+				| 'CLOUDFLARE_API_KEY'
+				| 'CLOUDFLARE_ACCOUNT_ID'
+				| 'DISCORD_APPLICATION_ID'
+				| 'DISCORD_PUBLIC_KEY'
+				| 'DISCORD_CLIENT_SECRET'
+				| 'DISCORD_BOT_TOKEN'
+			>
+		> {}
 }
 
 // Begin runtime types
