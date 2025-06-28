@@ -32,9 +32,13 @@ app.post(
 
 		const db = getDB(c);
 
-		const [sacAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, affiliateName));
-		if (!sacAccount) {
+		const [creatorAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, affiliateName));
+		if (!creatorAccount) {
 			return c.sendError(odysseus.basic.notFound.withMessage('Affiliate name not found'));
+		}
+
+		if (!creatorAccount.creator) {
+			return c.sendError(odysseus.basic.notFound.withMessage('Creator account not verified'));
 		}
 
 		const now = new Date().toISOString();
