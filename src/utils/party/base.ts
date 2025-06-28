@@ -1,6 +1,10 @@
 import { odysseus } from '@core/error';
 import { JoinPartyConnection, PartyConfig, PartyData, PartyInvite, PartyMember, PartyUpdate } from '@otypes/fortnite/party';
 import { nanoid } from 'nanoid';
+import { getDB } from '@core/db/client';
+import { FRIENDS } from '@core/db/schemas/friends';
+import { eq, and } from 'drizzle-orm';
+import type { Context } from 'hono';
 
 export class Party implements PartyData {
 	id!: string;
@@ -66,6 +70,43 @@ export class Party implements PartyData {
 		const data = await kv.get(`party:${partyId}`, 'json');
 		if (!data) return null;
 		return new Party(data as PartyData);
+	}
+
+	/**
+	 * Get accepted friends for a user
+	 */
+	static async getFriends(c: Context, accountId: string): Promise<string[]> {
+		const db = getDB(c);
+
+		const friends = await db
+			.select({ targetId: FRIENDS.targetId })
+			.from(FRIENDS)
+			.where(and(eq(FRIENDS.accountId, accountId), eq(FRIENDS.status, 'ACCEPTED')));
+
+		return friends.map((f) => f.targetId);
+	}
+
+	/**
+	 * Check if two users are friends
+	 */
+	static async areFriends(c: Context, accountId1: string, accountId2: string): Promise<boolean> {
+		const db = getDB(c);
+
+		const [friendship] = await db
+			.select()
+			.from(FRIENDS)
+			.where(and(eq(FRIENDS.accountId, accountId1), eq(FRIENDS.targetId, accountId2), eq(FRIENDS.status, 'ACCEPTED')));
+
+		return !!friendship;
+	}
+
+	/**
+	 * Get mutual friends between the inviter's party and the invited user
+	 */
+	async getMutualFriends(c: Context, invitedId: string): Promise<string[]> {
+		const invitedFriends = await Party.getFriends(c, invitedId);
+
+		return this.members.filter((member) => invitedFriends.includes(member.account_id)).map((member) => member.account_id);
 	}
 
 	async update(updated: PartyUpdate, kv: KVNamespace) {
@@ -136,11 +177,17 @@ export class Party implements PartyData {
 		});
 	}
 
-	async inviteUser(invitedId: string, inviterId: string, meta: Record<string, string>, kv: KVNamespace) {
+	async inviteUser(invitedId: string, inviterId: string, meta: Record<string, string>, kv: KVNamespace, c: Context) {
 		const inviter = this.members.find((x) => x.account_id == inviterId);
 
 		if (!inviter) {
-			throw new Error('inviter not found');
+			throw odysseus.party.memberNotFound.variable([inviterId]);
+		}
+
+		// Check if inviter and invited user are friends
+		const areFriends = await Party.areFriends(c, inviterId, invitedId);
+		if (!areFriends) {
+			throw odysseus.party.pingForbidden.withMessage(`User [${inviterId}] is not authorized to invite [${invitedId}] - not friends.`);
 		}
 
 		const invite = {
@@ -156,6 +203,24 @@ export class Party implements PartyData {
 
 		this.invites.push(invite);
 		await this.saveToKV(kv);
+
+		// Get mutual friends for the notification
+		const mutualFriends = await this.getMutualFriends(c, invitedId);
+
+		this.broadcastMessage({
+			sent: new Date(),
+			type: 'com.epicgames.social.party.notification.v0.INITIAL_INVITE',
+			meta: meta,
+			ns: 'Fortnite',
+			party_id: this.id,
+			inviter_id: inviterId,
+			inviter_dn: inviter.meta['urn:epic:member:dn_s'] || inviterId,
+			invitee_id: invitedId,
+			sent_at: invite.sent_at,
+			updated_at: invite.updated_at,
+			friends_ids: mutualFriends,
+			members_count: this.members.length,
+		});
 
 		/*xmppApi.sendMesage(`${invitedId}@xmpp.neonitedev.live`, {
 			sent: new Date(),
@@ -176,15 +241,31 @@ export class Party implements PartyData {
 		*/
 	}
 
-	async cancelInvite(sent_to: string, kv: KVNamespace) {
+	async cancelInvite(sent_to: string, kv: KVNamespace, c: Context) {
 		const invite = this.invites.find((x) => x.sent_to == sent_to);
 
 		if (!invite) {
-			throw new Error('invation not found');
+			throw odysseus.party.memberNotFound.withMessage('invitation not found');
 		}
 
 		this.invites = this.invites.filter((x) => x.sent_to != sent_to);
 		await this.saveToKV(kv);
+
+		const inviter = this.members.find((x) => x.account_id == invite.sent_by);
+
+		this.broadcastMessage({
+			sent: new Date(),
+			type: 'com.epicgames.social.party.notification.v0.INVITE_CANCELLED',
+			meta: invite.meta,
+			ns: 'Fortnite',
+			party_id: this.id,
+			inviter_id: invite.sent_by,
+			inviter_dn: inviter ? inviter.meta['urn:epic:member:dn_s'] || invite.sent_by : '',
+			invitee_id: invite.sent_to,
+			sent_at: invite.sent_at,
+			updated_at: new Date(),
+			expires_at: invite.expires_at,
+		});
 
 		/*
 		xmppApi.sendMesage(`${sent_to}@xmpp.neonitedev.live`, {
