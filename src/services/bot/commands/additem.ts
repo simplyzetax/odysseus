@@ -84,7 +84,7 @@ export const additemCommand: CommandHandler = {
 				} catch (error) {
 					await discord.handleError(error instanceof Error ? error : new Error(String(error)), interaction.token);
 				}
-			})(),
+			})()
 		);
 
 		return new Response(JSON.stringify(deferredResponse), {
