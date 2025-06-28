@@ -30,7 +30,7 @@ export const getDB = (c: Context<{ Bindings: Bindings; Variables: { cacheIdentif
 	});
 };
 
-export const getDBSimple = () => {
+export const getDBSimple = (env: Bindings) => {
 	return drizzle(env.DB.connectionString);
 };
 

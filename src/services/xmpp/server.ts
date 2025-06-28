@@ -202,7 +202,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		}
 
 		// Fetch account from database
-		const db = getDBSimple();
+		const db = getDBSimple(this.env);
 
 		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, accountId)).limit(1);
 		if (!account) {
