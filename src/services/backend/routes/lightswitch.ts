@@ -1,46 +1,40 @@
-import { app } from "@core/app";
-import { clientTokenVerify } from "@middleware/auth/clientAuthMiddleware";
+import { app } from '@core/app';
+import { clientTokenVerify } from '@middleware/auth/clientAuthMiddleware';
 
-app.get("/lightswitch/api/service/:serviceName/status", clientTokenVerify, async (c) => {
+app.get('/lightswitch/api/service/:serviceName/status', clientTokenVerify, async (c) => {
+	const service = c.req.param('serviceName');
 
-    const service = c.req.param("serviceName");
-
-    return c.json({
-        serviceInstanceId: service,
-        status: "UP",
-        message: `${service} is online`,
-        maintenanceUri: null,
-        overrideCatalogIds: [
-            "a7f138b2e51945ffbfdacc1af0541053"
-        ],
-        allowedActions: [],
-        banned: false,
-        launcherInfoDTO: {
-            appName: service.charAt(0).toUpperCase() + service.slice(1),
-            catalogItemId: "4fe75bbc5a674f4f9b356b5c90567da5",
-            namespace: service
-        }
-    });
+	return c.json({
+		serviceInstanceId: service,
+		status: 'UP',
+		message: `${service} is online`,
+		maintenanceUri: null,
+		overrideCatalogIds: ['a7f138b2e51945ffbfdacc1af0541053'],
+		allowedActions: [],
+		banned: false,
+		launcherInfoDTO: {
+			appName: service.charAt(0).toUpperCase() + service.slice(1),
+			catalogItemId: '4fe75bbc5a674f4f9b356b5c90567da5',
+			namespace: service,
+		},
+	});
 });
 
-app.get("/lightswitch/api/service/bulk/status", clientTokenVerify, async (c) => {
-    return c.json([{
-        serviceInstanceId: "fortnite",
-        status: "UP",
-        message: "odysseus is up.",
-        maintenanceUri: null,
-        overrideCatalogIds: [
-            "a7f138b2e51945ffbfdacc1af0541053"
-        ],
-        allowedActions: [
-            "PLAY",
-            "DOWNLOAD"
-        ],
-        banned: false,
-        launcherInfoDTO: {
-            appName: "Fortnite",
-            catalogItemId: "4fe75bbc5a674f4f9b356b5c90567da5",
-            namespace: "fn"
-        }
-    }]);
+app.get('/lightswitch/api/service/bulk/status', clientTokenVerify, async (c) => {
+	return c.json([
+		{
+			serviceInstanceId: 'fortnite',
+			status: 'UP',
+			message: 'odysseus is up.',
+			maintenanceUri: null,
+			overrideCatalogIds: ['a7f138b2e51945ffbfdacc1af0541053'],
+			allowedActions: ['PLAY', 'DOWNLOAD'],
+			banned: false,
+			launcherInfoDTO: {
+				appName: 'Fortnite',
+				catalogItemId: '4fe75bbc5a674f4f9b356b5c90567da5',
+				namespace: 'fn',
+			},
+		},
+	]);
 });

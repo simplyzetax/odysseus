@@ -28,7 +28,7 @@ export const ITEMS = pgTable(
 			profileIdIndex: index('items_profile_id_idx').on(items.profileId),
 			templateIdIndex: index('items_template_id_idx').on(items.templateId),
 		};
-	}
+	},
 );
 
 export type Item = typeof ITEMS.$inferSelect;

@@ -1,13 +1,12 @@
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
-import { odysseus } from '../../core/error';
-import type { McpResponseBody } from '../../types/fortnite/mcp';
+import { odysseus } from '@core/error';
+import type { McpResponseBody } from '@otypes/fortnite/mcp';
 
 /**
- * Validates and parses revision number from query parameter
- * @param rvnParam - The revision number parameter from query
- * @returns The parsed revision number
- * @throws HttpException if revision number is invalid
+ * Parses the revision number from the rvn parameter
+ * @param rvnParam - The revision parameter string
+ * @returns The parsed revision number or 0 if invalid
  */
 function parseRevisionNumber(rvnParam: string | undefined): number {
 	const rvn = parseInt(rvnParam || '0', 10);

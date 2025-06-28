@@ -1,7 +1,6 @@
 import { odysseus } from '@core/error';
-import { JWT } from '@utils/auth/jwt';
 import type { Context } from 'hono';
-import { getCookie, getSignedCookie, setCookie, setSignedCookie } from 'hono/cookie';
+import { getSignedCookie, setSignedCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
 import { nanoid } from 'nanoid';
 

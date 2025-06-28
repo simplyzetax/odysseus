@@ -53,7 +53,7 @@ app.get(
 		});
 
 		return c.json(response);
-	}
+	},
 );
 
 app.get(
@@ -87,7 +87,7 @@ app.get(
 			displayName: account.displayName,
 			externalAuths: {},
 		});
-	}
+	},
 );
 
 app.get(
@@ -119,7 +119,7 @@ app.get(
 			displayName: account.displayName,
 			externalAuths: {},
 		});
-	}
+	},
 );
 
 app.get(
@@ -162,7 +162,7 @@ app.get(
 		}));
 
 		return c.json(response);
-	}
+	},
 );
 
 app.get(
@@ -198,5 +198,5 @@ app.get(
 			cabinedMode: false,
 			hasHashedEmail: false,
 		});
-	}
+	},
 );

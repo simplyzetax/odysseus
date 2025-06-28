@@ -52,5 +52,5 @@ app.post(
 		c.executionCtx.waitUntil(profile.updateAttribute('auto_spend_season_currency_ids', seasonIdsAttribute.valueJSON));
 
 		return c.json(profile.createResponse());
-	}
+	},
 );

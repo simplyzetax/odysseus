@@ -40,7 +40,7 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 
 	if (!friendship) {
 		return c.sendError(
-			odysseus.friends.friendshipNotFound.withMessage(`Friendship between ${c.var.accountId} and ${friendId} does not exist`)
+			odysseus.friends.friendshipNotFound.withMessage(`Friendship between ${c.var.accountId} and ${friendId} does not exist`),
 		);
 	}
 
@@ -211,8 +211,8 @@ app.delete('/friends/api/*/friends*/:receiverId', ratelimitMiddleware(), acidMid
 		.where(
 			or(
 				and(eq(FRIENDS.accountId, senderId), eq(FRIENDS.targetId, receiverId)),
-				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId))
-			)
+				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId)),
+			),
 		);
 
 	return c.sendStatus(204);
@@ -239,8 +239,8 @@ app.post('/friends/api/*/blocklist*/:receiverId', ratelimitMiddleware(), acidMid
 		.where(
 			or(
 				and(eq(FRIENDS.accountId, senderId), eq(FRIENDS.targetId, receiverId)),
-				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId))
-			)
+				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId)),
+			),
 		);
 
 	// Add to blocklist
@@ -275,8 +275,8 @@ app.delete('/friends/api/*/blocklist*/:receiverId', ratelimitMiddleware(), acidM
 		.where(
 			or(
 				and(eq(FRIENDS.accountId, senderId), eq(FRIENDS.targetId, receiverId)),
-				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId))
-			)
+				and(eq(FRIENDS.accountId, receiverId), eq(FRIENDS.targetId, senderId)),
+			),
 		);
 
 	return c.sendStatus(204);

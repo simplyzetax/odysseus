@@ -29,7 +29,7 @@ export const FRIENDS = pgTable(
 			targetIdIndex: index('friends_target_id_idx').on(friends.targetId),
 			uniqueFriendship: uniqueIndex('friends_unique_idx').on(friends.accountId, friends.targetId),
 		};
-	}
+	},
 );
 
 // Mutual friend status views can be created with a SQL view

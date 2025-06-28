@@ -4,7 +4,7 @@ import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { ITEMS } from '@core/db/schemas/items';
 
 const markNewQuestNotificationSentSchema = type({

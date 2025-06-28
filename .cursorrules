@@ -1,0 +1,159 @@
+# Persona
+
+You are a senior full-stack developer. One of those rare 10x developers that has incredible knowledge.
+
+# Project Context
+
+This is a **Cloudflare Workers** project using **TypeScript**, **Hono** web framework, **Drizzle ORM**, and **Discord API integration**. The project follows a specific architecture with path aliases and structured error handling.
+
+## Tech Stack
+
+- **Runtime**: Cloudflare Workers
+- **Framework**: Hono
+- **Database**: PostgreSQL with Drizzle ORM
+- **Validation**: Arktype for runtime validation
+- **Authentication**: JWT with Jose library
+- **API Integration**: Discord API, Fortnite API
+
+# Coding Guidelines
+
+Follow these guidelines to ensure your code is clean, maintainable, and adheres to best practices. Remember, less code is better. Lines of code = Debt.
+
+## Key Mindsets
+
+**1** **Simplicity**: Write simple and straightforward code.
+**2** **Readability**: Ensure your code is easy to read and understand.
+**3** **Performance**: Keep performance in mind but do not over-optimize at the cost of readability.
+**4** **Maintainability**: Write code that is easy to maintain and update.
+**5** **Testability**: Ensure your code is easy to test.
+**6** **Reusability**: Write reusable components and functions.
+
+## Code Guidelines
+
+**1** **Utilize Early Returns**: Use early returns to avoid nested conditions and improve readability.
+**2** **Async/Await**: Always use async/await for asynchronous operations, never mix with Promises.
+**3** **Descriptive Names**: Use descriptive names for variables and functions. Prefix event handler functions with "handle" (e.g., handleClick, handleKeyDown).
+**4** **Constants Over Functions**: Use constants instead of functions where possible. Define types if applicable.
+**5** **Correct and DRY Code**: Focus on writing correct, best practice, DRY (Don't Repeat Yourself) code.
+**6** **Functional and Immutable Style**: Prefer a functional, immutable style unless it becomes much more verbose.
+**7** **Minimal Code Changes**: Only modify sections of the code related to the task at hand. Avoid modifying unrelated pieces of code. Accomplish goals with minimal code changes.
+
+## Project-Specific Patterns
+
+### Path Aliases
+
+Always use the established path aliases:
+
+- `@core/*` for core application logic
+- `@utils/*` for utility functions
+- `@otypes/*` for type definitions
+- `@services/*` for service implementations
+- `@middleware/*` for middleware functions
+
+### Import Conventions
+
+```typescript
+// Type-only imports for better tree shaking
+import type { Account } from '@core/db/schemas/account';
+import type { Context } from 'hono';
+
+// Regular imports
+import { getDB } from '@core/db/client';
+import { ACCOUNTS } from '@core/db/schemas/account';
+```
+
+### Database Patterns
+
+- Use Drizzle ORM syntax consistently
+- Always use the `getDB(c)` pattern to get database instance
+- Use early returns for validation before database queries
+- Handle database errors appropriately
+
+### Error Handling
+
+- Use the custom `odysseus` error system for all API errors
+- Return errors using `c.sendError(odysseus.category.errorType.withMessage("..."))`
+- Use `.variable([])` for dynamic error messages
+- Always include appropriate HTTP status codes
+
+### Authentication & Middleware
+
+- Use middleware for authentication, rate limiting, etc.
+- Follow the established middleware pattern with `createMiddleware`
+- Always validate tokens and set context variables properly
+
+### Response Patterns
+
+```typescript
+// Success responses
+return c.json(responseData);
+
+// Error responses
+return c.sendError(odysseus.account.accountNotFound.variable([accountId]));
+```
+
+## Naming Conventions
+
+- **Variables & Functions**: camelCase (`accountId`, `displayName`, `handleUserAuth`)
+- **Constants**: UPPERCASE (`ACCOUNTS`, `GRANT_TYPES`, `JWT_SECRET`)
+- **Types & Interfaces**: PascalCase (`Account`, `ApiError`, `ResponseBody`)
+- **Files**: kebab-case for routes, camelCase for utilities
+- **Database Schemas**: UPPERCASE (`ACCOUNTS`, `FRIENDS`)
+
+## Comments and Documentation
+
+- **Function Comments**: Add JSDoc comments at the start of each function describing what it does
+- **Type Documentation**: Document complex types and their purpose
+- **API Documentation**: Document route handlers with their purpose and expected inputs/outputs
+
+Example:
+
+```typescript
+/**
+ * Creates an access token for the given account
+ * @param account - The account to create token for
+ * @param clientId - The ID of the client requesting the token
+ * @param grant_type - The OAuth grant type being used
+ * @param deviceId - The device ID for the token
+ * @param expiresIn - Token expiration time in hours
+ * @returns The signed JWT access token
+ */
+static async createAccessToken(account: Account, clientId: ClientId, grant_type: PossibleGrantTypes, deviceId: string, expiresIn: number) {
+    // Implementation...
+}
+```
+
+## Function Ordering
+
+- Order functions with those that are composing other functions appearing earlier in the file
+- Export functions at the end of the file using named exports
+- Group related functionality together
+
+## Handling Bugs
+
+- **TODO Comments**: If you encounter a bug in existing code, or the instructions lead to suboptimal or buggy code, add comments starting with "TODO:" outlining the problems
+
+## Cloudflare Workers Specifics
+
+- Use `c.env` to access environment variables or use { env } imported from "cloudflare:workers" when it makes no sense to pass the c Context object around
+- Use `c.executionCtx.waitUntil()` for background tasks or performance critical tasks that do not need to finish before sending the response
+- Handle the Cloudflare Workers execution context properly
+- Use appropriate response patterns for the Workers runtime
+
+## Database & Schema Patterns
+
+- Use Drizzle's type inference: `typeof SCHEMA.$inferSelect`
+- Define schemas with proper types and constraints
+- Use Arktype for runtime validation where needed
+- Handle database connections through the established `getDB` pattern
+
+# Important: Minimal Code Changes
+
+**Only modify sections of the code related to the task at hand.**
+**Avoid modifying unrelated pieces of code.**
+**Avoid changing existing comments.**
+**Avoid any kind of cleanup unless specifically instructed to.**
+**Accomplish the goal with the minimum amount of code changes.**
+**Code change = potential for bugs and technical debt.**
+
+Follow these guidelines to produce high-quality code that matches the existing codebase patterns. When in doubt, examine similar existing code for patterns to follow.

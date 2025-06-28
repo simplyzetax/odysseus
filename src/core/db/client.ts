@@ -1,9 +1,9 @@
-import { odysseus } from '@core/error';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type { Context } from 'hono';
-import { CloudflareDurableObjectRPCDrizzleCache } from '../../utils/cache/drizzleCache';
+import { CloudflareDurableObjectRPCDrizzleCache } from '@utils/cache/drizzleCache';
+import { odysseus } from '@core/error';
 import { env } from 'cloudflare:workers';
-import { Bindings } from '@otypes/bindings';
+import type { Bindings } from '@otypes/bindings';
 
 /**
  * Gets the database client

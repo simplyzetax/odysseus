@@ -35,5 +35,5 @@ app.post(
 
 		const response = profile.createResponse();
 		return c.json(response);
-	}
+	},
 );

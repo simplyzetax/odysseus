@@ -37,5 +37,5 @@ app.post(
 		c.executionCtx.waitUntil(profile.updateAttribute('mtx_party_assist_quest', questToPinAsPartyAssist));
 
 		return c.json(profile.createResponse());
-	}
+	},
 );

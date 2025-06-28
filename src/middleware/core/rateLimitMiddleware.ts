@@ -82,7 +82,7 @@ function calculateCurrentTokens(
 	lastUpdate: number,
 	currentTime: number,
 	refillRate: number,
-	capacity: number
+	capacity: number,
 ): number {
 	const timeElapsed = currentTime - lastUpdate;
 	const tokensToAdd = timeElapsed * refillRate;
@@ -179,7 +179,7 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
 					} catch (error) {
 						console.error('Failed to update token bucket in KV:', error);
 					}
-				})()
+				})(),
 			);
 
 			await next();
