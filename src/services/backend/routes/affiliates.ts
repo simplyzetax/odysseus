@@ -28,5 +28,5 @@ app.get(
 			status: account.banned ? 'BANNED' : 'ACTIVE',
 			verified: account.creator,
 		});
-	}
+	},
 );

@@ -1,7 +1,7 @@
 import type { Profile } from '@core/db/schemas/profile';
 import type { Context } from 'hono';
-import type { FortniteProfile } from '../base-profile';
-import { FortniteProfileWithDBProfile } from '../base-profile';
+import type { FortniteProfile } from '@utils/mcp/base-profile';
+import { FortniteProfileWithDBProfile } from '@utils/mcp/base-profile';
 import { Bindings } from '@otypes/bindings';
 
 export class AthenaProfile extends FortniteProfileWithDBProfile<'athena'> {

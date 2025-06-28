@@ -32,5 +32,5 @@ app.post(
 		});
 
 		return c.json(profile.createResponse());
-	}
+	},
 );

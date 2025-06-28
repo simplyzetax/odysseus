@@ -1,6 +1,5 @@
 import { pgTable, uuid, pgEnum, integer } from 'drizzle-orm/pg-core';
 import { createSelectSchema } from 'drizzle-arktype';
-import { type } from 'arktype';
 import { ACCOUNTS } from './account';
 
 export const profileTypes = pgEnum('profile_type_enum', ['athena', 'common_core', 'common_public', 'creative', 'profile0']);

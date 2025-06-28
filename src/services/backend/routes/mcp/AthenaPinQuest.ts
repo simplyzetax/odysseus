@@ -37,5 +37,5 @@ app.post(
 		c.executionCtx.waitUntil(profile.updateAttribute('pinned_quest', pinnedQuest));
 
 		return c.json(profile.createResponse());
-	}
+	},
 );

@@ -8,53 +8,51 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2025-06-17",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"logpush": true,
 	"upload_source_maps": true,
 	"hyperdrive": [
 		{
 			"binding": "DB",
 			"id": "7fe0e6c7f9d24aec8528d87ae3aee600",
-			"localConnectionString": "postgresql://finnernzerhoff:123@localhost:5432/odysseus"
-		}
+			"localConnectionString": "postgresql://finnernzerhoff:123@localhost:5432/odysseus",
+		},
 	],
 	"r2_buckets": [
 		{
 			"bucket_name": "odysseus",
-			"binding": "R2"
-		}
+			"binding": "R2",
+		},
 	],
 	"kv_namespaces": [
 		{
 			"binding": "KV",
-			"id": "148ab769ecc34b5f96ac6a9f38a946be"
-		}
+			"id": "148ab769ecc34b5f96ac6a9f38a946be",
+		},
 	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "CACHE_DO",
 				"class_name": "CacheDurableObject",
-				"script_name": "odysseus"
+				"script_name": "odysseus",
 			},
-		]
+		],
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["CacheDurableObject"]
-		}
+			"new_sqlite_classes": ["CacheDurableObject"],
+		},
 	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */
 	"placement": {
-		"mode": "smart"
+		"mode": "smart",
 	},
 	/**
 	 * Bindings

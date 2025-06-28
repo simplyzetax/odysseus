@@ -62,5 +62,5 @@ app.post(
 		c.executionCtx.waitUntil(profile.updateAttribute('mtx_affiliate', affiliateName));
 
 		return c.json(profile.createResponse());
-	}
+	},
 );

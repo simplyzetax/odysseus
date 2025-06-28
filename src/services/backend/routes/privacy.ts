@@ -46,5 +46,5 @@ app.post(
 			...account.settings.privacy,
 			accountId: c.var.account.id,
 		});
-	}
+	},
 );

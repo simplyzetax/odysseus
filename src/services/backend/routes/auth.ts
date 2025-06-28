@@ -84,7 +84,7 @@ app.post(
 					expires_in: Math.round(
 						(JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime() -
 							new Date().getTime()) /
-							1000
+							1000,
 					),
 					expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
 					token_type: 'bearer',
@@ -152,7 +152,7 @@ app.post(
 			in_app_id: account.id,
 			device_id: deviceId,
 		});
-	}
+	},
 );
 
 app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
@@ -237,7 +237,7 @@ app.post(
 		type({
 			refresh_token: type.string.moreThanLength(0).describe('Refresh token is required'),
 			'scope?': 'string',
-		})
+		}),
 	),
 	async (c) => {
 		const body = c.req.valid('form');
@@ -247,16 +247,16 @@ app.post(
 		if (!Authorization) {
 			return c.sendError(
 				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers'
-				)
+					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
+				),
 			);
 		}
 
 		if (!Authorization.toLowerCase().startsWith('basic')) {
 			return c.sendError(
 				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers'
-				)
+					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
+				),
 			);
 		}
 
@@ -264,14 +264,14 @@ app.post(
 		try {
 			const [id, secret] = atob(Authorization.slice(6)).split(':');
 			if (!id || !secret) {
-				throw new Error('Invalid client credentials');
+				return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client credentials'));
 			}
 			clientId = id;
 		} catch {
 			return c.sendError(
 				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers'
-				)
+					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
+				),
 			);
 		}
 
@@ -279,8 +279,8 @@ app.post(
 		if (!isValidClientId(clientId)) {
 			return c.sendError(
 				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers'
-				)
+					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
+				),
 			);
 		}
 
@@ -294,7 +294,9 @@ app.post(
 			// Verify the refresh token
 			const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
 			if (!decodedRefreshToken?.sub || decodedRefreshToken.t !== 'r') {
-				throw new Error('Invalid refresh token');
+				return c.sendError(
+					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`),
+				);
 			}
 
 			// Check if token is expired (JWT library should handle this, but double-check)
@@ -303,7 +305,9 @@ app.post(
 			const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
 
 			if (expiresAt.getTime() <= Date.now()) {
-				throw new Error('Expired refresh token');
+				return c.sendError(
+					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is expired`),
+				);
 			}
 
 			// Get account information
@@ -311,11 +315,13 @@ app.post(
 			const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
 
 			if (!account) {
-				throw new Error('Account not found');
+				return c.sendError(
+					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`),
+				);
 			}
 
 			if (account.banned) {
-				throw new Error('Account is banned');
+				return c.sendError(odysseus.account.disabledAccount);
 			}
 
 			// Generate new tokens
@@ -353,5 +359,5 @@ app.post(
 			console.error('Refresh token error:', error);
 			return c.sendError(odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`));
 		}
-	}
+	},
 );

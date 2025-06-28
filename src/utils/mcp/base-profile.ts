@@ -60,7 +60,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	static async construct<T extends ProfileType>(
 		c: Context<{ Bindings: Bindings }>,
 		accountId: string,
-		profileType: T
+		profileType: T,
 	): Promise<ProfileClassMap[T]> {
 		const baseProfile = new FortniteProfile(c, accountId, profileType);
 		return baseProfile.get();
@@ -212,7 +212,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 				'Cannot mix different change types in one response. All changes are: ' +
 					this.changes.map((c) => c.changeType).join(', ') +
 					' and new change is: ' +
-					change.changeType
+					change.changeType,
 			);
 		}
 		this.changes.push(change);
@@ -241,10 +241,13 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
 		// Automatically generate column mapping from Arktype schema shape
 		const schemaShape = itemSelectSchema.infer;
-		const columnMap = Object.keys(schemaShape).reduce((acc, key) => {
-			acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
-			return acc;
-		}, {} as Record<keyof Item, any>);
+		const columnMap = Object.keys(schemaShape).reduce(
+			(acc, key) => {
+				acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
+				return acc;
+			},
+			{} as Record<keyof Item, any>,
+		);
 
 		const column = columnMap[columnName];
 		if (!column) {

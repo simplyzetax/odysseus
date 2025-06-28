@@ -88,8 +88,8 @@ app.post(
 			if (indexWithinSlot < -1 || indexWithinSlot > slotConfig.maxIndex) {
 				return c.sendError(
 					odysseus.mcp.invalidPayload.withMessage(
-						`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${slotConfig.maxIndex}`
-					)
+						`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${slotConfig.maxIndex}`,
+					),
 				);
 			}
 
@@ -100,7 +100,7 @@ app.post(
 				slotName,
 				currentAttribute.valueJSON,
 				normalizedItemToSlot,
-				indexWithinSlot
+				indexWithinSlot,
 			);
 
 			await profile.updateAttribute(attributeName, updatedValue);
@@ -135,5 +135,5 @@ app.post(
 
 		const response = profile.createResponse();
 		return c.json(response);
-	}
+	},
 );
