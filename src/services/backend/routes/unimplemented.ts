@@ -148,7 +148,3 @@ app.get('/fortnite/api/receipts/v1/account/*/receipts', (c) => {
 app.get('/fortnite/api/game/v2/leaderboards/cohort/*', (c) => {
 	return c.json([]);
 });
-
-app.post('/datarouter/api/v1/public/data', (c) => {
-	return c.sendStatus(204);
-});
