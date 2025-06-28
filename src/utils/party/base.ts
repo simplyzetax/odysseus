@@ -385,14 +385,14 @@ export class Party implements PartyData {
 	}
 
 	broadcastMessage(message: object, c: Context<{ Bindings: Bindings }>) {
-		const connectionIds = this.members.flatMap((x) => x.connections).map((x) => x.id);
-		console.log('Broadcasting party message to connections:', connectionIds);
+		const accountIds = this.members.map((x) => x.account_id);
+		console.log('Broadcasting party message to accounts:', accountIds);
 
 		// Send to XMPP Durable Object
 		const xmppId = c.env.XmppServer.idFromName('xmpp-server');
 		const xmppStub = c.env.XmppServer.get(xmppId);
 
 		// Call the sendMessageMulti method on the XMPP server
-		return xmppStub.sendMessageMulti(connectionIds, message);
+		return xmppStub.sendMessageMulti(accountIds, message);
 	}
 }
