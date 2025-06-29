@@ -81,3 +81,29 @@ export async function parseEpicManifest(manifestBytes: Uint8Array): Promise<stri
 		wasm.__wbindgen_free(deferred2_0!, deferred2_1!, 1);
 	}
 }
+
+/**
+ * Creates an Epic manifest using the WASM module
+ * @param manifestJson - The manifest data as JSON string to create manifest from
+ * @returns Created manifest as Uint8Array
+ */
+export async function createEpicManifest(manifestJson: string): Promise<Uint8Array> {
+	console.log('Initializing WASM instance');
+	await initWasm();
+
+	console.log('Creating manifest');
+
+	let deferred2_0: number;
+	let deferred2_1: number;
+	try {
+		const jsonBytes = new TextEncoder().encode(manifestJson);
+		const ptr0 = passArray8ToWasm0(jsonBytes, wasm.__wbindgen_malloc);
+		const len0 = WASM_VECTOR_LEN;
+		const ret = wasm.create_manifest(ptr0, len0);
+		deferred2_0 = ret[0];
+		deferred2_1 = ret[1];
+		return getUint8ArrayMemory0().slice(ret[0], ret[0] + ret[1]);
+	} finally {
+		wasm.__wbindgen_free(deferred2_0!, deferred2_1!, 1);
+	}
+}
