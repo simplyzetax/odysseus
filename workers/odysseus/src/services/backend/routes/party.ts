@@ -308,6 +308,7 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 		await xmppStub.sendMessageMulti([inviteeAccountId], inviteMessage);
 	} catch (error) {
 		console.error('Failed to send party invite XMPP notification:', error);
+		return c.sendError(odysseus.internal.serverError.withMessage('Failed to send party invite XMPP notification.'));
 	}
 
 	return c.sendStatus(204);
