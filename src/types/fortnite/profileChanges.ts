@@ -1,3 +1,5 @@
+import type { FormattedItem } from './item';
+
 export interface BaseProfileChange {
 	changeType: string;
 }
@@ -20,4 +22,27 @@ export type ItemAttrChangedChange = BaseProfileChange & {
 	attributeValue: any;
 };
 
-export type ProfileChange = FullProfileUpdateChange | StatModifiedChange | ItemAttrChangedChange;
+export type ItemAddedChange = BaseProfileChange & {
+	changeType: 'itemAdded';
+	item: FormattedItem;
+	itemId: string;
+};
+
+export type ItemRemovedChange = BaseProfileChange & {
+	changeType: 'itemRemoved';
+	itemId: string;
+};
+
+export type ItemQuantityChangedChange = BaseProfileChange & {
+	changeType: 'itemQuantityChanged';
+	itemId: string;
+	quantity: number;
+};
+
+export type ProfileChange =
+	| FullProfileUpdateChange
+	| StatModifiedChange
+	| ItemAttrChangedChange
+	| ItemAddedChange
+	| ItemRemovedChange
+	| ItemQuantityChangedChange;
