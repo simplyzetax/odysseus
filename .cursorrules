@@ -65,7 +65,7 @@ import { ACCOUNTS } from '@core/db/schemas/account';
 ### Database Patterns
 
 - Use Drizzle ORM syntax consistently
-- Always use the `getDB(c)` pattern to get database instance
+- Always use the `getDB(c.var.cacheIdentifier)` pattern to get database instance
 - Use early returns for validation before database queries
 - Handle database errors appropriately
 

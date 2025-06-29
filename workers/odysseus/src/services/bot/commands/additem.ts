@@ -13,7 +13,7 @@ export const additemCommand: CommandHandler = {
 	name: 'additem',
 	async execute(interaction, c) {
 		const discord = createDiscordAPI(c.env);
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		const deferredResponse = discord.createDeferredResponse(true);
 

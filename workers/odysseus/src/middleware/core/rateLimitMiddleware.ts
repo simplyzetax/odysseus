@@ -118,7 +118,7 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
 
 		try {
 			// Get existing bucket data from KV
-			const existingData = (await c.env.KV.get(kvKey, 'json')) as TokenBucketData | null;
+			const existingData = (await c.env.KV.get(kvKey, 'json')) as TokenBucketData | undefined;
 
 			let currentTokens: number;
 

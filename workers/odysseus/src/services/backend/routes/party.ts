@@ -364,7 +364,7 @@ app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddl
 		return c.sendError(odysseus.party.selfPing);
 	}
 
-	const db = getDB(c);
+	const db = getDB(c.var.cacheIdentifier);
 
 	// Check if they are friends
 	const [friendship] = await db

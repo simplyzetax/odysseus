@@ -3,8 +3,7 @@ import { is, Table, getTableName } from 'drizzle-orm';
 import { Cache } from 'drizzle-orm/cache/core';
 import type { CacheConfig } from 'drizzle-orm/cache/core/types';
 import { CacheDurableObject } from './durableobjects/cacheDurableObject';
-import { Context } from 'hono';
-import { Bindings } from '@otypes/bindings';
+import { ENV } from '@core/env';
 
 // Configuration constants
 const DISABLE_CACHE = env.DISABLE_CACHE === 'true';
@@ -60,31 +59,27 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
 	private readonly globalTtl: number;
 	private readonly durableObject: DurableObjectStub<CacheDurableObject>;
 	private readonly cacheIdentifier: string;
-	private cacheHealthy: boolean = true;
-	private lastHealthCheck: number = 0;
 
 	/**
 	 * Creates a new Cloudflare Durable Object cache instance
 	 *
-	 * @param durableObjectNamespace - The Durable Object namespace for cache operations
-	 * @param cacheName - Unique name for this cache instance (default: "drizzle-cache")
 	 * @param cacheIdentifier - Unique identifier to prefix all cache keys (e.g., user ID, tenant ID)
 	 * @param globalTtl - Default TTL for cache entries in seconds (default: 1000)
 	 */
-	constructor(
-		c: Context<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>,
-		cacheName: string = DEFAULT_CACHE_NAME,
-		cacheIdentifier: string,
-		globalTtl: number = DEFAULT_TTL_SECONDS,
-	) {
+	constructor(cacheIdentifier: string, globalTtl: number = DEFAULT_TTL_SECONDS) {
 		super();
 
 		this.globalTtl = globalTtl;
 		this.cacheIdentifier = cacheIdentifier;
 
+		const colo = cacheIdentifier.split('-')[0];
+		if (!colo) {
+			throw new Error('Invalid cacheIdentifier, could not determine colo.');
+		}
+
 		// Create a consistent Durable Object ID for this cache instance
-		const durableObjectId = c.env.CACHE_DO.idFromName(cacheName);
-		this.durableObject = c.env.CACHE_DO.get(durableObjectId);
+		const durableObjectId = ENV.CACHE_DO.idFromName(colo);
+		this.durableObject = ENV.CACHE_DO.get(durableObjectId);
 	}
 
 	/**
@@ -119,21 +114,15 @@ export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
 		try {
 			//VSCode is lying, we need the await here
 			const result = await this.durableObject.getCacheEntry(prefixedKey);
-
-			if (result) {
-				// console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
-				this.cacheHealthy = true;
+			if (result !== undefined) {
+				console.log(`🎯 Cache HIT - Key: ${prefixedKey}`);
 			} else {
-				// console.log(`❌ Cache MISS - Key: ${prefixedKey}`);
+				console.log(`❌ Cache MISS - Key: ${prefixedKey}`);
 			}
 
 			return result ?? undefined;
 		} catch (error) {
 			console.error(`❗ Cache GET error for key "${prefixedKey}":`, error);
-			this.cacheHealthy = false;
-			this.lastHealthCheck = Date.now();
-
-			// Always return undefined for cache errors to let queries proceed without cache
 			return undefined;
 		}
 	}

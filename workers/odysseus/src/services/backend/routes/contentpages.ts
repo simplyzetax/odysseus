@@ -9,8 +9,8 @@ app.get('/content/api/pages/fortnite-game', ratelimitMiddleware(), async (c) => 
 	//TODO: Fix this bullshit or test it on S19+
 	const contentpagesTemplate: Record<string, any> = {
 		_title: 'Fortnite Game',
-		_activeDate: '2017-08-30T03:20:48.050Z',
-		lastModified: '2019-11-01T17:33:35.346Z',
+		_activeDate: new Date().toISOString(),
+		lastModified: new Date().toISOString(),
 		_locale: 'en-US',
 		dynamicbackgrounds: {
 			backgrounds: {
@@ -38,7 +38,7 @@ app.get('/content/api/pages/fortnite-game', ratelimitMiddleware(), async (c) => 
 		},
 	};
 
-	const globalScopeContentEntries = await getDB(c).select().from(CONTENT);
+	const globalScopeContentEntries = await getDB(c.var.cacheIdentifier).select().from(CONTENT);
 
 	for (const entry of globalScopeContentEntries) {
 		contentpagesTemplate[entry.key] = entry.valueJSON;

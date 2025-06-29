@@ -9,7 +9,7 @@ export const registerCommand: CommandHandler = {
 	name: 'register',
 	async execute(interaction, c) {
 		const discord = createDiscordAPI(c.env);
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		// Send deferred response
 		const deferredResponse = discord.createDeferredResponse(true);

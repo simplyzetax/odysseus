@@ -30,7 +30,7 @@ app.post(
 
 		const { affiliateName } = c.req.valid('json');
 
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		const [creatorAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, affiliateName));
 		if (!creatorAccount) {

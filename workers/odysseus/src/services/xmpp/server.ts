@@ -675,7 +675,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	/**
 	 * Find client by various identifiers (fixed ambiguity issue)
 	 */
-	private findClientByIdentifier(identifier: string): { ws: WebSocket; data: XMPPClient } | null {
+	private findClientByIdentifier(identifier: string): { ws: WebSocket; data: XMPPClient } | undefined {
 		this.ensureClientMapsPopulated();
 
 		// Try full JID match first (e.g., accountId@domain/resource)
@@ -697,7 +697,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 			return clientByBareJid;
 		}
 
-		return null;
+		return undefined;
 	}
 
 	/**

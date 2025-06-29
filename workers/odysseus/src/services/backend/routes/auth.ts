@@ -104,7 +104,7 @@ app.post(
                 return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid exchange code"));
             }*/
 
-				const db = getDB(c);
+				const db = getDB(c.var.cacheIdentifier);
 
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
 				break;
@@ -162,7 +162,7 @@ app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
 		return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid or expired token'));
 	}
 
-	const [account] = await getDB(c)
+	const [account] = await getDB(c.var.cacheIdentifier)
 		.select({
 			displayName: ACCOUNTS.displayName,
 		})
@@ -311,7 +311,7 @@ app.post(
 			}
 
 			// Get account information
-			const db = getDB(c);
+			const db = getDB(c.var.cacheIdentifier);
 			const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
 
 			if (!account) {

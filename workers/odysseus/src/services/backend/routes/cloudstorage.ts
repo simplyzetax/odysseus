@@ -11,7 +11,7 @@ import { md5, sha1, sha256 } from 'hono/utils/crypto';
 const SETTINGS_FILE = 'clientsettings.sav';
 
 app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenVerify, async (c) => {
-	const db = getDB(c);
+	const db = getDB(c.var.cacheIdentifier);
 	const hotfixes = await db.select().from(HOTFIXES);
 
 	const parser = new IniParser(hotfixes);
@@ -40,7 +40,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenV
 
 app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), clientTokenVerify, async (c) => {
 	const filename = c.req.param('filename');
-	const hotfixes = await getDB(c).select().from(HOTFIXES);
+	const hotfixes = await getDB(c.var.cacheIdentifier).select().from(HOTFIXES);
 	const parser = new IniParser(hotfixes);
 
 	// Get .ini content for the specific file (without timestamp for consistent hashing)

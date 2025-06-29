@@ -140,16 +140,16 @@ export class IniParser {
 	 * @param includeDisabled Whether to include disabled hotfixes
 	 * @param scope Filter by scope
 	 * @param includeTimestamp Whether to include timestamp in generated file (default: true)
-	 * @returns .ini file content or null if file not found
+	 * @returns .ini file content or undefined if file not found
 	 */
 	public getIniForFile(
 		filename: string,
 		includeDisabled: boolean = false,
 		scope?: string,
 		includeTimestamp: boolean = true,
-	): string | null {
+	): string | undefined {
 		const fileMap = this.transformToIniFiles(includeDisabled, scope, includeTimestamp);
-		return fileMap.get(filename) || null;
+		return fileMap.get(filename);
 	}
 
 	/**

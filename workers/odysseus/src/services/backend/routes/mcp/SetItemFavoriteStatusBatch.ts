@@ -32,7 +32,7 @@ app.post(
 		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
 		const profile = await fp.get();
 
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		const items = await db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 		if (items.length !== itemIds.length) {

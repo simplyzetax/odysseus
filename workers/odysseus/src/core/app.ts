@@ -11,7 +11,8 @@ import { Bindings } from '@otypes/bindings';
 /**
  * The main app
  */
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>();
+export type App = typeof app;
 
 app.use(responseEnhancementsMiddleware);
 app.use(logger());

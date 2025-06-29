@@ -62,7 +62,7 @@ export class CacheDurableObject extends DurableObject {
 	 * @param key - The key of the cache entry
 	 * @returns The cache entry
 	 */
-	async getCacheEntry(key: string): Promise<unknown | null> {
+	async getCacheEntry(key: string): Promise<unknown | undefined> {
 		try {
 			const now = Date.now();
 
@@ -76,7 +76,7 @@ export class CacheDurableObject extends DurableObject {
 				return JSON.parse(result.data) as unknown;
 			} else {
 				//console.log(`❌ Cache MISS: ${key}`);
-				return null;
+				return undefined;
 			}
 		} catch (error) {
 			console.error(`💥 Cache GET error for ${key}:`, error);

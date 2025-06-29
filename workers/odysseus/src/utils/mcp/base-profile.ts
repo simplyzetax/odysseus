@@ -81,7 +81,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		this.c = c;
 		this.accountId = accountId;
 		this.profileType = profileType;
-		this.db = getDB(c);
+		this.db = getDB(c.var.cacheIdentifier);
 	}
 
 	/**

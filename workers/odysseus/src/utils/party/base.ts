@@ -67,9 +67,9 @@ export class Party implements PartyData {
 	/**
 	 * Load party data from Cloudflare KV
 	 */
-	static async loadFromKV(kv: KVNamespace, partyId: string): Promise<Party | null> {
+	static async loadFromKV(kv: KVNamespace, partyId: string): Promise<Party | undefined> {
 		const data = await kv.get(`party:${partyId}`, 'json');
-		if (!data) return null;
+		if (!data) return undefined;
 		return new Party(data as PartyData);
 	}
 
@@ -77,7 +77,7 @@ export class Party implements PartyData {
 	 * Get accepted friends for a user
 	 */
 	static async getFriends(c: Context, accountId: string): Promise<string[]> {
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		const friends = await db
 			.select({ targetId: FRIENDS.targetId })
@@ -91,7 +91,7 @@ export class Party implements PartyData {
 	 * Check if two users are friends
 	 */
 	static async areFriends(c: Context, accountId1: string, accountId2: string): Promise<boolean> {
-		const db = getDB(c);
+		const db = getDB(c.var.cacheIdentifier);
 
 		const [friendship] = await db
 			.select()
