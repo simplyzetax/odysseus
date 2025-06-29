@@ -22,7 +22,7 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 	// Check if user is already in a party
 	const existingPartyKey = await c.env.KV.get(`user:${accountId}:party`);
 	if (existingPartyKey) {
-		const existingParty = await Party.loadFromKV(c.env.KV, existingPartyKey);
+		const existingParty = await Party.loadFromKV(existingPartyKey);
 		if (existingParty) {
 			return c.sendError(odysseus.party.alreadyInParty.variable([accountId, 'Fortnite']));
 		}
@@ -37,21 +37,16 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 			yield_leadership: false,
 		},
 		accountId,
-		c.env.KV,
 		body.join_info.meta,
 	);
 
-	await party.update(
-		{
-			config: body.config,
-			meta: {
-				delete: [],
-				update: body.meta || {},
-			},
+	await party.update({
+		config: body.config,
+		meta: {
+			delete: [],
+			update: body.meta || {},
 		},
-		c.env.KV,
-		c,
-	);
+	});
 
 	// Store user -> party mapping
 	await c.env.KV.put(`user:${accountId}:party`, party.id);
@@ -67,7 +62,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -81,17 +76,13 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 		return c.sendError(odysseus.party.notLeader);
 	}
 
-	await party.update(
-		{
-			config: body.config || {},
-			meta: {
-				delete: body.meta?.delete || [],
-				update: body.meta?.update || {},
-			},
+	await party.update({
+		config: body.config || {},
+		meta: {
+			delete: body.meta?.delete || [],
+			update: body.meta?.update || {},
 		},
-		c.env.KV,
-		c,
-	);
+	});
 
 	return c.sendStatus(204);
 });
@@ -102,7 +93,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 app.get('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const partyId = c.req.param('partyId');
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -123,7 +114,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', rate
 		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
 	}
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -133,7 +124,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', rate
 		return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
 	}
 
-	await party.updateMember(member.account_id, requestAccountId, body, c.env.KV, c);
+	await party.updateMember(member.account_id, requestAccountId, body);
 
 	return c.sendStatus(204);
 });
@@ -151,7 +142,7 @@ app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitM
 		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
 	}
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -159,14 +150,14 @@ app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitM
 	const existing = party.members.find((x) => x.account_id === targetAccountId);
 
 	if (existing) {
-		await party.reconnect(body.connection, targetAccountId, c.env.KV);
+		await party.reconnect(body.connection, targetAccountId);
 		return c.json({
 			status: 'JOINED',
 			party_id: party.id,
 		});
 	}
 
-	await party.addMember(body.connection, targetAccountId, c.env.KV, body.meta);
+	await party.addMember(body.connection, targetAccountId, body.meta);
 	await c.env.KV.put(`user:${targetAccountId}:party`, party.id);
 
 	return c.json({
@@ -183,7 +174,7 @@ app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMidd
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -207,9 +198,9 @@ app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMidd
 	await c.env.KV.delete(`user:${targetAccountId}:party`);
 
 	if (party.members.length === 1) {
-		await party.deleteParty(c.env.KV);
+		await party.deleteParty();
 	} else {
-		await party.removeMember(targetAccountId, c.env.KV);
+		await party.removeMember(targetAccountId);
 	}
 
 	return c.sendStatus(204);
@@ -230,7 +221,7 @@ app.get('/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountM
 	const userPartyId = await c.env.KV.get(`user:${targetAccountId}:party`);
 
 	if (userPartyId) {
-		const party = await Party.loadFromKV(c.env.KV, userPartyId);
+		const party = await Party.loadFromKV(userPartyId);
 		if (party) {
 			currentParties.push(party.getData());
 		}
@@ -272,7 +263,7 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 		return c.sendError(odysseus.party.selfInvite);
 	}
 
-	const party = await Party.loadFromKV(c.env.KV, partyId);
+	const party = await Party.loadFromKV(partyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 	}
@@ -282,7 +273,7 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 		return c.sendError(odysseus.party.memberNotFound.variable([requestAccountId]));
 	}
 
-	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.env.KV, c);
+	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.var.cacheIdentifier);
 
 	// Send XMPP notification for the invite
 	try {
@@ -330,7 +321,7 @@ app.post(
 			return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
 		}
 
-		const party = await Party.loadFromKV(c.env.KV, partyId);
+		const party = await Party.loadFromKV(partyId);
 		if (!party) {
 			return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
 		}
@@ -490,7 +481,7 @@ app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimit
 		return c.sendError(odysseus.party.userHasNoParty.variable([pingerId]));
 	}
 
-	const party = await Party.loadFromKV(c.env.KV, pingerPartyId);
+	const party = await Party.loadFromKV(pingerPartyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([pingerPartyId]));
 	}
@@ -499,7 +490,7 @@ app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimit
 	await c.env.KV.delete(pingKey);
 
 	// Join the party
-	await party.addMember(body.connection, requestAccountId, c.env.KV, body.meta);
+	await party.addMember(body.connection, requestAccountId, body.meta);
 	await c.env.KV.put(`user:${requestAccountId}:party`, party.id);
 
 	return c.json({
@@ -534,7 +525,7 @@ app.get('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/parties', ratelim
 		return c.sendError(odysseus.party.userHasNoParty.variable([pingerId]));
 	}
 
-	const party = await Party.loadFromKV(c.env.KV, pingerPartyId);
+	const party = await Party.loadFromKV(pingerPartyId);
 	if (!party) {
 		return c.sendError(odysseus.party.partyNotFound.variable([pingerPartyId]));
 	}

@@ -111,7 +111,7 @@ export class Party implements PartyData {
 		return this.members.filter((member) => invitedFriends.includes(member.account_id)).map((member) => member.account_id);
 	}
 
-	async update(updated: PartyUpdate, kv: KVNamespace) {
+	async update(updated: PartyUpdate) {
 		Object.assign(this.config, updated.config);
 		Object.assign(this.meta, updated.meta.update);
 
