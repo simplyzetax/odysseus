@@ -64,6 +64,12 @@
 	 * https://developers.cloudflare.com/workers/static-assets/binding/
 	 */
 	"assets": { "directory": "./public/", "binding": "ASSETS" },
+	"services": [
+		{
+		  "binding": "MANIFESTIFY",
+		  "service": "manifestify"
+		}
+	  ]
 	/**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including

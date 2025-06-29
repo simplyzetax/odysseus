@@ -2,6 +2,7 @@ import { app } from '@core/app';
 import { odysseus } from '@core/error';
 
 //TODO: See if it's possible to make Fortnite download custom binaries
+// We can use the manifest parser and creator worker to modify them
 app.get('/Builds/Fortnite/Content/CloudDir/:filename', async (c) => {
 	const filename = c.req.param('filename');
 
