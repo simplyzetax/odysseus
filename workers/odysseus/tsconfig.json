@@ -41,6 +41,6 @@
 		}
 	},
 	"exclude": ["test"],
-	"include": ["worker-configuration.d.ts", "src/**/*.ts", "src/types/vite-env.d.ts"],
+	"include": ["worker-configuration.d.ts", "src/**/*.ts", "src/types/vite-env.d.ts", "./drizzle/**/*.ts"],
 	"composite": true
 }
