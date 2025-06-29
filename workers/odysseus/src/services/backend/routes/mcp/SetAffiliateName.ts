@@ -43,7 +43,7 @@ app.post(
 
 		const now = new Date().toISOString();
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
+		const fp = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 		const profile = await fp.get();
 
 		profile.trackChange({

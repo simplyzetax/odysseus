@@ -21,7 +21,7 @@ app.post(
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be common_core'));
 		}
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
+		const fp = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 		const profile = await fp.get();
 		const profileObject = await profile.buildProfileObject();
 

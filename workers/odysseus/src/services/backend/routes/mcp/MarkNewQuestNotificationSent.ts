@@ -27,7 +27,7 @@ app.post(
 
 		const { itemIds } = c.req.valid('json');
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
+		const fp = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 		const profile = await fp.get();
 
 		const items = await profile.db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
