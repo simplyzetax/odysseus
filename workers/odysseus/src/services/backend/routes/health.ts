@@ -5,5 +5,6 @@ app.get('/health', (c) => {
 	return c.json({
 		status: 'ok',
 		baseURL: env.BASE_URL,
+		version: env.CF_VERSION_METADATA,
 	});
 });

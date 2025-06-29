@@ -8,8 +8,6 @@ import { and, eq } from 'drizzle-orm';
 import { EpicManifest } from '../../../../../manifestify/src/manifestParser';
 import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 
-//TODO: See if it's possible to make Fortnite download custom binaries
-// We can use the manifest parser and creator worker to modify them
 app.get(
 	'/Builds/Fortnite/Content/CloudDir/:ini{.+\\.ini}',
 	ratelimitMiddleware({
@@ -60,22 +58,24 @@ app.get(
 			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('Manifest file not found'));
 		}
 
-		const shouldParse = c.req.query('parse') === 'true';
+		//TODO: See if it's possible to make Fortnite download custom binaries or run commands via the manifest
 
-		if (shouldParse) {
-			const manifestJson = await manifest.json<EpicManifest>();
-			return c.json(manifestJson);
+		const json = c.req.query('json') === 'true';
+
+		if (json) {
+			const parseManifest = await c.env.MANIFESTIFY.parseEpicManifest(new Uint8Array(await manifest.arrayBuffer()));
+			return c.json(parseManifest);
 		}
 
-		const manifestBytes = await c.env.MANIFESTIFY.createEpicManifest(await manifest.json());
 		c.res.headers.set('Content-Type', 'application/octet-stream');
-		return c.body(manifestBytes);
+		return c.body(await manifest.arrayBuffer());
 	},
 );
 
 app.post('/Builds/Fortnite/Content/CloudDir/:manifest{.+\\.manifest}', devAuthMiddleware, async (c) => {
 	const manifest = await c.req.json();
 
-	const result = await c.env.R2.put(manifestKey, JSON.stringify(manifest));
+	const manifestBytes = await c.env.MANIFESTIFY.createEpicManifest(manifest);
+	const result = await c.env.R2.put(manifestKey, manifestBytes);
 	return c.json({ message: 'Manifest updated successfully', key: manifestKey, sha256: result?.checksums.sha256 });
 });
