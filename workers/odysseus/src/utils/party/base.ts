@@ -361,23 +361,6 @@ export class Party implements PartyData {
 
 		this.members.push(member);
 		await this.saveToKV(kv);
-
-		/*this.broadcastMessage(
-            {
-                sent: new Date(),
-                type: "com.epicgames.social.party.notification.v0.MEMBER_JOINED",
-                connection: member.connections[0],
-                revision: member.revision,
-                ns: "Fortnite",
-                party_id: this.id,
-                account_id: member.account_id,
-                account_dn: accountId,
-                member_state_updated: connection.meta,
-                joined_at: member.joined_at,
-                updated_at: member.updated_at
-            }
-        );
-        */
 	}
 
 	async deleteParty(kv: KVNamespace) {
