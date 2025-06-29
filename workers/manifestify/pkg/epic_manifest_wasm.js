@@ -96,9 +96,9 @@ const encodeString =
 
 /**
  * Encodes a JavaScript string as UTF-8, allocates memory in WASM, and copies the encoded bytes into WASM memory.
- * 
+ *
  * Uses ASCII fast-path for efficiency and handles multi-byte UTF-8 characters with reallocation as needed. Updates the global `WASM_VECTOR_LEN` to the number of bytes written.
- * 
+ *
  * @param {string} arg - The string to encode and pass to WASM.
  * @param {Function} malloc - Function to allocate memory in WASM.
  * @param {Function} [realloc] - Optional function to reallocate memory in WASM for multi-byte characters.
@@ -170,9 +170,9 @@ export function create_manifest(json_string) {
 
 /**
  * Loads and instantiates a WebAssembly module from various input types, supporting streaming instantiation and MIME type fallback.
- * 
+ *
  * Accepts a Response, WebAssembly.Module, or raw bytes, and returns the instantiated module and instance. If streaming instantiation fails due to incorrect MIME type, falls back to instantiating from an ArrayBuffer.
- * 
+ *
  * @param {Response|WebAssembly.Module|ArrayBuffer|object} module - The WebAssembly module source, which can be a Response, compiled module, or raw bytes.
  * @param {object} imports - The imports object to provide to the WebAssembly module.
  * @return {Promise<object>} An object containing the WebAssembly instance and module.
@@ -217,7 +217,7 @@ function __wbg_init_memory(imports, maybe_memory) {
 
 /**
  * Returns the imports object required for initializing the WASM module, including a function to set up the external reference table.
- * 
+ *
  * The returned object contains the necessary imports for the WASM instance, specifically initializing the externref table used for JS-WASM interop.
  * @return {Object} The imports object for WASM instantiation.
  */
@@ -254,9 +254,9 @@ function __wbg_finalize_init(instance, module) {
 
 /**
  * Synchronously initializes the WebAssembly module and returns its exports.
- * 
+ *
  * If provided, the `module` parameter can be a WebAssembly.Module or an object containing a `module` property. This function sets up the necessary imports, creates a WebAssembly instance, and finalizes initialization before returning the WASM exports.
- * 
+ *
  * @param {WebAssembly.Module|object} [module] - The WASM module or an object containing a `module` property.
  * @returns {any} The initialized WebAssembly module exports.
  */
@@ -286,7 +286,7 @@ function initSync(module) {
 
 /**
  * Asynchronously initializes the WebAssembly module, loading it from a URL, Request, WebAssembly.Module, or object.
- * 
+ *
  * If no argument is provided, loads the default WASM binary relative to the current module. Returns the initialized WASM exports.
  * @returns {Promise<any>} A promise that resolves to the initialized WASM exports.
  */
