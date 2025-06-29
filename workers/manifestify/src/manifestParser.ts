@@ -92,7 +92,9 @@ export interface EpicManifest {
 let isInitialized = false;
 
 /**
- * Initialize the WASM module if not already initialized
+ * Ensures the WebAssembly module is loaded and ready for use.
+ *
+ * Initializes the WASM module only once per runtime session.
  */
 async function ensureWasmInitialized(): Promise<void> {
 	if (!isInitialized) {
@@ -105,9 +107,10 @@ async function ensureWasmInitialized(): Promise<void> {
 }
 
 /**
- * Parses an Epic manifest using the WASM module
- * @param manifestBytes - The manifest file as Uint8Array
- * @returns Parsed manifest as EpicManifest object
+ * Parses an Epic Games manifest file and returns its structured representation.
+ *
+ * @param manifestBytes - The manifest file data as a Uint8Array
+ * @returns The parsed manifest as an EpicManifest object
  */
 export async function parseEpicManifest(manifestBytes: Uint8Array): Promise<EpicManifest> {
 	await ensureWasmInitialized();
@@ -117,9 +120,10 @@ export async function parseEpicManifest(manifestBytes: Uint8Array): Promise<Epic
 }
 
 /**
- * Creates an Epic manifest using the WASM module
- * @param manifestData - The manifest data as EpicManifest object to create manifest from
- * @returns Created manifest as Uint8Array
+ * Generates an Epic Games manifest file from the provided manifest data using the WASM module.
+ *
+ * @param manifestData - The manifest data to serialize and encode into the Epic manifest format.
+ * @returns A Uint8Array containing the binary Epic manifest file.
  */
 export async function createEpicManifest(manifestData: EpicManifest): Promise<Uint8Array> {
 	await ensureWasmInitialized();
@@ -128,9 +132,10 @@ export async function createEpicManifest(manifestData: EpicManifest): Promise<Ui
 }
 
 /**
- * Creates an Epic manifest using the WASM module from JSON string
- * @param manifestJson - The manifest data as JSON string to create manifest from
- * @returns Created manifest as Uint8Array
+ * Generates an Epic manifest file from a JSON string using the WASM module.
+ *
+ * @param manifestJson - The manifest data as a JSON string.
+ * @returns The created manifest as a Uint8Array.
  */
 export async function createEpicManifestFromJson(manifestJson: string): Promise<Uint8Array> {
 	await ensureWasmInitialized();
