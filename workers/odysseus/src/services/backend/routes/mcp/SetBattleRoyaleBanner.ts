@@ -26,8 +26,7 @@ app.post(
 
 		const { homebaseBannerIconId, homebaseBannerColorId } = c.req.valid('json');
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 
 		const item = await profile.getItemBy('id', homebaseBannerIconId);
 		if (!item) {

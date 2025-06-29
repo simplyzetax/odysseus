@@ -26,8 +26,7 @@ app.post(
 
 		const { bEnabled, seasonIds } = c.req.valid('json');
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 
 		const seasonIdsAttribute =
 			(await profile.getAttribute('auto_spend_season_currency_ids')) || profile.createAttribute('auto_spend_season_currency_ids', []);

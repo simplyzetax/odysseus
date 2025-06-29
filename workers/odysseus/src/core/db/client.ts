@@ -13,11 +13,11 @@ export const getDB = (cacheIdentifier: string) => {
 
 	return drizzle(env.DB.connectionString, {
 		cache: durableObjectCache,
-		logger: {
+		/*logger: {
 			logQuery: (query, params) => {
 				console.log(query, params);
 			},
-		},
+		},*/
 	});
 };
 

@@ -42,9 +42,9 @@ interface TokenBucketData {
  * Default token bucket configuration
  */
 const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
-	capacity: 10, // Maximum tokens in bucket (burst capacity)
+	capacity: 25, // Maximum tokens in bucket (burst capacity)
 	refillRate: 1, // Tokens added per second
-	initialTokens: 10, // Start with full bucket
+	initialTokens: 25, // Start with full bucket
 	keyGenerator: (c: Context) => {
 		// Try to get real IP from Cloudflare headers, fallback to connection IP
 		return (

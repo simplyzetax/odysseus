@@ -37,7 +37,8 @@
 			"@utils/*": ["./src/utils/*"],
 			"@otypes/*": ["./src/types/*"],
 			"@services/*": ["./src/services/*"],
-			"@middleware/*": ["./src/middleware/*"]
+			"@middleware/*": ["./src/middleware/*"],
+			"@manifestify/*": ["../manifestify/src/*"]
 		}
 	},
 	"exclude": ["test"],

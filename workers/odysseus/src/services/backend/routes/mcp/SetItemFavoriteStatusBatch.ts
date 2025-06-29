@@ -29,8 +29,7 @@ app.post(
 
 		const { itemIds, itemFavStatus } = c.req.valid('json');
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 
 		const db = getDB(c.var.cacheIdentifier);
 

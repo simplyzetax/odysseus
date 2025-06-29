@@ -512,7 +512,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 			return;
 		}
 
-		const party = await Party.loadFromKV(this.env.KV, partyId);
+		const party = await Party.loadFromKV(partyId);
 		if (!party) {
 			return;
 		}

@@ -13,6 +13,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
+import { ENV } from '@core/env';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
@@ -57,19 +58,15 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @param profileType - The profile type, from {@link ProfileType}
 	 * @returns The profile instance
 	 */
-	static async construct<T extends ProfileType>(
-		c: Context<{ Bindings: Bindings }>,
-		accountId: string,
-		profileType: T,
-	): Promise<ProfileClassMap[T]> {
-		const baseProfile = new FortniteProfile(c, accountId, profileType);
+	static async construct<T extends ProfileType>(accountId: string, profileType: T, cacheIdentifier: string): Promise<ProfileClassMap[T]> {
+		const baseProfile = new FortniteProfile(accountId, profileType, cacheIdentifier);
 		return baseProfile.get();
 	}
 
-	public c: Context<{ Bindings: Bindings }>;
 	public accountId: string;
 	public profileType: T;
 	public db: ReturnType<typeof getDB>;
+	public cacheIdentifier: string;
 
 	/**
 	 * Constructs a new profile instance
@@ -77,11 +74,11 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @param accountId - The account ID
 	 * @param profileType - The profile type, from {@link ProfileType}
 	 */
-	constructor(c: Context<any, any, any>, accountId: string, profileType: T) {
-		this.c = c;
+	constructor(accountId: string, profileType: T, cacheIdentifier: string) {
 		this.accountId = accountId;
 		this.profileType = profileType;
-		this.db = getDB(c.var.cacheIdentifier);
+		this.db = getDB(cacheIdentifier);
+		this.cacheIdentifier = cacheIdentifier;
 	}
 
 	/**
@@ -101,11 +98,11 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		// For athena profile, we need to dynamically import to avoid circular dependency
 		if (this.profileType === 'athena') {
 			const { AthenaProfile } = await import('./profiles/athena');
-			return new AthenaProfile(this.c, this.accountId, this as any, dbProfile) as any;
+			return new AthenaProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as any;
 		}
 
 		// For other profile types, use the base class
-		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, dbProfile.id) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile.id, this.cacheIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -114,7 +111,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @returns The profile
 	 */
 	public getWithProfileUniqueId(profileId: string): ProfileClassMap[T] {
-		return new FortniteProfileWithDBProfile(this.c, this.accountId, this as any, profileId) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, profileId, this.cacheIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -167,8 +164,8 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	changes: ProfileChange[] = [];
 	profileId: string;
 
-	constructor(c: Context<any, any, any>, accountId: string, baseProfile: FortniteProfile<T>, profileId: string) {
-		super(c, accountId, baseProfile.profileType);
+	constructor(accountId: string, baseProfile: FortniteProfile<T>, profileId: string, cacheIdentifier: string) {
+		super(accountId, baseProfile.profileType, cacheIdentifier);
 		this.profileId = profileId;
 	}
 

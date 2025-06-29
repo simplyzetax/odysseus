@@ -67,15 +67,17 @@ app.post(
 			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client secret'));
 		}
 
-		const am = body.grant_type;
+		const grantType = body.grant_type;
 
 		let account: Account | undefined;
 
-		switch (am) {
+		const db = getDB(c.var.cacheIdentifier);
+
+		switch (grantType) {
 			case GRANT_TYPES.client_credentials: {
-				const token = await JWT.createClientToken(clientId, am, 24);
+				const token = await JWT.createClientToken(clientId, grantType, 24);
 				const decodedClient = await JWT.verifyToken(token);
-				if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== am) {
+				if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== grantType) {
 					return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid client token'));
 				}
 
@@ -104,9 +106,20 @@ app.post(
                 return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid exchange code"));
             }*/
 
-				const db = getDB(c.var.cacheIdentifier);
-
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
+				break;
+			}
+			case GRANT_TYPES.password: {
+				if (!body.username || !body.password) {
+					return c.sendError(odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password'));
+				}
+
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, body.username));
+				if (!account) {
+					return c.sendError(odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found'));
+				}
+
+				//TODO: Check password
 				break;
 			}
 			default: {
@@ -127,8 +140,8 @@ app.post(
 		const expiresInRefresh = 24; // hours
 
 		const [accessToken, refreshToken] = await Promise.all([
-			JWT.createAccessToken(account, clientId, am, deviceId, expiresInAccess),
-			JWT.createRefreshToken(account, clientId, am, expiresInRefresh, deviceId),
+			JWT.createAccessToken(account, clientId, grantType, deviceId, expiresInAccess),
+			JWT.createRefreshToken(account, clientId, grantType, expiresInRefresh, deviceId),
 		]);
 
 		const now = new Date();
@@ -147,7 +160,7 @@ app.post(
 			client_id: clientId,
 			internal_client: true,
 			client_service: 'fortnite',
-			displayName: account.id,
+			displayName: account.displayName,
 			app: 'fortnite',
 			in_app_id: account.id,
 			device_id: deviceId,

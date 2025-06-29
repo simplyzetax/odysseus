@@ -1,5 +1,5 @@
 /* tslint:disable */
- 
+
 export function parse_manifest(manifest_bytes: Uint8Array): string;
 export function create_manifest(json_string: string): Uint8Array;
 

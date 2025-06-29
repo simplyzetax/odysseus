@@ -20,7 +20,7 @@ export const accountMiddleware = createMiddleware(
 		}
 
 		const verifiedToken = await JWT.verifyToken(token);
-		if (!verifiedToken?.sub || verifiedToken.am !== GRANT_TYPES.client_credentials) {
+		if (!verifiedToken?.sub) {
 			return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid or expired token'));
 		}
 

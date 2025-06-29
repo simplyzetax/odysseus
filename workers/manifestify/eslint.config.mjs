@@ -2,15 +2,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
 	{
-		ignores: [
-			'.wrangler/**',
-			'pkg/**',
-			'type.d.ts',
-			'worker-configuration.d.ts',
-			'vite-env.d.ts',
-			'*.wasm',
-			'**/*.wasm'
-		],
+		ignores: ['.wrangler/**', 'pkg/**', 'type.d.ts', 'worker-configuration.d.ts', 'vite-env.d.ts', '*.wasm', '**/*.wasm'],
 	},
 	...tseslint.configs.recommended,
 	{
@@ -29,4 +21,4 @@ export default tseslint.config(
 			'@typescript-eslint/no-unused-vars': 'warn',
 		},
 	},
-); 
+);

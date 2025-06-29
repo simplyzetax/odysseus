@@ -50,8 +50,7 @@ app.post(
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be athena'));
 		}
 
-		const fp = new FortniteProfile(c, c.var.accountId, requestedProfileId);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';

@@ -2,6 +2,10 @@ let wasm;
 
 let cachedUint8ArrayMemory0 = null;
 
+/**
+ * Returns a cached Uint8Array view of the WASM memory buffer, refreshing the cache if necessary.
+ * @return {Uint8Array} The current Uint8Array view of the WASM memory buffer.
+ */
 function getUint8ArrayMemory0() {
 	if (cachedUint8ArrayMemory0 === null || cachedUint8ArrayMemory0.byteLength === 0) {
 		cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
@@ -11,6 +15,12 @@ function getUint8ArrayMemory0() {
 
 let WASM_VECTOR_LEN = 0;
 
+/**
+ * Allocates memory in WASM and copies a Uint8Array into it.
+ * @param {Uint8Array} arg - The byte array to pass to WASM.
+ * @param {Function} malloc - The WASM memory allocation function.
+ * @returns {number} The pointer to the start of the copied array in WASM memory.
+ */
 function passArray8ToWasm0(arg, malloc) {
 	const ptr = malloc(arg.length * 1, 1) >>> 0;
 	getUint8ArrayMemory0().set(arg, ptr / 1);
@@ -31,13 +41,20 @@ if (typeof TextDecoder !== 'undefined') {
 	cachedTextDecoder.decode();
 }
 
+/**
+ * Decodes a UTF-8 string from WASM memory at the specified pointer and length.
+ * @param {number} ptr - The pointer to the start of the string in WASM memory.
+ * @param {number} len - The length of the string in bytes.
+ * @return {string} The decoded JavaScript string.
+ */
 function getStringFromWasm0(ptr, len) {
 	ptr = ptr >>> 0;
 	return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
 }
 /**
- * @param {Uint8Array} manifest_bytes
- * @returns {string}
+ * Parses a manifest from a Uint8Array using the underlying WebAssembly logic.
+ * @param {Uint8Array} manifest_bytes - The manifest data to parse.
+ * @returns {string} The parsed manifest as a string.
  */
 export function parse_manifest(manifest_bytes) {
 	let deferred2_0;
@@ -77,6 +94,16 @@ const encodeString =
 				};
 			};
 
+/**
+ * Encodes a JavaScript string as UTF-8, allocates memory in WASM, and copies the encoded bytes into WASM memory.
+ *
+ * Uses ASCII fast-path for efficiency and handles multi-byte UTF-8 characters with reallocation as needed. Updates the global `WASM_VECTOR_LEN` to the number of bytes written.
+ *
+ * @param {string} arg - The string to encode and pass to WASM.
+ * @param {Function} malloc - Function to allocate memory in WASM.
+ * @param {Function} [realloc] - Optional function to reallocate memory in WASM for multi-byte characters.
+ * @returns {number} Pointer to the start of the encoded string in WASM memory.
+ */
 function passStringToWasm0(arg, malloc, realloc) {
 	if (realloc === undefined) {
 		const buf = cachedTextEncoder.encode(arg);
@@ -117,13 +144,20 @@ function passStringToWasm0(arg, malloc, realloc) {
 	return ptr;
 }
 
+/**
+ * Returns a Uint8Array view of WASM memory at the specified pointer and length.
+ * @param {number} ptr - The pointer to the start of the array in WASM memory.
+ * @param {number} len - The length of the array to retrieve.
+ * @return {Uint8Array} The extracted byte array from WASM memory.
+ */
 function getArrayU8FromWasm0(ptr, len) {
 	ptr = ptr >>> 0;
 	return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 /**
- * @param {string} json_string
- * @returns {Uint8Array}
+ * Creates a manifest from a JSON string using the underlying WebAssembly logic.
+ * @param {string} json_string - The JSON string representing the manifest data.
+ * @returns {Uint8Array} The generated manifest as a byte array.
  */
 export function create_manifest(json_string) {
 	const ptr0 = passStringToWasm0(json_string, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -134,6 +168,15 @@ export function create_manifest(json_string) {
 	return v2;
 }
 
+/**
+ * Loads and instantiates a WebAssembly module from various input types, supporting streaming instantiation and MIME type fallback.
+ *
+ * Accepts a Response, WebAssembly.Module, or raw bytes, and returns the instantiated module and instance. If streaming instantiation fails due to incorrect MIME type, falls back to instantiating from an ArrayBuffer.
+ *
+ * @param {Response|WebAssembly.Module|ArrayBuffer|object} module - The WebAssembly module source, which can be a Response, compiled module, or raw bytes.
+ * @param {object} imports - The imports object to provide to the WebAssembly module.
+ * @return {Promise<object>} An object containing the WebAssembly instance and module.
+ */
 async function __wbg_load(module, imports) {
 	if (typeof Response === 'function' && module instanceof Response) {
 		if (typeof WebAssembly.instantiateStreaming === 'function') {
@@ -164,11 +207,20 @@ async function __wbg_load(module, imports) {
 	}
 }
 
+/**
+ * Placeholder for initializing WASM memory; currently performs no operations.
+ */
 function __wbg_init_memory(imports, maybe_memory) {
 	// This function is typically used to initialize memory for WASM modules
 	// In most cases, this can be a no-op when memory is auto-managed
 }
 
+/**
+ * Returns the imports object required for initializing the WASM module, including a function to set up the external reference table.
+ *
+ * The returned object contains the necessary imports for the WASM instance, specifically initializing the externref table used for JS-WASM interop.
+ * @return {Object} The imports object for WASM instantiation.
+ */
 function __wbg_get_imports() {
 	const imports = {};
 	imports.wbg = {};
@@ -185,6 +237,12 @@ function __wbg_get_imports() {
 	return imports;
 }
 
+/**
+ * Finalizes the initialization of the WASM module by setting up exports, resetting cached memory views, and invoking the WASM start function.
+ * @param {WebAssembly.Instance} instance - The instantiated WASM module.
+ * @param {WebAssembly.Module} module - The original WASM module.
+ * @return {object} The WASM module's exported functions and objects.
+ */
 function __wbg_finalize_init(instance, module) {
 	wasm = instance.exports;
 	__wbg_init.__wbindgen_wasm_module = module;
@@ -194,6 +252,14 @@ function __wbg_finalize_init(instance, module) {
 	return wasm;
 }
 
+/**
+ * Synchronously initializes the WebAssembly module and returns its exports.
+ *
+ * If provided, the `module` parameter can be a WebAssembly.Module or an object containing a `module` property. This function sets up the necessary imports, creates a WebAssembly instance, and finalizes initialization before returning the WASM exports.
+ *
+ * @param {WebAssembly.Module|object} [module] - The WASM module or an object containing a `module` property.
+ * @returns {any} The initialized WebAssembly module exports.
+ */
 function initSync(module) {
 	if (wasm !== undefined) return wasm;
 
@@ -218,6 +284,12 @@ function initSync(module) {
 	return __wbg_finalize_init(instance, module);
 }
 
+/**
+ * Asynchronously initializes the WebAssembly module, loading it from a URL, Request, WebAssembly.Module, or object.
+ *
+ * If no argument is provided, loads the default WASM binary relative to the current module. Returns the initialized WASM exports.
+ * @returns {Promise<any>} A promise that resolves to the initialized WASM exports.
+ */
 async function __wbg_init(module_or_path) {
 	if (wasm !== undefined) return wasm;
 

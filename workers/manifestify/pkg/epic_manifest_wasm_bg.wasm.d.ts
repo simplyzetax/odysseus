@@ -1,5 +1,5 @@
 /* tslint:disable */
- 
+
 export const memory: WebAssembly.Memory;
 export const parse_manifest: (a: number, b: number) => [number, number];
 export const create_manifest: (a: number, b: number) => [number, number];

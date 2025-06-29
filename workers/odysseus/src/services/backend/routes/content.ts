@@ -5,7 +5,6 @@ import { odysseus } from '@core/error';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { IniParser } from '@utils/misc/ini-parser';
 import { and, eq } from 'drizzle-orm';
-import { EpicManifest } from '../../../../../manifestify/src/manifestParser';
 import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 
 app.get(
