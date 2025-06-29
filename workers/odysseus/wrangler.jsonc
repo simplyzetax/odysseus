@@ -1,0 +1,95 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "odysseus",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-06-17",
+	"observability": {
+		"enabled": true
+	},
+	"compatibility_flags": ["nodejs_compat"],
+	"upload_source_maps": true,
+	"hyperdrive": [
+		{
+			"binding": "DB",
+			"id": "7fe0e6c7f9d24aec8528d87ae3aee600",
+			"localConnectionString": "postgresql://finnernzerhoff:123@localhost:5432/odysseus",
+		},
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "odysseus",
+			"binding": "R2",
+		},
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "148ab769ecc34b5f96ac6a9f38a946be",
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "CACHE_DO",
+				"class_name": "CacheDurableObject",
+				"script_name": "odysseus",
+			},
+			{
+				"name": "XmppServer",
+				"class_name": "XMPPServer",
+				"script_name": "odysseus",
+			},
+		],
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["CacheDurableObject", "XMPPServer"],
+		},
+	],
+	/**
+	 * Smart Placement
+	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+	 */
+	"placement": {
+		"mode": "smart",
+	},
+	/**
+	 * Static Assets
+	 * https://developers.cloudflare.com/workers/static-assets/binding/
+	 */
+	"assets": { "directory": "./public", "binding": "ASSETS" },
+	"services": [
+		{
+			"binding": "MANIFESTIFY",
+			"service": "manifestify",
+		},
+	],
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA",
+	},
+	/**
+	 * Bindings
+	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+	 * databases, object storage, AI inference, real-time communication and more.
+	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 */
+	/**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 */
+	// "vars": { "MY_VARIABLE": "production_value" },
+	/**
+	 * Note: Use secrets to store sensitive data.
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 */
+	/**
+	 * Service Bindings (communicate between multiple Workers)
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+	 */
+	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+}

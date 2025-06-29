@@ -1,12 +1,70 @@
-# Logs
+# Dependencies
+node_modules/
+**/node_modules/
 
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+.output/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
 logs
-_.log
-npm-debug.log_
+*.log
+npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 lerna-debug.log*
-.pnpm-debug.log*
+
+# Cloudflare Workers
+.wrangler/
+.dev.vars
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output
+
+# Temporary files
+*.tmp
+*.temp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Drizzle
+.drizzle/
+
+# Misc
+*.tgz
+*.tar.gz
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 
@@ -50,16 +108,11 @@ build/Release
 
 # Dependency directories
 
-node_modules/
 jspm_packages/
 
 # Snowpack dependency directory (https://snowpack.dev/)
 
 web_modules/
-
-# TypeScript cache
-
-\*.tsbuildinfo
 
 # Optional npm cache directory
 
@@ -91,14 +144,6 @@ web_modules/
 # Yarn Integrity file
 
 .yarn-integrity
-
-# dotenv environment variable files
-
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
 
 # parcel-bundler cache (https://parceljs.org/)
 
@@ -170,3 +215,5 @@ dist
 
 .dev.vars
 .wrangler/
+
+.DS_Store

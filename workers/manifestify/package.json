@@ -1,0 +1,19 @@
+{
+	"name": "manifestify",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"build": "tsc && wrangler deploy --dry-run",
+		"deploy": "tsc && wrangler deploy",
+		"start": "wrangler dev",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"cf-typegen": "wrangler types"
+	},
+	"dependencies": {},
+	"devDependencies": {}
+}

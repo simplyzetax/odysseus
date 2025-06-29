@@ -1,0 +1,5 @@
+.wrangler/
+pkg/
+type.d.ts
+worker-configuration.d.ts
+vite-env.d.ts 
