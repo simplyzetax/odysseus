@@ -13,8 +13,7 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"cf-typegen": "wrangler types",
-		"push": "drizzle-kit push --config=./drizzle/drizzle.config.ts",
-		"prepare": "husky"
+		"push": "drizzle-kit push --config=./drizzle/drizzle.config.ts"
 	},
 	"lint-staged": {
 		"*.{ts,tsx,js,jsx,mjs,cjs}": "eslint --fix",

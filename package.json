@@ -18,8 +18,7 @@
 		"format": "pnpm -r format",
 		"format:check": "pnpm -r format:check",
 		"cf-typegen": "pnpm -r cf-typegen",
-		"push": "pnpm --filter=odysseus push",
-		"prepare": "husky"
+		"push": "pnpm --filter=odysseus push"
 	},
 	"lint-staged": {
 		"*.{ts,tsx,js,jsx,mjs,cjs}": "eslint --fix",
