@@ -1,52 +1,102 @@
-# 🚀 Odysseus
+# Odysseus Monorepo
 
-> A high-performance Fortnite backend server built on Cloudflare Workers
+A Cloudflare Workers monorepo containing multiple services for the Odysseus project.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
-[![Hono](https://img.shields.io/badge/Hono-E36002?style=for-the-badge&logo=hono&logoColor=white)](https://hono.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+## Services
 
-## 📖 Overview
+- **`workers/odysseus`** - Main application with Hono framework, Discord bot, XMPP server, and Fortnite API integration
+- **`workers/manifestify`** - Manifest parsing service
 
-Odysseus is a modern, scalable backend server that provides a complete Fortnite game server implementation with Discord integration. Built on Cloudflare Workers for global edge deployment, it offers lightning-fast performance and enterprise-grade reliability.
+## Tech Stack
 
-## 🛠️ Tech Stack
+- **Runtime**: Cloudflare Workers
+- **Framework**: Hono (for odysseus)
+- **Database**: PostgreSQL with Drizzle ORM
+- **Validation**: Arktype for runtime validation
+- **Authentication**: JWT with Jose library
+- **Package Manager**: pnpm with workspaces
 
-### Core Technologies
+## Development Setup
 
-- **Runtime**: [Cloudflare Workers](https://workers.cloudflare.com/) - Edge computing platform
-- **Framework**: [Hono](https://hono.dev/) - Ultrafast web framework
-- **Language**: [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Drizzle ORM](https://orm.drizzle.team/)
+### Prerequisites
 
-### Key Libraries
+- Node.js (v18 or later)
+- pnpm
+- PostgreSQL (for local development)
 
-- **Validation**: [Arktype](https://arktype.io/) - Runtime type validation
-- **Authentication**: [Jose](https://github.com/panva/jose) - JWT library
-- **API Integration**: Discord API, Fortnite API
-- **Caching**: Cloudflare Durable Objects
+### Installation
 
-## 🏗️ Architecture
+```bash
+# Install dependencies for all workspaces
+pnpm install
 
-```
-📁 src/
-├── 🧠 core/           # Core application logic
-│   ├── app.ts         # Main Hono application
-│   ├── db/            # Database schemas and client
-│   └── error.ts       # Centralized error handling
-├── 🔒 middleware/     # Request middleware
-│   ├── auth/          # Authentication middleware
-│   ├── core/          # Core middleware (rate limiting, etc.)
-│   └── game/          # Game-specific middleware
-├── 🛠️ services/       # Service implementations
-│   ├── backend/       # Main backend routes
-│   └── bot/           # Discord bot service
-├── 📝 types/          # TypeScript type definitions
-└── 🔧 utils/          # Utility functions
+# Generate TypeScript types for Cloudflare Workers
+pnpm cf-typegen
 ```
 
-### Path Aliases
+### Development
+
+```bash
+# Start the main odysseus service
+pnpm dev
+
+# Start the manifestify service
+pnpm dev:manifestify
+
+# Build all services
+pnpm build
+
+# Lint all code
+pnpm lint
+
+# Format all code
+pnpm format
+```
+
+### Deployment
+
+```bash
+# Deploy all services
+pnpm deploy
+
+# Deploy specific service
+pnpm --filter=odysseus deploy
+pnpm --filter=manifestify deploy
+```
+
+## Project Structure
+
+```
+odysseus/
+├── workers/
+│   ├── odysseus/           # Main application
+│   │   ├── src/
+│   │   │   ├── core/       # Core application logic
+│   │   │   ├── services/   # Service implementations
+│   │   │   ├── middleware/ # Middleware functions
+│   │   │   └── utils/      # Utility functions
+│   │   └── package.json
+│   └── manifestify/        # Manifest parsing service
+│       ├── src/
+│       └── package.json
+├── drizzle/               # Database migrations
+├── public/                # Static assets
+├── package.json           # Root workspace configuration
+└── pnpm-workspace.yaml    # pnpm workspace configuration
+```
+
+## Database
+
+The project uses Drizzle ORM with PostgreSQL. To manage the database:
+
+```bash
+# Push schema changes to database
+pnpm push
+```
+
+## Path Aliases (Odysseus)
+
+The odysseus service uses the following path aliases:
 
 - `@core/*` - Core application logic
 - `@utils/*` - Utility functions
