@@ -11,12 +11,16 @@ class EosService {
 	private readonly EOS_TOKEN_KEY = 'eos_token';
 
 	private async eosFetch(url: string, options: RequestInit) {
+		const headers = {
+			...options.headers,
+			'User-Agent': 'EOS-SDK/1.14.1-18153445 (Windows) CSharpSamples/1.0.1',
+			'X-EOS-Version': '1.14.1-18153445',
+			Accept: 'application/json',
+		};
+
 		const response = await fetch(url, {
 			...options,
-			headers: {
-				'User-Agent': 'EOS-SDK/1.14.1-18153445 (Windows) CSharpSamples/1.0.1',
-				'X-EOS-Version': '1.14.1-18153445',
-			},
+			headers,
 		});
 		return response;
 	}
@@ -35,12 +39,12 @@ class EosService {
 				],
 			}),
 			headers: {
-				Authorization: `${authorization.token_type} ${authorization.access_token}`,
+				Authorization: `Bearer ${authorization.access_token}`,
+				'Content-Type': 'application/json',
 			},
 		});
 
 		if (response.status != 200) {
-			console.log(authorization.token_type + ' ' + authorization.access_token);
 			odysseus.internal.eosError.withMessage(response.statusText).throwHttpException();
 		}
 
@@ -52,6 +56,8 @@ class EosService {
 		if (cachedTokenValue) {
 			return JSON.parse(cachedTokenValue) as EOS['oAuthToken'];
 		}
+
+		console.log(this.clientId, this.clientSecret);
 
 		const response = await this.eosFetch('https://api.epicgames.dev/auth/v1/oauth/token', {
 			method: 'POST',
@@ -65,6 +71,7 @@ class EosService {
 		});
 
 		if (response.status != 200) {
+			console.log(await response.json());
 			odysseus.internal.eosError.withMessage(response.statusText).throwHttpException();
 		}
 

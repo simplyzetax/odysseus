@@ -147,7 +147,7 @@ app.post(
 			client_id: clientId,
 			internal_client: true,
 			client_service: 'fortnite',
-			displayName: account.id,
+			displayName: account.displayName,
 			app: 'fortnite',
 			in_app_id: account.id,
 			device_id: deviceId,
