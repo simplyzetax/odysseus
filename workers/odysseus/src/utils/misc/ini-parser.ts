@@ -1,6 +1,6 @@
 import type { Hotfix } from '@core/db/schemas/hotfixes';
 
-export class HotfixParser {
+export class IniParser {
 	private hotfixes: Hotfix[];
 
 	constructor(hotfixes: Hotfix[]) {
@@ -47,7 +47,7 @@ export class HotfixParser {
 		const iniLines: string[] = [];
 
 		// Add header comment
-		iniLines.push('; Generated hotfix configuration');
+		iniLines.push('; Generated ini file');
 		if (includeTimestamp) {
 			iniLines.push('; Auto-generated on ' + new Date().toISOString());
 		}

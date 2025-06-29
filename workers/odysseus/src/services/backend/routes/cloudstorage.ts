@@ -5,7 +5,7 @@ import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { clientTokenVerify } from '@middleware/auth/clientAuthMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
-import { HotfixParser } from '@utils/misc/hotfix-parser';
+import { IniParser } from '@utils/misc/ini-parser';
 import { md5, sha1, sha256 } from 'hono/utils/crypto';
 
 const SETTINGS_FILE = 'clientsettings.sav';
@@ -14,7 +14,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenV
 	const db = getDB(c);
 	const hotfixes = await db.select().from(HOTFIXES);
 
-	const parser = new HotfixParser(hotfixes);
+	const parser = new IniParser(hotfixes);
 	// Get all .ini files for enabled global-scope hotfixes (without timestamps for consistent hashing)
 	const iniFiles = parser.transformToIniFiles(false, 'global', false);
 
@@ -41,7 +41,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenV
 app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), clientTokenVerify, async (c) => {
 	const filename = c.req.param('filename');
 	const hotfixes = await getDB(c).select().from(HOTFIXES);
-	const parser = new HotfixParser(hotfixes);
+	const parser = new IniParser(hotfixes);
 
 	// Get .ini content for the specific file (without timestamp for consistent hashing)
 	const content = parser.getIniForFile(filename, false, 'global', false);
