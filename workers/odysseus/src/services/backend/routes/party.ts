@@ -6,6 +6,7 @@ import { Party } from '@utils/party/base';
 import { accountMiddleware } from '@middleware/auth/accountMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { eq, and } from 'drizzle-orm';
+import { eosService } from '@utils/eos/base';
 
 /**
  * Create a new party
@@ -339,7 +340,21 @@ app.post(
 		}
 
 		//TODO: Implement voice chat providers (Vivox, RTCP)
-		const providers = {};
+		const providers: { rtcp?: { participant_token: string; client_base_url: string; room_name: string } } = {};
+
+		const joinToken = await eosService.generateJoinToken(party.id, targetAccountId);
+
+		const participant = joinToken.participants[0];
+
+		if (!participant) {
+			return c.sendError(odysseus.internal.eosError);
+		}
+
+		providers.rtcp = {
+			participant_token: participant.token,
+			client_base_url: joinToken.clientBaseUrl,
+			room_name: joinToken.roomId,
+		};
 
 		return c.json({
 			providers,
