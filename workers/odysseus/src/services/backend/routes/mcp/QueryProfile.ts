@@ -22,8 +22,7 @@ app.post(
 			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
 		}
 
-		const fp = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 		const profileObject = await profile.buildProfileObject();
 
 		profile.trackChange({

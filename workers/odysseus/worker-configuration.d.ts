@@ -32,7 +32,26 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "DATABASE_URL" | "JWT_SECRET" | "BASE_URL" | "DISABLE_CACHE" | "DEV_AUTH_TOKEN" | "DISCORD_APPLICATION_ID" | "DISCORD_PUBLIC_KEY" | "DISCORD_CLIENT_SECRET" | "DISCORD_BOT_TOKEN" | "EOS_PRODUCT_ID" | "EOS_SANDBOX_ID" | "EOS_DEPLOYMENT_ID" | "EOS_CLIENT_ID" | "EOS_CLIENT_SECRET">> {}
+	interface ProcessEnv
+		extends StringifyValues<
+			Pick<
+				Cloudflare.Env,
+				| 'DATABASE_URL'
+				| 'JWT_SECRET'
+				| 'BASE_URL'
+				| 'DISABLE_CACHE'
+				| 'DEV_AUTH_TOKEN'
+				| 'DISCORD_APPLICATION_ID'
+				| 'DISCORD_PUBLIC_KEY'
+				| 'DISCORD_CLIENT_SECRET'
+				| 'DISCORD_BOT_TOKEN'
+				| 'EOS_PRODUCT_ID'
+				| 'EOS_SANDBOX_ID'
+				| 'EOS_DEPLOYMENT_ID'
+				| 'EOS_CLIENT_ID'
+				| 'EOS_CLIENT_SECRET'
+			>
+		> {}
 }
 
 // Begin runtime types

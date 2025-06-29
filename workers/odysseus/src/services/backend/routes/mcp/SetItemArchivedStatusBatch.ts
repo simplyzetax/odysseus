@@ -29,8 +29,7 @@ app.post(
 
 		const { itemIds, archived } = c.req.valid('json');
 
-		const fp = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
-		const profile = await fp.get();
+		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
 
 		const db = getDB(c.var.cacheIdentifier);
 
