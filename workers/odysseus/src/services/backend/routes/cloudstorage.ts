@@ -4,13 +4,15 @@ import { HOTFIXES } from '@core/db/schemas/hotfixes';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { clientTokenVerify } from '@middleware/auth/clientAuthMiddleware';
+import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { IniParser } from '@utils/misc/ini-parser';
+import { sql } from 'drizzle-orm';
 import { md5, sha1, sha256 } from 'hono/utils/crypto';
 
 const SETTINGS_FILE = 'clientsettings.sav';
 
-app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenVerify, async (c) => {
+app.get('/fortnite/api/cloudstorage/system', clientTokenVerify, ratelimitMiddleware(), async (c) => {
 	const db = getDB(c.var.cacheIdentifier);
 	const hotfixes = await db.select().from(HOTFIXES);
 
@@ -38,7 +40,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenV
 	return c.json(response);
 });
 
-app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), clientTokenVerify, async (c) => {
+app.get('/fortnite/api/cloudstorage/system/:filename', clientTokenVerify, ratelimitMiddleware(), async (c) => {
 	const filename = c.req.param('filename');
 	const hotfixes = await getDB(c.var.cacheIdentifier).select().from(HOTFIXES);
 	const parser = new IniParser(hotfixes);
@@ -51,6 +53,41 @@ app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), cl
 	}
 
 	return c.sendIni(content);
+});
+
+app.post('/fortnite/api/cloudstorage/system/:filename', devAuthMiddleware, ratelimitMiddleware(), async (c) => {
+	const formData = await c.req.formData();
+	const file = formData.get('file');
+
+	if (!(file instanceof File)) {
+		return c.sendError(odysseus.authentication.invalidRequest.withMessage('File not provided or is invalid.'));
+	}
+
+	const filename = file.name;
+	const body = await file.text();
+
+	const db = getDB(c.var.cacheIdentifier);
+
+	const newHotfixes = IniParser.parseIniToHotfixes(body, filename);
+	if (newHotfixes.length > 0) {
+		await db
+			.insert(HOTFIXES)
+			.values(newHotfixes)
+			.onConflictDoUpdate({
+				target: [HOTFIXES.filename, HOTFIXES.section, HOTFIXES.key],
+				set: {
+					value: sql`excluded.value`,
+				},
+			});
+	} else {
+		return c.sendError(odysseus.authentication.invalidRequest.withMessage('No new hotfixes found.'));
+	}
+
+	return c.json({
+		success: true,
+		message: 'Hotfixes uploaded successfully.',
+		hotfixes: newHotfixes,
+	});
 });
 
 // User cloudstorage endpoints

@@ -20,6 +20,7 @@ app.use(cacheIdentifierMiddleware);
 app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {
+	console.error(err);
 	if (err instanceof HTTPException) {
 		return err.getResponse();
 	} else if (err instanceof Error) {

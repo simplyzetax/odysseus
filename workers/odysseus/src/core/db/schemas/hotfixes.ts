@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
 import { ACCOUNTS } from './account';
 
 export const HOTFIXES = pgTable(
@@ -19,6 +19,7 @@ export const HOTFIXES = pgTable(
 	(hotfixes) => {
 		return {
 			nameIndex: index('filename_idx').on(hotfixes.filename),
+			unique_hotfix: uniqueIndex('unique_hotfix_idx').on(hotfixes.filename, hotfixes.section, hotfixes.key),
 		};
 	},
 );
