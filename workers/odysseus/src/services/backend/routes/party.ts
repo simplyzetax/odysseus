@@ -16,7 +16,7 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 	const body = await c.req.json();
 
 	if (!body.join_info?.connection?.id) {
-		return c.sendError(odysseus.party.userOffline.variable([accountId]));
+		return odysseus.party.userOffline.variable([accountId]).toResponse();
 	}
 
 	// Check if user is already in a party
@@ -24,7 +24,7 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 	if (existingPartyKey) {
 		const existingParty = await Party.loadFromKV(existingPartyKey);
 		if (existingParty) {
-			return c.sendError(odysseus.party.alreadyInParty.variable([accountId, 'Fortnite']));
+			return odysseus.party.alreadyInParty.variable([accountId, 'Fortnite']).toResponse();
 		}
 	}
 
@@ -64,16 +64,16 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	const captain = party.members.find((x) => x.role === 'CAPTAIN');
 	if (!captain) {
-		return c.sendError(odysseus.party.memberNotFound.withMessage('cannot find party leader.'));
+		return odysseus.party.memberNotFound.withMessage('cannot find party leader.').toResponse();
 	}
 
 	if (accountId !== captain.account_id) {
-		return c.sendError(odysseus.party.notLeader);
+		return odysseus.party.notLeader.toResponse();
 	}
 
 	await party.update({
@@ -95,7 +95,7 @@ app.get('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), account
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	return c.json(party.getData());
@@ -111,17 +111,17 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', rate
 	const body = await c.req.json();
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	const member = party.members.find((x) => x.account_id === targetAccountId);
 	if (!member) {
-		return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
+		return odysseus.party.memberNotFound.variable([targetAccountId]).toResponse();
 	}
 
 	await party.updateMember(member.account_id, requestAccountId, body);
@@ -139,12 +139,12 @@ app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitM
 	const body = await c.req.json();
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	const existing = party.members.find((x) => x.account_id === targetAccountId);
@@ -176,22 +176,22 @@ app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMidd
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	const partyMember = party.members.find((x) => x.account_id === targetAccountId);
 	if (!partyMember) {
-		return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
+		return odysseus.party.memberNotFound.variable([targetAccountId]).toResponse();
 	}
 
 	const partyLeader = party.members.find((x) => x.role === 'CAPTAIN');
 	if (!partyLeader) {
-		return c.sendError(odysseus.internal.unknownError);
+		return odysseus.internal.unknownError.toResponse();
 	}
 
 	// Only allow self-leave or leader kick
 	if (requestAccountId !== targetAccountId && partyLeader.account_id !== requestAccountId) {
-		return c.sendError(odysseus.party.notLeader);
+		return odysseus.party.notLeader.toResponse();
 	}
 
 	// Remove user -> party mapping
@@ -214,7 +214,7 @@ app.get('/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountM
 	const targetAccountId = c.req.param('accountId');
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	const currentParties = [];
@@ -260,17 +260,17 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 	const body = await c.req.json();
 
 	if (inviteeAccountId === requestAccountId) {
-		return c.sendError(odysseus.party.selfInvite);
+		return odysseus.party.selfInvite.toResponse();
 	}
 
 	const party = await Party.loadFromKV(partyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+		return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 	}
 
 	const member = party.members.find((x) => x.account_id === requestAccountId);
 	if (!member) {
-		return c.sendError(odysseus.party.memberNotFound.variable([requestAccountId]));
+		return odysseus.party.memberNotFound.variable([requestAccountId]).toResponse();
 	}
 
 	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.var.cacheIdentifier);
@@ -299,7 +299,7 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
 		await xmppStub.sendMessageMulti([inviteeAccountId], inviteMessage);
 	} catch (error) {
 		console.error('Failed to send party invite XMPP notification:', error);
-		return c.sendError(odysseus.internal.serverError.withMessage('Failed to send party invite XMPP notification.'));
+		return odysseus.internal.serverError.withMessage('Failed to send party invite XMPP notification.').toResponse();
 	}
 
 	return c.sendStatus(204);
@@ -318,17 +318,17 @@ app.post(
 		const partyId = c.req.param('partyId');
 
 		if (targetAccountId !== requestAccountId) {
-			return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+			return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 		}
 
 		const party = await Party.loadFromKV(partyId);
 		if (!party) {
-			return c.sendError(odysseus.party.partyNotFound.variable([partyId]));
+			return odysseus.party.partyNotFound.variable([partyId]).toResponse();
 		}
 
 		const partyMember = party.members.find((x) => x.account_id === targetAccountId);
 		if (!partyMember) {
-			return c.sendError(odysseus.party.memberNotFound.variable([targetAccountId]));
+			return odysseus.party.memberNotFound.variable([targetAccountId]).toResponse();
 		}
 
 		//TODO: Implement voice chat providers (Vivox, RTCP)
@@ -339,7 +339,7 @@ app.post(
 		const participant = joinToken.participants[0];
 
 		if (!participant) {
-			return c.sendError(odysseus.internal.eosError);
+			return odysseus.internal.eosError.toResponse();
 		}
 
 		providers.rtcp = {
@@ -364,11 +364,11 @@ app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddl
 	const body = await c.req.json();
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	if (requestAccountId === friendId) {
-		return c.sendError(odysseus.party.selfPing);
+		return odysseus.party.selfPing.toResponse();
 	}
 
 	const db = getDB(c.var.cacheIdentifier);
@@ -380,9 +380,9 @@ app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddl
 		.where(and(eq(FRIENDS.accountId, requestAccountId), eq(FRIENDS.targetId, friendId), eq(FRIENDS.status, 'ACCEPTED')));
 
 	if (!friendship) {
-		return c.sendError(
-			odysseus.party.pingForbidden.withMessage(`User [${requestAccountId}] is not authorized to send pings to [${friendId}].`),
-		);
+		return odysseus.party.pingForbidden
+			.withMessage(`User [${requestAccountId}] is not authorized to send pings to [${friendId}].`)
+			.toResponse();
 	}
 
 	//TODO: Check if target user is online via session validation
@@ -437,11 +437,11 @@ app.delete('/api/v1/:deploymentId/user/:accountId/pings/:pingerId', ratelimitMid
 	const pingerId = c.req.param('pingerId');
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	if (requestAccountId === pingerId) {
-		return c.sendError(odysseus.party.selfPing);
+		return odysseus.party.selfPing.toResponse();
 	}
 
 	const pingKey = `ping:${pingerId}:${requestAccountId}`;
@@ -460,11 +460,11 @@ app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimit
 	const body = await c.req.json();
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	if (requestAccountId === pingerId) {
-		return c.sendError(odysseus.party.selfPing);
+		return odysseus.party.selfPing.toResponse();
 	}
 
 	// Check for ping
@@ -472,18 +472,18 @@ app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimit
 	const pingData = await c.env.KV.get(pingKey, 'json');
 
 	if (!pingData) {
-		return c.sendError(odysseus.party.memberNotFound.withMessage(`Ping from [${pingerId}] to [${requestAccountId}] does not exist.`));
+		return odysseus.party.memberNotFound.withMessage(`Ping from [${pingerId}] to [${requestAccountId}] does not exist.`).toResponse();
 	}
 
 	// Find pinger's party
 	const pingerPartyId = await c.env.KV.get(`user:${pingerId}:party`);
 	if (!pingerPartyId) {
-		return c.sendError(odysseus.party.userHasNoParty.variable([pingerId]));
+		return odysseus.party.userHasNoParty.variable([pingerId]).toResponse();
 	}
 
 	const party = await Party.loadFromKV(pingerPartyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([pingerPartyId]));
+		return odysseus.party.partyNotFound.variable([pingerPartyId]).toResponse();
 	}
 
 	// Remove ping after successful lookup
@@ -508,7 +508,7 @@ app.get('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/parties', ratelim
 	const pingerId = c.req.param('pingerId');
 
 	if (targetAccountId !== requestAccountId) {
-		return c.sendError(odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]));
+		return odysseus.party.notYourAccount.variable([targetAccountId, requestAccountId]).toResponse();
 	}
 
 	// Check for ping
@@ -516,18 +516,18 @@ app.get('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/parties', ratelim
 	const pingData = await c.env.KV.get(pingKey, 'json');
 
 	if (!pingData) {
-		return c.sendError(odysseus.party.memberNotFound.withMessage(`Ping from [${pingerId}] to [${requestAccountId}] does not exist.`));
+		return odysseus.party.memberNotFound.withMessage(`Ping from [${pingerId}] to [${requestAccountId}] does not exist.`).toResponse();
 	}
 
 	// Find pinger's party
 	const pingerPartyId = await c.env.KV.get(`user:${pingerId}:party`);
 	if (!pingerPartyId) {
-		return c.sendError(odysseus.party.userHasNoParty.variable([pingerId]));
+		return odysseus.party.userHasNoParty.variable([pingerId]).toResponse();
 	}
 
 	const party = await Party.loadFromKV(pingerPartyId);
 	if (!party) {
-		return c.sendError(odysseus.party.partyNotFound.variable([pingerPartyId]));
+		return odysseus.party.partyNotFound.variable([pingerPartyId]).toResponse();
 	}
 
 	return c.json(party.getData());

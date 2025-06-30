@@ -15,10 +15,12 @@ app.post(
 	acidMiddleware,
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) return c.sendError(odysseus.mcp.invalidPayload.withMessage('profileId is required'));
+		if (!requestedProfileId) {
+			return odysseus.mcp.invalidPayload.withMessage('profileId is required').toResponse();
+		}
 
 		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 		}
 
 		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);

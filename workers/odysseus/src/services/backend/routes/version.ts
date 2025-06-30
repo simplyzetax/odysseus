@@ -2,7 +2,7 @@ import { app } from '@core/app';
 import { odysseus } from '@core/error';
 
 app.get('/fortnite/api/version', (c) => {
-	if (!c.misc.build) return c.sendError(odysseus.internal.invalidUserAgent);
+	if (!c.misc.build) return odysseus.internal.invalidUserAgent.toResponse();
 
 	return c.json({
 		app: 'fortnite',
@@ -43,7 +43,7 @@ app.get('/fortnite/api/version', (c) => {
 app.get('/fortnite/api/v2/versioncheck/:platform', async (c) => {
 	const shouldDoSoftUpdate = await c.env.KV.get('shouldDoSoftUpdate');
 
-	if (!c.misc.build.season) return c.sendError(odysseus.internal.invalidUserAgent);
+	if (!c.misc.build.season) return odysseus.internal.invalidUserAgent.toResponse();
 	return c.json({
 		type: shouldDoSoftUpdate ? 'SOFT_UPDATE' : 'NO_UPDATE',
 	});

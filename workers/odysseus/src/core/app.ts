@@ -25,13 +25,13 @@ app.onError((err, c) => {
 		return err.getResponse();
 	} else if (err instanceof Error) {
 		if (err.message.includes('Failed query:')) {
-			return c.sendError(odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.'));
+			return odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.').toResponse();
 		}
-		return c.sendError(odysseus.internal.serverError.withMessage(err.message));
+		return odysseus.internal.serverError.withMessage(err.message).toResponse();
 	}
-	return c.sendError(odysseus.internal.serverError.withMessage('An unknown error occurred'));
+	return odysseus.internal.serverError.withMessage('An unknown error occurred').toResponse();
 });
 
-app.notFound((c) => c.sendError(odysseus.basic.notFound));
+app.notFound((c) => odysseus.basic.notFound.toResponse());
 
 export { app };

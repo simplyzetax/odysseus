@@ -77,6 +77,15 @@ export class ApiError {
 		return `${this.response.errorCode} - ${this.response.errorMessage}`;
 	}
 
+	toResponse(): Response {
+		return new Response(JSON.stringify(this.response), {
+			status: this.statusCode,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+	}
+
 	throwHttpException(): never {
 		const errorResponse = new Response(JSON.stringify(this.response), {
 			status: this.statusCode,

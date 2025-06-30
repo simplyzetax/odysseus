@@ -14,7 +14,7 @@ export const cacheIdentifierMiddleware = createMiddleware(
 		if (!cacheIdentifier) {
 			const colo = String(c.req.raw.cf?.colo);
 			if (!colo) {
-				return c.sendError(odysseus.basic.badRequest.withMessage('Missing Cloudflare colo'));
+				return odysseus.basic.badRequest.withMessage('Missing Cloudflare colo').toResponse();
 			}
 
 			cacheIdentifier = `${colo}-${nanoid()}`;
@@ -22,27 +22,6 @@ export const cacheIdentifierMiddleware = createMiddleware(
 		}
 
 		c.set('cacheIdentifier', cacheIdentifier);
-
-		/*if (!getCookie(c, 'cacheAssociatedWithAccountId')) {
-			const Authorization = c.req.header('Authorization');
-			if (Authorization?.startsWith('Bearer ')) {
-				const token = Authorization.split(' ')[1];
-				if (token) {
-					try {
-						const verifiedToken = await JWT.verifyToken(token);
-						if (verifiedToken?.sub) {
-							const accountId = verifiedToken.sub;
-							setCookie(c, 'cacheAssociatedWithAccountId', accountId);
-
-							// Associate the cache identifier with the account id
-							c.executionCtx.waitUntil(c.env.KV.put(accountId, cacheIdentifier));
-						}
-					} catch {
-						// JWT verification failed, continue without association
-					}
-				}
-			}
-		}*/
 
 		await next();
 	},

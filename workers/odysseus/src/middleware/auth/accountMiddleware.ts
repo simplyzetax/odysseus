@@ -11,24 +11,24 @@ export const accountMiddleware = createMiddleware(
 	async (c: Context<{ Variables: { cacheIdentifier: string; account: Account } }>, next) => {
 		const Authorization = c.req.header('Authorization');
 		if (!Authorization?.startsWith('Bearer ')) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header'));
+			return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
 		}
 
 		const token = Authorization.split(' ')[1];
 		if (!token) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header'));
+			return odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header').toResponse();
 		}
 
 		const verifiedToken = await JWT.verifyToken(token);
 		if (!verifiedToken?.sub) {
-			return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid or expired token'));
+			return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
 		}
 
 		const db = getDB(c.var.cacheIdentifier);
 
 		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, verifiedToken.sub));
 		if (!account) {
-			return c.sendError(odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${verifiedToken.sub} not found`));
+			return odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${verifiedToken.sub} not found`).toResponse();
 		}
 
 		c.set('account', account);

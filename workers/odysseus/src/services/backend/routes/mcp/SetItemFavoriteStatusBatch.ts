@@ -20,11 +20,11 @@ app.post(
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Missing profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Missing profile ID').toResponse();
 		}
 
 		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 		}
 
 		const { itemIds, itemFavStatus } = c.req.valid('json');
@@ -35,7 +35,7 @@ app.post(
 
 		const items = await db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 		if (items.length !== itemIds.length) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Some items not found'));
+			return odysseus.mcp.invalidPayload.withMessage('Some items not found').toResponse();
 		}
 
 		for (const item of items) {

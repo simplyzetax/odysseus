@@ -16,11 +16,11 @@ app.post(
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Missing profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Missing profile ID').toResponse();
 		}
 
 		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 		}
 
 		const { pinnedQuest } = c.req.valid('json');

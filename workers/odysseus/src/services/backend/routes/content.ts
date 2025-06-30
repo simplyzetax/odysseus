@@ -25,7 +25,7 @@ app.get(
 
 		const ini = iniParser.getIniForFile('Content.ini');
 		if (!ini) {
-			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('Content file not found'));
+			return odysseus.cloudstorage.fileNotFound.withMessage('Content file not found').toResponse();
 		}
 		return c.body(ini);
 	},
@@ -54,7 +54,7 @@ app.get(
 	async (c) => {
 		const manifest = await c.env.R2.get(manifestKey);
 		if (!manifest) {
-			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('Manifest file not found'));
+			return odysseus.cloudstorage.fileNotFound.withMessage('Manifest file not found').toResponse();
 		}
 
 		//TODO: See if it's possible to make Fortnite download custom binaries or run commands via the manifest

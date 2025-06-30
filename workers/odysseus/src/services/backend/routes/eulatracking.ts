@@ -18,7 +18,7 @@ app.get(
 
 		const eula = await c.env.R2.get(`${eulaKey}${appName}.json`);
 		if (!eula) {
-			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found'));
+			return odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found').toResponse();
 		}
 
 		return c.json({
@@ -54,7 +54,7 @@ app.get('/api/shared/agreements/:appName', async (c) => {
 
 	const eula = await c.env.R2.get(`${eulaKey}${appName}.json`);
 	if (!eula) {
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found'));
+		return odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found').toResponse();
 	}
 
 	const origin = c.req.header('Origin');

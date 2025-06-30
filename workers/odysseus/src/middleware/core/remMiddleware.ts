@@ -1,4 +1,3 @@
-import type { ApiError } from '@core/error';
 import { parseUserAgent } from '@utils/misc/user-agent';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -18,14 +17,7 @@ const defaultFlags: Flags = {
 };
 
 export const responseEnhancementsMiddleware = createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
-	c.sendError = (error: ApiError): Response => {
-		const requestPath = new URL(c.req.url).pathname;
-		error.response.originatingService = requestPath;
-		c.status(error.statusCode as StatusCode);
-		return c.json(error.response);
-	};
-
-	c.sendIni = (ini: string): Response => {
+	c.sendOctet = (ini: string): Response => {
 		return new Response(ini, {
 			status: 200,
 			headers: {

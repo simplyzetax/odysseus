@@ -16,7 +16,7 @@ app.get(
 	async (c) => {
 		const accountIdQuery = c.req.query('accountId');
 		if (!accountIdQuery) {
-			return c.sendError(odysseus.account.invalidAccountIdCount.withMessage('Account ID is required'));
+			return odysseus.account.invalidAccountIdCount.withMessage('Account ID is required').toResponse();
 		}
 
 		const db = getDB(c.var.cacheIdentifier);
@@ -27,7 +27,7 @@ app.get(
 		// Validate all account IDs are present
 		for (const accountId of accountIds) {
 			if (!accountId) {
-				return c.sendError(odysseus.account.invalidAccountIdCount.withMessage('Account ID is required'));
+				return odysseus.account.invalidAccountIdCount.withMessage('Account ID is required').toResponse();
 			}
 		}
 
@@ -39,7 +39,7 @@ app.get(
 			// Find which account IDs were not found
 			const foundIds = new Set(accounts.map((acc) => acc.id));
 			const missingIds = accountIds.filter((id) => !foundIds.has(id));
-			return c.sendError(odysseus.account.accountNotFound.variable([missingIds[0]]));
+			return odysseus.account.accountNotFound.variable([missingIds[0]]).toResponse();
 		}
 
 		// Build response maintaining the original order
@@ -66,7 +66,7 @@ app.get(
 	async (c) => {
 		const displayName = c.req.param('displayName');
 		if (!displayName) {
-			return c.sendError(odysseus.account.accountNotFound.withMessage('Display name is required'));
+			return odysseus.account.accountNotFound.withMessage('Display name is required').toResponse();
 		}
 
 		const db = getDB(c.var.cacheIdentifier);
@@ -79,7 +79,7 @@ app.get(
 			.limit(1);
 
 		if (!account) {
-			return c.sendError(odysseus.account.accountNotFound.variable([displayName]));
+			return odysseus.account.accountNotFound.variable([displayName]).toResponse();
 		}
 
 		return c.json({
@@ -100,7 +100,7 @@ app.get(
 	async (c) => {
 		const q = c.req.query('q');
 		if (typeof q !== 'string') {
-			return c.sendError(odysseus.account.invalidAccountIdCount.withMessage("Query parameter 'q' is required"));
+			return odysseus.account.invalidAccountIdCount.withMessage("Query parameter 'q' is required").toResponse();
 		}
 
 		const db = getDB(c.var.cacheIdentifier);
@@ -111,7 +111,7 @@ app.get(
 			.limit(1);
 
 		if (!account) {
-			return c.sendError(odysseus.account.accountNotFound.variable([q]));
+			return odysseus.account.accountNotFound.variable([q]).toResponse();
 		}
 
 		return c.json({
@@ -134,7 +134,7 @@ app.get(
 
 		const prefix = c.req.query('prefix') || '';
 		if (!prefix) {
-			return c.sendError(odysseus.account.invalidAccountIdCount.withMessage('Prefix query parameter is required'));
+			return odysseus.account.invalidAccountIdCount.withMessage('Prefix query parameter is required').toResponse();
 		}
 
 		//find users starting with the prefix

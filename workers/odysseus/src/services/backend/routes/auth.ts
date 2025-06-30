@@ -47,24 +47,24 @@ app.post(
 
 		const Authorization = c.req.header('Authorization');
 		if (!Authorization) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header'));
+			return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
 		}
 
 		if (!Authorization.toLowerCase().startsWith('basic')) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid Authorization header format'));
+			return odysseus.authentication.invalidHeader.withMessage('Invalid Authorization header format').toResponse();
 		}
 
 		const [clientId, clientSecret] = atob(Authorization.slice(6)).split(':');
 		if (!clientId || !clientSecret) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client credentials'));
+			return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
 		}
 
 		if (!isValidClientId(clientId)) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client ID'));
+			return odysseus.authentication.invalidHeader.withMessage('Invalid client ID').toResponse();
 		}
 
 		if (CLIENTS[clientId].secret !== clientSecret) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client secret'));
+			return odysseus.authentication.invalidHeader.withMessage('Invalid client secret').toResponse();
 		}
 
 		const grantType = body.grant_type;
@@ -78,7 +78,7 @@ app.post(
 				const token = await JWT.createClientToken(clientId, grantType, 24);
 				const decodedClient = await JWT.verifyToken(token);
 				if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== grantType) {
-					return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid client token'));
+					return odysseus.authentication.invalidToken.withMessage('Invalid client token').toResponse();
 				}
 
 				return c.json({
@@ -97,13 +97,13 @@ app.post(
 			}
 			case GRANT_TYPES.exchange: {
 				if (!body.exchange_code) {
-					return c.sendError(odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code'));
+					return odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code').toResponse();
 				}
 
 				//TODO: Remove in prod
 				/*const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
             if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
-                return c.sendError(odysseus.authentication.invalidToken.withMessage("Invalid exchange code"));
+                return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
             }*/
 
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
@@ -111,28 +111,28 @@ app.post(
 			}
 			case GRANT_TYPES.password: {
 				if (!body.username || !body.password) {
-					return c.sendError(odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password'));
+					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
 				}
 
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, body.username));
 				if (!account) {
-					return c.sendError(odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found'));
+					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
 				}
 
 				//TODO: Check password
 				break;
 			}
 			default: {
-				return c.sendError(odysseus.authentication.oauth.grantNotImplemented.withMessage('Unsupported grant type'));
+				return odysseus.authentication.oauth.grantNotImplemented.withMessage('Unsupported grant type').toResponse();
 			}
 		}
 
 		if (!account) {
-			return c.sendError(odysseus.account.accountNotFound.withMessage('Account not found for the provided grant type'));
+			return odysseus.account.accountNotFound.withMessage('Account not found for the provided grant type').toResponse();
 		}
 
 		if (account.banned) {
-			return c.sendError(odysseus.account.disabledAccount);
+			return odysseus.account.disabledAccount.toResponse();
 		}
 
 		const deviceId = nanoid(8);
@@ -172,7 +172,7 @@ app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
 	// Token is already verified by acidMiddleware, get the decoded token
 	const decodedToken = await JWT.verifyToken(c.var.token);
 	if (!decodedToken?.sub) {
-		return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid or expired token'));
+		return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
 	}
 
 	const [account] = await getDB(c.var.cacheIdentifier)
@@ -183,7 +183,7 @@ app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
 		.where(eq(ACCOUNTS.id, decodedToken.sub));
 
 	if (!account) {
-		return c.sendError(odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${decodedToken.sub} not found`));
+		return odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${decodedToken.sub} not found`).toResponse();
 	}
 
 	// Calculate expiration time properly
@@ -217,7 +217,7 @@ app.delete('/account/api/oauth/sessions/kill', (c) => {
 app.delete('/account/api/oauth/sessions/kill/:token', (c) => {
 	const token = c.req.param('token');
 	if (!token) {
-		return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing token parameter'));
+		return odysseus.authentication.invalidHeader.withMessage('Missing token parameter').toResponse();
 	}
 	// I would invalidate the token in your database or cache but we are not
 	// storing tokens in the db atm, so we just return 204
@@ -258,43 +258,35 @@ app.post(
 		// Parse Authorization header
 		const Authorization = c.req.header('Authorization');
 		if (!Authorization) {
-			return c.sendError(
-				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
-				),
-			);
+			return odysseus.authentication.invalidHeader
+				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+				.toResponse();
 		}
 
 		if (!Authorization.toLowerCase().startsWith('basic')) {
-			return c.sendError(
-				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
-				),
-			);
+			return odysseus.authentication.invalidHeader
+				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+				.toResponse();
 		}
 
 		let clientId: string;
 		try {
 			const [id, secret] = atob(Authorization.slice(6)).split(':');
 			if (!id || !secret) {
-				return c.sendError(odysseus.authentication.invalidHeader.withMessage('Invalid client credentials'));
+				return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
 			}
 			clientId = id;
 		} catch {
-			return c.sendError(
-				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
-				),
-			);
+			return odysseus.authentication.invalidHeader
+				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+				.toResponse();
 		}
 
 		// Validate client ID
 		if (!isValidClientId(clientId)) {
-			return c.sendError(
-				odysseus.authentication.invalidHeader.withMessage(
-					'Authorization header may be invalid or not present, please verify that you are sending the correct headers',
-				),
-			);
+			return odysseus.authentication.invalidHeader
+				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+				.toResponse();
 		}
 
 		// Process refresh token
@@ -307,9 +299,9 @@ app.post(
 			// Verify the refresh token
 			const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
 			if (!decodedRefreshToken?.sub || decodedRefreshToken.t !== 'r') {
-				return c.sendError(
-					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`),
-				);
+				return odysseus.authentication.oauth.invalidRefresh
+					.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
+					.toResponse();
 			}
 
 			// Check if token is expired (JWT library should handle this, but double-check)
@@ -318,9 +310,9 @@ app.post(
 			const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
 
 			if (expiresAt.getTime() <= Date.now()) {
-				return c.sendError(
-					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is expired`),
-				);
+				return odysseus.authentication.oauth.invalidRefresh
+					.withMessage(`Sorry the refresh token '${refreshToken}' is expired`)
+					.toResponse();
 			}
 
 			// Get account information
@@ -328,13 +320,13 @@ app.post(
 			const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
 
 			if (!account) {
-				return c.sendError(
-					odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`),
-				);
+				return odysseus.authentication.oauth.invalidRefresh
+					.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
+					.toResponse();
 			}
 
 			if (account.banned) {
-				return c.sendError(odysseus.account.disabledAccount);
+				return odysseus.account.disabledAccount.toResponse();
 			}
 
 			// Generate new tokens
@@ -370,7 +362,7 @@ app.post(
 		} catch (error) {
 			// Handle invalid/expired refresh token
 			console.error('Refresh token error:', error);
-			return c.sendError(odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`));
+			return odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`).toResponse();
 		}
 	},
 );

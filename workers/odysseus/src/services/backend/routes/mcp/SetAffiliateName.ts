@@ -25,7 +25,7 @@ app.post(
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
+			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 		}
 
 		const { affiliateName } = c.req.valid('json');
@@ -34,11 +34,11 @@ app.post(
 
 		const [creatorAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, affiliateName));
 		if (!creatorAccount) {
-			return c.sendError(odysseus.basic.notFound.withMessage('Affiliate name not found'));
+			return odysseus.basic.notFound.withMessage('Affiliate name not found').toResponse();
 		}
 
 		if (!creatorAccount.creator) {
-			return c.sendError(odysseus.basic.notFound.withMessage('Creator account not verified'));
+			return odysseus.basic.notFound.withMessage('Creator account not verified').toResponse();
 		}
 
 		const now = new Date().toISOString();

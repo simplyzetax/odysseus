@@ -14,11 +14,13 @@ app.post(
 	}),
 	async (c) => {
 		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) return c.sendError(odysseus.mcp.invalidPayload.withMessage('profileId is required'));
+		if (!requestedProfileId) {
+			return odysseus.mcp.invalidPayload.withMessage('profileId is required').toResponse();
+		}
 
 		//TODO: not sure if it's actually common_core, but we'll see when i test it
 		if (!FortniteProfile.isExactProfileType(requestedProfileId, 'common_core')) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be common_core'));
+			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be common_core').toResponse();
 		}
 
 		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);

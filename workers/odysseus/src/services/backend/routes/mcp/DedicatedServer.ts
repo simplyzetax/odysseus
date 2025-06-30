@@ -8,7 +8,7 @@ app.post('/fortnite/api/game/v2/profile/:accountId/dedicated_server/:operation',
 	const requestedProfileId = c.req.query('profileId');
 
 	if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-		return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
+		return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 	}
 
 	const profile = await FortniteProfile.construct(accountId, requestedProfileId, c.var.cacheIdentifier);
