@@ -5,9 +5,7 @@ import { ACCOUNTS } from './account';
 export const HOTFIXES = pgTable(
 	'hotfixes',
 	{
-		id: uuid('id')
-			.primaryKey()
-			.default(sql`uuid_generate_v4()`),
+		id: uuid('id').primaryKey().defaultRandom(),
 		filename: text('file').notNull(),
 		section: text('section').notNull(),
 		key: text('key').notNull(),

@@ -11,9 +11,7 @@ const defaultJsonAttributes = {
 export const ITEMS = pgTable(
 	'items',
 	{
-		id: uuid()
-			.primaryKey()
-			.default(sql`uuid_generate_v4()`),
+		id: uuid('id').primaryKey().defaultRandom(),
 		templateId: text('template_id').notNull(),
 		profileId: uuid('profile_id')
 			.references(() => PROFILES.id)
