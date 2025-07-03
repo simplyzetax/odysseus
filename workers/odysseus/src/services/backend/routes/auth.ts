@@ -114,7 +114,7 @@ app.post(
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
 				}
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, body.username));
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, body.username));
 				if (!account) {
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
 				}

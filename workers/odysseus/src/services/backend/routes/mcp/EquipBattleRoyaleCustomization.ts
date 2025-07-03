@@ -7,11 +7,11 @@ import { arktypeValidator } from '@hono/arktype-validator';
 import { type } from 'arktype';
 
 export const VALID_COSMETIC_SLOTS = [
-	'Character',
-	'Backpack',
-	'Pickaxe',
-	'Glider',
-	'SkyDiveContrail',
+	'AthenaCharacter',
+	'AthenaBackpack',
+	'AthenaPickaxe',
+	'AthenaGlider',
+	'AthenaSkyDiveContrail',
 	'MusicPack',
 	'LoadingScreen',
 	'Dance',
@@ -30,7 +30,7 @@ export const SLOT_CONFIGS = {
 const equipBattleRoyaleCustomizationSchema = type({
 	indexWithinSlot: 'number', // -1 = fill all slots for multi-slot items, 0+ = specific slot index
 	itemToSlot: 'string',
-	slotName: type(['===', ...VALID_COSMETIC_SLOTS]),
+	slotName: 'string',
 	'variantUpdates?': type({
 		channel: 'string',
 		active: 'string',
@@ -55,6 +55,8 @@ app.post(
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';
 
+		console.log('normalizedItemToSlot', normalizedItemToSlot);
+
 		// Only validate item if we're actually equipping something (not unequipping)
 		if (normalizedItemToSlot) {
 			const item = await profile.getItemBy('id', normalizedItemToSlot);
@@ -64,9 +66,18 @@ app.post(
 
 			// More robust template ID validation - check if the item type matches the slot category
 			const itemType = item.templateId.split(':')[0];
-			const expectedPrefix = slotName.toLowerCase();
 
-			if (!itemType.toLowerCase().startsWith(expectedPrefix)) {
+			// Handle Athena prefix mapping - some slots have Athena prefix, others don't
+			const normalizedSlotName = slotName.toLowerCase();
+			const normalizedItemType = itemType.toLowerCase();
+
+			// Check if the item type matches the slot either directly or with Athena prefix
+			const isValidSlot =
+				normalizedItemType.startsWith(normalizedSlotName) ||
+				normalizedItemType.startsWith(`athena${normalizedSlotName}`) ||
+				(normalizedSlotName.startsWith('athena') && normalizedItemType.startsWith(normalizedSlotName));
+
+			if (!isValidSlot) {
 				return odysseus.mcp.invalidPayload.withMessage(`Cannot slot item of type ${itemType} in slot of category ${slotName}`).toResponse();
 			}
 		}

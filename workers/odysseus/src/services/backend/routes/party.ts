@@ -11,7 +11,7 @@ import { eosService } from '@utils/eos/base';
 /**
  * Create a new party
  */
-app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.post('/party/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const accountId = c.var.account.id;
 	const body = await c.req.json();
 
@@ -57,7 +57,7 @@ app.post('/api/v1/:deploymentId/parties', ratelimitMiddleware(), accountMiddlewa
 /**
  * Update party configuration
  */
-app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.patch('/party/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const accountId = c.var.account.id;
 	const partyId = c.req.param('partyId');
 	const body = await c.req.json();
@@ -90,7 +90,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accou
 /**
  * Get party information
  */
-app.get('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.get('/party/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const partyId = c.req.param('partyId');
 
 	const party = await Party.loadFromKV(partyId);
@@ -104,7 +104,7 @@ app.get('/api/v1/:deploymentId/parties/:partyId', ratelimitMiddleware(), account
 /**
  * Update party member metadata
  */
-app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.patch('/party/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
@@ -132,7 +132,7 @@ app.patch('/api/v1/:deploymentId/parties/:partyId/members/:accountId/meta', rate
 /**
  * Join party by ID
  */
-app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.post('/party/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
@@ -169,7 +169,7 @@ app.post('/api/v1/Fortnite/parties/:partyId/members/:accountId/join', ratelimitM
 /**
  * Leave party
  */
-app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.delete('/party/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
@@ -209,7 +209,7 @@ app.delete('/api/v1/Fortnite/parties/:partyId/members/:accountId', ratelimitMidd
 /**
  * Get current user's parties and invites
  */
-app.get('/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.get('/party/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 
@@ -253,7 +253,7 @@ app.get('/api/v1/:deploymentId/user/:accountId', ratelimitMiddleware(), accountM
 /**
  * Invite user to party
  */
-app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.post('/party/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const inviteeAccountId = c.req.param('accountId');
 	const partyId = c.req.param('partyId');
@@ -309,7 +309,7 @@ app.post('/api/v1/:deploymentId/parties/:partyId/invites/:accountId', ratelimitM
  * Voice chat connection endpoint
  */
 app.post(
-	'/api/v1/Fortnite/parties/:partyId/members/:accountId/conferences/connection',
+	'/party/api/v1/Fortnite/parties/:partyId/members/:accountId/conferences/connection',
 	ratelimitMiddleware(),
 	accountMiddleware,
 	async (c) => {
@@ -357,7 +357,7 @@ app.post(
 /**
  * Ping a friend to join party
  */
-app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.post('/party/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const friendId = c.req.param('friendId');
@@ -431,7 +431,7 @@ app.post('/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimitMiddl
 /**
  * Remove a ping
  */
-app.delete('/api/v1/:deploymentId/user/:accountId/pings/:pingerId', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.delete('/party/api/v1/:deploymentId/user/:accountId/pings/:pingerId', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const pingerId = c.req.param('pingerId');
@@ -453,7 +453,7 @@ app.delete('/api/v1/:deploymentId/user/:accountId/pings/:pingerId', ratelimitMid
 /**
  * Join a party from a ping
  */
-app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.post('/party/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const pingerId = c.req.param('pingerId');
@@ -502,7 +502,7 @@ app.post('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/join', ratelimit
 /**
  * View party details from a ping
  */
-app.get('/api/v1/:deploymentId/user/:accountId/pings/:pingerId/parties', ratelimitMiddleware(), accountMiddleware, async (c) => {
+app.get('/party/api/v1/:deploymentId/user/:accountId/pings/:pingerId/parties', ratelimitMiddleware(), accountMiddleware, async (c) => {
 	const requestAccountId = c.var.account.id;
 	const targetAccountId = c.req.param('accountId');
 	const pingerId = c.req.param('pingerId');

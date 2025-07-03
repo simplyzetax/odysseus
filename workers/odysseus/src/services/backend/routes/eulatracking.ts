@@ -39,7 +39,7 @@ app.get(
 	},
 );
 
-app.post('/api/public/agreements/:appName', devAuthMiddleware, async (c) => {
+app.post('/eulatracking/api/public/agreements/:appName', devAuthMiddleware, async (c) => {
 	const appName = c.req.param('appName');
 
 	const body = await c.req.text();
@@ -49,7 +49,7 @@ app.post('/api/public/agreements/:appName', devAuthMiddleware, async (c) => {
 	return c.json({ message: 'EULA updated successfully', key: `${eulaKey}${appName}.json`, sha256: result?.checksums.sha256 });
 });
 
-app.get('/api/shared/agreements/:appName', async (c) => {
+app.get('/eulatracking/api/shared/agreements/:appName', async (c) => {
 	const appName = c.req.param('appName');
 
 	const eula = await c.env.R2.get(`${eulaKey}${appName}.json`);
@@ -77,4 +77,4 @@ app.get('/api/shared/agreements/:appName', async (c) => {
 	});
 });
 
-app.post('/api/public/agreements/fn/version/1/account/:accountId/accept', (c) => c.sendStatus(204));
+app.post('/eulatracking/api/public/agreements/fn/version/1/account/:accountId/accept', (c) => c.sendStatus(204));

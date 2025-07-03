@@ -11,13 +11,11 @@ import { Bindings } from '@otypes/bindings';
 /**
  * The main app
  */
-const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>();
-export type App = typeof app;
-
-app.use(responseEnhancementsMiddleware);
-app.use(logger());
-app.use(cacheIdentifierMiddleware);
-app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
+const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>()
+	.use(responseEnhancementsMiddleware)
+	.use(logger())
+	.use(cacheIdentifierMiddleware)
+	.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {
 	console.error(err);

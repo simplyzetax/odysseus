@@ -5,8 +5,8 @@ import path from 'path';
 export default defineConfig({
 	plugins: [cloudflare()],
 	server: {
-		port: 8787,
-		allowedHosts: [],
+		port: 80,
+		allowedHosts: ['be50-2a09-bac5-2d0a-2496-00-3a5-63.ngrok-free.app'],
 	},
 	build: {
 		sourcemap: true,

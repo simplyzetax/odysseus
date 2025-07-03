@@ -5,6 +5,9 @@ export const CLIENTS = {
 	odysseus: {
 		secret: 'odysseus_secret',
 	},
+	ec684b8c687f479fadea3cb2ad83f5c6: {
+		secret: 'e1f31c211f28413186262d37a13fc84d',
+	},
 } as const;
 
 /**

@@ -1,1 +1,19 @@
 **/worker-configuration.d.ts
+**/dist/**
+**/.wrangler/**
+**/pkg/**
+**/type.d.ts
+**/vite-env.d.ts
+**/odysseus/dist/odysseus/index.js
+
+# Wrangler configuration files
+**/wrangler.jsonc
+**/wrangler.json
+
+# Build and generated files
+dist/
+.wrangler/
+node_modules/
+
+# Vite build outputs
+**/assets/**

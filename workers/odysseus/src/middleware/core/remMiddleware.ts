@@ -36,8 +36,6 @@ export const responseEnhancementsMiddleware = createMiddleware(async (c: Context
 		timestamp: 0,
 	};
 
-	c.id = nanoid();
-
 	c.misc = {
 		build: parseUserAgent(c.req.header('User-Agent') || ''),
 	};

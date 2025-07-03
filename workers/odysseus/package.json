@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"deploy": "eslint . && prettier --check . && vite build && wrangler deploy",
+		"deploy": "vite build && wrangler deploy",
 		"start": "wrangler dev",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",

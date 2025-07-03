@@ -12,7 +12,8 @@ export default tseslint.config(
 			'**/pkg/**',
 			'**/type.d.ts',
 			'**/worker-configuration.d.ts',
-			'**/vite-env.d.ts'
+			'**/vite-env.d.ts',
+			'**/odysseus/dist/odysseus/index.js',
 		],
 	},
 	...tseslint.configs.recommended,

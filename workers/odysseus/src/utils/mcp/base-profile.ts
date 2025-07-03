@@ -236,22 +236,25 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @returns The item
 	 */
 	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
-		// Automatically generate column mapping from Arktype schema shape
-		const schemaShape = itemSelectSchema.infer;
-		const columnMap = Object.keys(schemaShape).reduce(
-			(acc, key) => {
-				acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
-				return acc;
-			},
-			{} as Record<keyof Item, any>,
-		);
+		// Map item properties to their corresponding ITEMS columns
+		const columnMap = {
+			id: ITEMS.id,
+			templateId: ITEMS.templateId,
+			profileId: ITEMS.profileId,
+			jsonAttributes: ITEMS.jsonAttributes,
+			quantity: ITEMS.quantity,
+			favorite: ITEMS.favorite,
+			seen: ITEMS.seen,
+		} as const;
 
-		const column = columnMap[columnName];
+		const column = columnMap[columnName as keyof typeof columnMap];
 		if (!column) {
 			throw new Error(`Invalid column name: ${String(columnName)}`);
 		}
 
-		const [item] = await this.db.select().from(ITEMS).where(eq(column, value));
+		// Handle null values by using isNull instead of eq
+		const whereCondition = value === null ? sql`${column} IS NULL` : eq(column, value);
+		const [item] = await this.db.select().from(ITEMS).where(whereCondition);
 
 		return item;
 	}

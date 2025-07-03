@@ -10,7 +10,7 @@ import { createMiddleware } from 'hono/factory';
 export const accountMiddleware = createMiddleware(
 	async (c: Context<{ Variables: { cacheIdentifier: string; account: Account } }>, next) => {
 		const Authorization = c.req.header('Authorization');
-		if (!Authorization?.startsWith('Bearer ')) {
+		if (!Authorization?.toLowerCase().startsWith('bearer ')) {
 			return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
 		}
 

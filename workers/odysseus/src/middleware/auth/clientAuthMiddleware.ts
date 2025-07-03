@@ -5,18 +5,24 @@ import { createMiddleware } from 'hono/factory';
 
 export const clientTokenVerify = createMiddleware(async (c: Context<{ Bindings: Env }>, next) => {
 	const Authorization = c.req.header('Authorization');
-	if (!Authorization?.startsWith('Bearer ')) {
-		return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
+	if (!Authorization?.toLowerCase().startsWith('bearer ')) {
+		return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header client token').toResponse();
 	}
 
 	const token = Authorization.split(' ')[1];
 	if (!token) {
-		return odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header').toResponse();
+		return odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header client token').toResponse();
 	}
 
 	const verifiedToken = await JWT.verifyToken(token);
 	if (!verifiedToken || verifiedToken.am !== GRANT_TYPES.client_credentials) {
-		return odysseus.authentication.invalidToken.withMessage('Invalid or expired client token').toResponse();
+		console.log(
+			'Invalid or expired client token client token. Debug: Is client credentails',
+			verifiedToken?.am === GRANT_TYPES.client_credentials,
+			'but it is',
+			verifiedToken?.am,
+		);
+		return odysseus.authentication.invalidToken.withMessage('Invalid or expired client token client token').toResponse();
 	}
 
 	await next();

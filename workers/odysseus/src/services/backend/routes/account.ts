@@ -200,3 +200,7 @@ app.get(
 		});
 	},
 );
+
+app.get('/account/api/public/account/:accountId/externalAuths', accountMiddleware, async (c) => {
+	return c.json([]);
+});
