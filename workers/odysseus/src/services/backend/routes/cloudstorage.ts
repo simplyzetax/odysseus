@@ -3,7 +3,6 @@ import { getDB } from '@core/db/client';
 import { HOTFIXES } from '@core/db/schemas/hotfixes';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { clientTokenVerify } from '@middleware/auth/clientAuthMiddleware';
 import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { IniParser } from '@utils/misc/ini-parser';

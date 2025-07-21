@@ -1,5 +1,4 @@
 import { app } from '@core/app';
-import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
@@ -15,7 +14,7 @@ app.post(
 	}),
 	mcpValidationMiddleware,
 	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 		const profileObject = await profile.buildProfileObject();
 
 		profile.trackChange({

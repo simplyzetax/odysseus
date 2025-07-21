@@ -10,7 +10,7 @@ import { createMiddleware } from 'hono/factory';
  * it manually in the routes.
  */
 export const mcpValidationMiddleware = createMiddleware(
-	async (c: Context<{ Bindings: Env } & { Variables: { profileId: ProfileType } }>, next) => {
+	async (c: Context<{ Bindings: Env } & { Variables: { profileType: ProfileType } }>, next) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
 			return odysseus.mcp.invalidPayload.withMessage('Missing profile ID').toResponse();
@@ -20,7 +20,7 @@ export const mcpValidationMiddleware = createMiddleware(
 			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
 		}
 
-		c.set('profileId', requestedProfileId);
+		c.set('profileType', requestedProfileId);
 
 		return await next();
 	},

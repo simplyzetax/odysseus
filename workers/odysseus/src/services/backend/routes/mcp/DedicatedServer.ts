@@ -6,7 +6,7 @@ import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddlewar
 app.post('/fortnite/api/game/v2/profile/:accountId/dedicated_server/:operation', mcpValidationMiddleware, async (c) => {
 	const accountId = c.req.param('accountId');
 
-	const profile = await FortniteProfile.construct(accountId, c.var.profileId, c.var.cacheIdentifier);
+	const profile = await FortniteProfile.construct(accountId, c.var.profileType, c.var.cacheIdentifier);
 
 	const profileObject = profile.buildProfileObject();
 
