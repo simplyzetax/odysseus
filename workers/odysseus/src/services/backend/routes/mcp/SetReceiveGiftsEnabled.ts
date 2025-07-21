@@ -4,6 +4,7 @@ import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const setReceiveGiftsEnabledSchema = type({
 	bReceiveGifts: 'boolean',
@@ -13,19 +14,11 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetReceiveGiftsEnabled',
 	arktypeValidator('json', setReceiveGiftsEnabledSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) {
-			return odysseus.mcp.invalidPayload.withMessage('Missing profile ID').toResponse();
-		}
-
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
-		}
-
 		const { bReceiveGifts } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileId, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',

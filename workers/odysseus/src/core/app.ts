@@ -30,6 +30,6 @@ app.onError((err, c) => {
 	return odysseus.internal.serverError.withMessage('An unknown error occurred').toResponse();
 });
 
-app.notFound((c) => odysseus.basic.notFound.toResponse());
+app.notFound(() => odysseus.basic.notFound.toResponse());
 
 export { app };

@@ -8,6 +8,7 @@ import { FortniteProfile } from '@utils/mcp/base-profile';
 import { eq } from 'drizzle-orm';
 import { type } from 'arktype';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const setAffiliateNameSchema = type({
 	affiliateName: 'string',
@@ -22,12 +23,8 @@ app.post(
 		initialTokens: 3,
 		refillRate: 0.5,
 	}),
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
-		}
-
 		const { affiliateName } = c.req.valid('json');
 
 		const db = getDB(c.var.cacheIdentifier);
@@ -43,7 +40,7 @@ app.post(
 
 		const now = new Date().toISOString();
 
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileId, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',

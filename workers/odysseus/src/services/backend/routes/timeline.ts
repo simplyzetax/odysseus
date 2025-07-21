@@ -1,50 +1,113 @@
 import { app } from '@core/app';
+import { odysseus } from '@core/error';
+import { FNBuildData, parseUserAgent } from '@utils/misc/user-agent';
+
+const forever = '9999-01-01T00:00:00.000Z';
+
+function createActiveEvents(mem: FNBuildData): Array<{ eventType: string; activeUntil: string; activeSince: string }> {
+	const now = new Date().toISOString();
+
+	const eventsMap = new Map<number, Array<{ eventType: string; activeUntil: string; activeSince: string }>>([
+		[3, [{ eventType: 'EventFlag.Spring2018Phase1', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' }]],
+		[
+			4,
+			[
+				{ eventType: 'EventFlag.Blockbuster2018', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.Blockbuster2018Phase1', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+			],
+		],
+		[
+			4,
+			[
+				{ eventType: 'EventFlag.Blockbuster2018', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.Blockbuster2018Phase1', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+			],
+		],
+		[
+			5,
+			[
+				{ eventType: 'EventFlag.RoadTrip2018', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.LTM_Heist', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+			],
+		],
+		[
+			6,
+			[
+				{ eventType: 'EventFlag.LTM_Fortnitemares', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.LTM_LilKevin', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+			],
+		],
+		[
+			11,
+			[
+				{ eventType: 'EventFlag.Winterfest.Tree', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.LTE_WinterFest', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+				{ eventType: 'EventFlag.LTE_WinterFest2019', activeUntil: forever, activeSince: '2020-01-01T00:00:00.000Z' },
+			],
+		],
+	]);
+
+	const events = [
+		{ eventType: `EventFlag.Season${mem.season}`, activeUntil: forever, activeSince: now },
+		{ eventType: `EventFlag.${mem.lobby}`, activeUntil: forever, activeSince: now },
+	];
+
+	for (const [season, seasonEvents] of eventsMap) {
+		if (mem.season >= season) {
+			events.push(...seasonEvents);
+		}
+	}
+
+	return events;
+}
+
+function getIsoDateOneMinuteBeforeMidnight(): string {
+	const todayAtMidnight = new Date();
+	todayAtMidnight.setHours(24, 0, 0, 0);
+	const todayOneMinuteBeforeMidnight = new Date(todayAtMidnight.getTime() - 1);
+	return todayOneMinuteBeforeMidnight.toISOString();
+}
 
 app.get('/fortnite/api/calendar/v1/timeline', (c) => {
-	const activeEvents = [
-		{
-			eventType: `EventFlag.Season${c.misc.build.season}`,
-			activeUntil: '9999-01-01T00:00:00.000Z',
-			activeSince: '2020-01-01T00:00:00.000Z',
-		},
-		{
-			eventType: `EventFlag.${c.misc.build.lobby}`,
-			activeUntil: '9999-01-01T00:00:00.000Z',
-			activeSince: '2020-01-01T00:00:00.000Z',
-		},
-	];
+	const mem = parseUserAgent(c.req.header('User-Agent') || '');
+	if (!mem || typeof mem.season !== 'number') return odysseus.internal.invalidUserAgent.toResponse();
+
+	const activeEvents = createActiveEvents(mem);
+	const isoDate = getIsoDateOneMinuteBeforeMidnight();
+	const todayAtMidnight = new Date();
+	todayAtMidnight.setHours(24, 0, 0, 0);
 
 	return c.json({
 		channels: {
 			'client-matchmaking': {
 				states: [],
-				cacheExpire: '9999-01-01T00:00:00.000Z',
+				cacheExpire: isoDate,
 			},
 			'client-events': {
 				states: [
 					{
-						validFrom: '0001-01-01T00:00:00.000Z',
+						validFrom: todayAtMidnight,
 						activeEvents: activeEvents,
 						state: {
 							activeStorefronts: [],
 							eventNamedWeights: {},
-							seasonNumber: c.misc.build.season,
-							seasonTemplateId: `AthenaSeason:athenaseason${c.misc.build.season}`,
+							seasonNumber: mem.season,
+							seasonTemplateId: `AthenaSeason:athenaseason${mem.season}`,
 							matchXpBonusPoints: 0,
-							seasonBegin: '2020-01-01T00:00:00Z',
-							seasonEnd: '9999-01-01T00:00:00Z',
-							seasonDisplayedEnd: '9999-01-01T00:00:00Z',
-							weeklyStoreEnd: '9999-01-01T00:00:00Z',
-							stwEventStoreEnd: '9999-01-01T00:00:00.000Z',
-							stwWeeklyStoreEnd: '9999-01-01T00:00:00.000Z',
+							seasonBegin: todayAtMidnight.toISOString(),
+							seasonEnd: forever,
+							seasonDisplayedEnd: forever,
+							weeklyStoreEnd: isoDate,
+							stwEventStoreEnd: forever,
+							stwWeeklyStoreEnd: forever,
 							sectionStoreEnds: {
-								Featured: '9999-01-01T00:00:00.000Z',
+								Featured: isoDate,
 							},
-							dailyStoreEnd: '9999-01-01T00:00:00Z',
+							dailyStoreEnd: isoDate,
 						},
 					},
 				],
-				cacheExpire: '9999-01-01T00:00:00.000Z',
+				cacheExpire: isoDate,
 			},
 		},
 		eventsTimeOffsetHrs: 0,

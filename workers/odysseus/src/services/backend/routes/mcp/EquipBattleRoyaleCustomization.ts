@@ -5,6 +5,7 @@ import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { type } from 'arktype';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 export const VALID_COSMETIC_SLOTS = [
 	'AthenaCharacter',
@@ -41,16 +42,11 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/EquipBattleRoyaleCustomization',
 	arktypeValidator('json', equipBattleRoyaleCustomizationSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-
 		const { indexWithinSlot, itemToSlot, slotName, variantUpdates } = c.req.valid('json');
 
-		if (!FortniteProfile.isExactProfileType(requestedProfileId, profileTypesEnum.athena)) {
-			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be athena').toResponse();
-		}
-
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileId, c.var.cacheIdentifier);
 
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';

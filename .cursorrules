@@ -72,7 +72,7 @@ import { ACCOUNTS } from '@core/db/schemas/account';
 ### Error Handling
 
 - Use the custom `odysseus` error system for all API errors
-- Return errors using `return odysseus.category.errorType.withMessage("...").toResponse()`
+- Return errors using `return odysseus.category.errorType.withMessage("...")`
 - Use `.variable([])` for dynamic error messages
 - Always include appropriate HTTP status codes
 
@@ -89,7 +89,7 @@ import { ACCOUNTS } from '@core/db/schemas/account';
 return c.json(responseData);
 
 // Error responses
-return odysseus.account.accountNotFound.variable([accountId]).toResponse();
+return odysseus.account.accountNotFound.variable([accountId]);
 ```
 
 ## Naming Conventions

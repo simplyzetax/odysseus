@@ -2,6 +2,7 @@ import { app } from '@core/app';
 import { odysseus } from '@core/error';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { type } from 'arktype';
 
@@ -13,17 +14,9 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
 	arktypeValidator('json', markItemSeenSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) {
-			return odysseus.mcp.invalidPayload.withMessage('profileId is required').toResponse();
-		}
-
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return odysseus.mcp.invalidPayload.withMessage('Invalid profile ID').toResponse();
-		}
-
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileId, c.var.cacheIdentifier);
 
 		const { itemIds } = c.req.valid('json');
 
