@@ -1,10 +1,8 @@
 import { app } from '@core/app';
 
 app.get('/lightswitch/api/service/fortnite/status', async (c) => {
-	const service = c.req.param('serviceName');
-
 	return c.json({
-		serviceInstanceId: service,
+		serviceInstanceId: 'fortnite',
 		status: 'UP',
 		message: 'fortnite is online',
 		maintenanceUri: null,
