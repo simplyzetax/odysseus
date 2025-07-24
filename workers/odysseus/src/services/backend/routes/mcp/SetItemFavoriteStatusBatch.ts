@@ -5,7 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { ITEMS } from '@core/db/schemas/items';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { getDB } from '@core/db/client';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 

@@ -150,6 +150,17 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 			return currentValue;
 		}
 	}
+
+	public static formatItemForMCP(dbItem: Item): FormattedItem {
+		return {
+			templateId: dbItem.templateId,
+			attributes: {
+				quantity: dbItem.quantity ?? 1,
+				favorite: dbItem.favorite ?? false,
+				item_seen: dbItem.seen ? 1 : 0,
+			},
+		};
+	}
 }
 
 /**
@@ -376,12 +387,25 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param itemId - The ID of the item to add
 	 * @param attributes - The attributes json value of the item
 	 */
-	async addItem(itemId: string, attributes: Record<string, any>) {
-		await this.db.insert(ITEMS).values({
-			profileId: this.profileId,
-			templateId: itemId,
-			jsonAttributes: attributes,
-		});
+	async addItem(itemId: string, attributes?: Record<string, any>) {
+		const [item] = await this.db
+			.insert(ITEMS)
+			.values({
+				profileId: this.profileId,
+				templateId: itemId,
+				jsonAttributes: attributes,
+			})
+			.returning();
+
+		return item;
+	}
+
+	async removeItems(itemIds: string[] | string) {
+		if (typeof itemIds === 'string') {
+			await this.db.delete(ITEMS).where(eq(ITEMS.id, itemIds));
+		} else {
+			await this.db.delete(ITEMS).where(inArray(ITEMS.id, itemIds));
+		}
 	}
 
 	async updateItem(itemId: string, attributes: Record<string, any>) {
