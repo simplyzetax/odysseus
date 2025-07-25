@@ -17,7 +17,6 @@ export type Profile = typeof PROFILES.$inferSelect;
 export type NewProfile = typeof PROFILES.$inferInsert;
 
 export const profileSelectSchema = createSelectSchema(PROFILES);
-
 export const profileTypeValues = ['athena', 'common_core', 'common_public', 'creative', 'profile0'] as const;
 export const profileTypesEnum = {
 	athena: 'athena',

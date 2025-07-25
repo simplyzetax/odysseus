@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { nanoid } from 'nanoid';
 import { type } from 'arktype';
+import { isDev } from '@core/env';
 
 const baseOauthSchema = type({
 	grant_type: type(['===', GRANT_TYPES.client_credentials, GRANT_TYPES.refresh, GRANT_TYPES.exchange, GRANT_TYPES.password]),
@@ -100,13 +101,12 @@ app.post(
 					return odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code').toResponse();
 				}
 
-				//TODO: Remove in prod
-				/*const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
-            if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
-                return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
-            }*/
+				const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
+				if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
+					return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
+				}
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
+				if (isDev) [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
 				break;
 			}
 			case GRANT_TYPES.password: {
@@ -119,7 +119,7 @@ app.post(
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
 				}
 
-				//TODO: Check password
+				//TODO: Check password hash
 				break;
 			}
 			default: {

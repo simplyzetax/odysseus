@@ -3,6 +3,7 @@ import { CloudflareDurableObjectRPCDrizzleCache } from '@utils/cache/drizzleCach
 import type { Bindings } from '@otypes/bindings';
 import { env } from 'cloudflare:workers';
 import { DatabaseError } from './error';
+import { isDev } from '@core/env';
 
 /**
  * Gets the database client
@@ -12,7 +13,7 @@ import { DatabaseError } from './error';
 export const getDB = (cacheIdentifier: string) => {
 	const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(cacheIdentifier);
 
-	const db = drizzle(env.DB.connectionString, {
+	const db = drizzle(isDev ? env.DATABASE_URL : env.DB.connectionString, {
 		cache: durableObjectCache,
 	});
 
@@ -23,7 +24,7 @@ export const getDB = (cacheIdentifier: string) => {
 				return original;
 			}
 			return (...args: any[]) => {
-				const result = original(...args);
+				const result = original.apply(target, args);
 				if (result && typeof result.catch === 'function') {
 					return result.catch((err: Error) => {
 						throw new DatabaseError(err.message);
