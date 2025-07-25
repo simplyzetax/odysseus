@@ -5,15 +5,10 @@ import type { Item } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
 import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
-import { Bindings } from '@otypes/bindings';
 import { FormattedItem } from '@otypes/fortnite/item';
 import { ProfileChange } from '@otypes/fortnite/profileChanges';
 import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import type { Context } from 'hono';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
-import { ENV } from '@core/env';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
@@ -25,7 +20,6 @@ interface ProfileClassMap {
 	profile0: FortniteProfileWithDBProfile<'profile0'>;
 }
 
-// Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
 
 export const MULTI_ITEM_SLOTS = ['Dance', 'ItemWrap'];

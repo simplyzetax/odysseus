@@ -1,12 +1,12 @@
 import { getDB } from '@core/db/client';
 import { ACCOUNTS } from '@core/db/schemas/account';
-import { createDiscordAPI } from '@utils/discord/general';
+import { DiscordAPI } from '@utils/discord/general';
 import type { CommandHandler } from '@services/bot/types/interactions';
 
 export const pingCommand: CommandHandler = {
 	name: 'ping',
 	async execute(interaction, c) {
-		const discord = createDiscordAPI(c.env);
+		const discord = DiscordAPI.construct(c.env);
 		const db = getDB(c.var.cacheIdentifier);
 
 		// Send initial deferred response

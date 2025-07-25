@@ -381,15 +381,12 @@ export class DiscordAPI {
 				return '⚡';
 		}
 	}
-}
 
-/**
- * Helper function to create Discord API instance with environment variables
- */
-export function createDiscordAPI(): DiscordAPI {
-	if (!ENV.DISCORD_APPLICATION_ID || !ENV.DISCORD_BOT_TOKEN || !ENV.DISCORD_PUBLIC_KEY) {
-		throw new Error('Missing required Discord environment variables');
+	public static construct(env: Env): DiscordAPI {
+		if (!env.DISCORD_APPLICATION_ID || !env.DISCORD_BOT_TOKEN || !env.DISCORD_PUBLIC_KEY) {
+			throw new Error('Missing required Discord environment variables');
+		}
+
+		return new DiscordAPI(env.DISCORD_APPLICATION_ID, env.DISCORD_BOT_TOKEN, env.DISCORD_PUBLIC_KEY);
 	}
-
-	return new DiscordAPI(ENV.DISCORD_APPLICATION_ID, ENV.DISCORD_BOT_TOKEN, ENV.DISCORD_PUBLIC_KEY);
 }
