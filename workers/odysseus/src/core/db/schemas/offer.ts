@@ -1,19 +1,19 @@
-import { pgTable, uuid, text, index, integer } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, index, integer, jsonb } from 'drizzle-orm/pg-core';
 import { createSelectSchema } from 'drizzle-arktype';
 
-type OfferType = 'daily' | 'weekly' | 'season';
+type OfferType = 'Daily' | 'Weekly' | 'Season';
 
 export const OFFERS = pgTable(
 	'offers',
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
-		templateId: text('template_id').notNull(),
+		itemGrants: jsonb('item_grants').$type<string[]>().notNull(),
 		type: text('type').notNull().$type<OfferType>(),
 		price: integer('price').notNull(),
 	},
 	(offers) => {
 		return {
-			templateIdIndex: index('offers_template_id_idx').on(offers.templateId),
+			typeIndex: index('offers_type_idx').on(offers.type),
 		};
 	},
 );

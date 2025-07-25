@@ -74,9 +74,9 @@ app.get(
 		const catalog = JSON.parse(JSON.stringify(storefrontTemplate));
 
 		const storefrontsMap: Record<Offer['type'], any> = {
-			daily: catalog.storefronts.find((s: any) => s.name === 'BRDailyStorefront'),
-			weekly: catalog.storefronts.find((s: any) => s.name === 'BRWeeklyStorefront'),
-			season: catalog.storefronts.find((s: any) => s.name === 'BRSeasonStorefront'),
+			Daily: catalog.storefronts.find((s: any) => s.name === 'BRDailyStorefront'),
+			Weekly: catalog.storefronts.find((s: any) => s.name === 'BRWeeklyStorefront'),
+			Season: catalog.storefronts.find((s: any) => s.name === 'BRSeasonStorefront'),
 		};
 
 		for (const offer of offers) {
@@ -85,10 +85,10 @@ app.get(
 			catalogEntry.devName = offer.id;
 			catalogEntry.offerId = offer.id;
 
-			catalogEntry.itemGrants.push({ templateId: offer.templateId, quantity: 1 });
+			catalogEntry.itemGrants.push(...offer.itemGrants);
 			catalogEntry.requirements.push({
 				requirementType: 'DenyOnItemOwnership',
-				requiredId: offer.templateId,
+				requiredId: offer.itemGrants[0],
 				minQuantity: 1,
 			});
 
@@ -103,9 +103,9 @@ app.get(
 				},
 			];
 
-			if (offer.type === 'daily') {
+			if (offer.type === 'Daily') {
 				catalogEntry.sortPriority = -1;
-			} else if (offer.type === 'weekly') {
+			} else if (offer.type === 'Weekly') {
 				catalogEntry.meta.TileSize = 'Normal';
 				catalogEntry.metaInfo[1].value = 'Normal';
 			}

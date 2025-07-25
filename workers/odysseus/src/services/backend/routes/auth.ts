@@ -100,13 +100,14 @@ app.post(
 				if (!body.exchange_code) {
 					return odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code').toResponse();
 				}
-
-				const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
-				if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
-					return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
+				if (isDev) {
+					[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'f20995ed-d64d-4c1c-8a6a-4722b2845052'));
+				} else {
+					const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
+					if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
+						return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
+					}
 				}
-
-				if (isDev) [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
 				break;
 			}
 			case GRANT_TYPES.password: {
