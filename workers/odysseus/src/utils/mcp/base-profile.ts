@@ -3,21 +3,22 @@ import type { Attribute } from '@core/db/schemas/attributes';
 import { ATTRIBUTES } from '@core/db/schemas/attributes';
 import type { Item } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
-import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
+import { PROFILES, profileTypesEnum, profileTypeValues } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
 import { FormattedItem } from '@otypes/fortnite/item';
 import { ProfileChange } from '@otypes/fortnite/profileChanges';
 import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { ATTRIBUTE_KEYS } from './constants';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
 interface ProfileClassMap {
-	athena: FortniteProfileWithDBProfile<'athena'>;
-	common_core: FortniteProfileWithDBProfile<'common_core'>;
-	common_public: FortniteProfileWithDBProfile<'common_public'>;
-	creative: FortniteProfileWithDBProfile<'creative'>;
-	profile0: FortniteProfileWithDBProfile<'profile0'>;
+	[profileTypesEnum.athena]: FortniteProfileWithDBProfile<'athena'>;
+	[profileTypesEnum.common_core]: FortniteProfileWithDBProfile<'common_core'>;
+	[profileTypesEnum.common_public]: FortniteProfileWithDBProfile<'common_public'>;
+	[profileTypesEnum.creative]: FortniteProfileWithDBProfile<'creative'>;
+	[profileTypesEnum.profile0]: FortniteProfileWithDBProfile<'profile0'>;
 }
 
 export type ItemsMap = Record<string, FormattedItem>;
@@ -32,7 +33,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 */
 	static isValidProfileType(profileType: string | undefined): profileType is ProfileType {
 		if (!profileType) return false;
-		return Object.keys(profileTypesEnum).includes(profileType);
+		return (profileTypeValues as readonly string[]).includes(profileType);
 	}
 
 	/**
@@ -46,13 +47,17 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	}
 
 	/**
-	 * Constructs a new profile instance
-	 * @param c - The context
+	 * Constructs a new profile instance from an accountId and profileType
 	 * @param accountId - The account ID
 	 * @param profileType - The profile type, from {@link ProfileType}
+	 * @param cacheIdentifier - The cache identifier
 	 * @returns The profile instance
 	 */
-	static async construct<T extends ProfileType>(accountId: string, profileType: T, cacheIdentifier: string): Promise<ProfileClassMap[T]> {
+	static async fromAccountId<T extends ProfileType>(
+		accountId: string,
+		profileType: T,
+		cacheIdentifier: string,
+	): Promise<ProfileClassMap[T]> {
 		const baseProfile = new FortniteProfile(accountId, profileType, cacheIdentifier);
 		return baseProfile.get();
 	}
@@ -90,7 +95,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		}
 
 		// For athena profile, we need to dynamically import to avoid circular dependency
-		if (this.profileType === 'athena') {
+		if (this.profileType === profileTypesEnum.athena) {
 			const { AthenaProfile } = await import('./profiles/athena');
 			return new AthenaProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as any;
 		}
@@ -122,7 +127,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	}
 
 	public static getFavoriteAttributeKey(slotName: string): string {
-		return slotName.toLowerCase() === 'itemwrap' ? 'favorite_itemwraps' : `favorite_${slotName.toLowerCase()}`;
+		return slotName.toLowerCase() === 'itemwrap' ? ATTRIBUTE_KEYS.FAVORITE_ITEMWRAPS : `favorite_${slotName.toLowerCase()}`;
 	}
 
 	public static updateMultiSlotValue(slotName: string, currentValue: any, itemToSlot: string, indexWithinSlot: number): string[] {
@@ -300,7 +305,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			};
 
 			// Only add favorite and item_seen attributes for Athena profile type
-			if (this.profileType === 'athena') {
+			if (this.profileType === profileTypesEnum.athena) {
 				baseAttributes.favorite = dbItem.favorite ?? false;
 				baseAttributes.item_seen = dbItem.seen ? 1 : 0;
 			}
@@ -367,13 +372,17 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			.values({
 				profileId: this.profileId,
 				type: this.profileType,
-				key: attributeName as string,
+				key: attributeName,
 				valueJSON: value,
 			})
 			.onConflictDoUpdate({
 				target: [ATTRIBUTES.profileId, ATTRIBUTES.key],
 				set: { valueJSON: value },
 			});
+	}
+
+	async updateAttributes(attributes: Record<string, any>) {
+		await this.db.update(ATTRIBUTES).set(attributes).where(eq(ATTRIBUTES.profileId, this.profileId));
 	}
 
 	/**

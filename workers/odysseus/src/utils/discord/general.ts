@@ -16,7 +16,8 @@ export function verifyKey(body: string, signature: string, timestamp: string, cl
 			Buffer.from(clientPublicKey, 'hex'),
 		);
 		return isVerified;
-	} catch {
+	} catch (e) {
+		console.log(e);
 		console.error('Invalid verifyKey parameters');
 		return false;
 	}

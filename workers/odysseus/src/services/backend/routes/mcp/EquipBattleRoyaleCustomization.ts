@@ -46,7 +46,7 @@ app.post(
 	async (c) => {
 		const { indexWithinSlot, itemToSlot, slotName, variantUpdates } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';

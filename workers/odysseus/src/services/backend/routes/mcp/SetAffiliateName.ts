@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import { type } from 'arktype';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const setAffiliateNameSchema = type({
 	affiliateName: 'string',
@@ -40,22 +41,22 @@ app.post(
 
 		const now = new Date().toISOString();
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'mtx_affiliate_set_time',
+			name: ATTRIBUTE_KEYS.MTX_AFFILIATE_SET_TIME,
 			value: now,
 		});
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'mtx_affiliate',
+			name: ATTRIBUTE_KEYS.MTX_AFFILIATE,
 			value: affiliateName,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('mtx_affiliate_set_time', now));
-		c.executionCtx.waitUntil(profile.updateAttribute('mtx_affiliate', affiliateName));
+		await profile.updateAttribute(ATTRIBUTE_KEYS.MTX_AFFILIATE_SET_TIME, now);
+		await profile.updateAttribute(ATTRIBUTE_KEYS.MTX_AFFILIATE, affiliateName);
 
 		return c.json(profile.createResponse());
 	},

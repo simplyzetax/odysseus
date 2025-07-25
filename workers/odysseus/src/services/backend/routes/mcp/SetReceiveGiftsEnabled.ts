@@ -5,6 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const setReceiveGiftsEnabledSchema = type({
 	bReceiveGifts: 'boolean',
@@ -18,15 +19,15 @@ app.post(
 	async (c) => {
 		const { bReceiveGifts } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'allowed_to_receive_gifts',
+			name: ATTRIBUTE_KEYS.ALLOWED_TO_RECEIVE_GIFTS,
 			value: bReceiveGifts,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('allowed_to_receive_gifts', bReceiveGifts));
+		await profile.updateAttribute(ATTRIBUTE_KEYS.ALLOWED_TO_RECEIVE_GIFTS, bReceiveGifts);
 
 		return c.json(profile.createResponse());
 	},

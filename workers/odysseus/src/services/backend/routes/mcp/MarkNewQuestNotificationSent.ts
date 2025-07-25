@@ -7,6 +7,7 @@ import { arktypeValidator } from '@hono/arktype-validator';
 import { inArray } from 'drizzle-orm';
 import { ITEMS } from '@core/db/schemas/items';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const markNewQuestNotificationSentSchema = type({
 	itemIds: 'string[]',
@@ -20,7 +21,7 @@ app.post(
 	async (c) => {
 		const { itemIds } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const items = await profile.db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 
@@ -28,11 +29,11 @@ app.post(
 			profile.trackChange({
 				changeType: 'itemAttrChanged',
 				itemId: item.id,
-				attributeName: 'quest_notifications',
+				attributeName: ATTRIBUTE_KEYS.QUEST_NOTIFICATIONS,
 				attributeValue: true,
 			});
 
-			c.executionCtx.waitUntil(profile.updateItem(item.id, { ...item.jsonAttributes, quest_notifications: true }));
+			await profile.updateItem(item.id, { ...item.jsonAttributes, quest_notifications: true });
 		}
 
 		return c.json(profile.createResponse());

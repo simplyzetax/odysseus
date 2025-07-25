@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { odysseus } from './error';
 import { Bindings } from '@otypes/bindings';
+import { DatabaseError } from './db/error';
 
 /**
  * The main app
@@ -21,10 +22,9 @@ app.onError((err, c) => {
 	console.error(err);
 	if (err instanceof HTTPException) {
 		return err.getResponse();
+	} else if (err instanceof DatabaseError) {
+		return odysseus.internal.dataBaseError.withMessage(err.message).toResponse();
 	} else if (err instanceof Error) {
-		if (err.message.includes('Failed query:')) {
-			return odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.').toResponse();
-		}
 		return odysseus.internal.serverError.withMessage(err.message).toResponse();
 	}
 	return odysseus.internal.serverError.withMessage('An unknown error occurred').toResponse();

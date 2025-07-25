@@ -6,7 +6,7 @@ export default defineConfig({
 	plugins: [cloudflare()],
 	server: {
 		port: 3000,
-		allowedHosts: ['be50-2a09-bac5-2d0a-2496-00-3a5-63.ngrok-free.app'],
+		allowedHosts: ['b34cd4dc38d4.ngrok-free.app'],
 	},
 	build: {
 		sourcemap: true,

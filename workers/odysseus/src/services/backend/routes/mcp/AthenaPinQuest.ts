@@ -4,6 +4,7 @@ import { type } from 'arktype';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const athenaPinQuestSchema = type({
 	pinnedQuest: 'string',
@@ -17,11 +18,11 @@ app.post(
 	async (c) => {
 		const { pinnedQuest } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'pinned_quest',
+			name: ATTRIBUTE_KEYS.PINNED_QUEST,
 			value: pinnedQuest,
 		});
 

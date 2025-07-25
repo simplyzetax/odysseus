@@ -5,6 +5,7 @@ import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 import { type } from 'arktype';
 
 const setMtxPlatformSchema = type({
@@ -22,14 +23,14 @@ app.post(
 	}),
 	mcpValidationMiddleware,
 	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 		if (!profile) {
 			return odysseus.mcp.profileNotFound.toResponse();
 		}
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'current_mtx_platform',
+			name: ATTRIBUTE_KEYS.CURRENT_MTX_PLATFORM,
 			value: c.req.valid('json').newPlatform || 'EpicPC',
 		});
 

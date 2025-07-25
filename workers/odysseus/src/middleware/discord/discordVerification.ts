@@ -17,8 +17,6 @@ export const discordVerificationMiddleware: MiddlewareHandler = async (c, next) 
 
 	// Get the request body as text
 	const body = await c.req.text();
-	// Store in variables for access later
-	(c as any).rawBody = body;
 
 	// Verify the request is coming from Discord
 	const isValid = verifyKey(body, signature, timestamp, c.env.DISCORD_PUBLIC_KEY);

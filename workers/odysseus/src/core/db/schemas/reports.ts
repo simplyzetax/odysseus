@@ -1,7 +1,7 @@
 import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { ACCOUNTS } from './account';
 
-export const REPORTS = pgTable('hotfixes', {
+export const REPORTS = pgTable('reports', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	reason: text('reason').notNull(),
 	details: text('details').notNull(),

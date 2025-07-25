@@ -42,6 +42,12 @@ export const additemCommand: CommandHandler = {
 					const [userAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.discordId, user.id));
 					if (!userAccount) throw new Error('You need to register first using /register');
 
+					const [existingItem] = await db
+						.select()
+						.from(ITEMS)
+						.where(and(eq(ITEMS.profileId, userAccount.id), eq(ITEMS.templateId, itemId)));
+					if (existingItem) throw new Error('Item already exists');
+
 					const [profile] = await db
 						.select()
 						.from(PROFILES)

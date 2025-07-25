@@ -4,6 +4,7 @@ import { ACCOUNTS } from '@core/db/schemas/account';
 import { REPORTS } from '@core/db/schemas/reports';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { accountMiddleware } from '@middleware/auth/accountMiddleware';
+import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { type } from 'arktype';
 import { eq } from 'drizzle-orm';
 
@@ -16,6 +17,11 @@ const reportBodySchema = type({
 app.post(
 	'/game/v2/toxicity/account/:accountId/report/:offenderId',
 	arktypeValidator('json', reportBodySchema),
+	ratelimitMiddleware({
+		capacity: 4,
+		initialTokens: 4,
+		refillRate: 0.25,
+	}),
 	accountMiddleware,
 	async (c) => {
 		const db = getDB(c.var.cacheIdentifier);

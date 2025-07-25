@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { CloudflareDurableObjectRPCDrizzleCache } from '@utils/cache/drizzleCache';
 import type { Bindings } from '@otypes/bindings';
 import { env } from 'cloudflare:workers';
+import { DatabaseError } from './error';
 
 /**
  * Gets the database client
@@ -11,13 +12,26 @@ import { env } from 'cloudflare:workers';
 export const getDB = (cacheIdentifier: string) => {
 	const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(cacheIdentifier);
 
-	return drizzle(env.DB.connectionString, {
+	const db = drizzle(env.DB.connectionString, {
 		cache: durableObjectCache,
-		/*logger: {
-			logQuery: (query, params) => {
-				console.log(query, params);
-			},
-		},*/
+	});
+
+	return new Proxy(db, {
+		get(target, prop, receiver) {
+			const original = Reflect.get(target, prop, receiver);
+			if (typeof original !== 'function') {
+				return original;
+			}
+			return (...args: any[]) => {
+				const result = original(...args);
+				if (result && typeof result.catch === 'function') {
+					return result.catch((err: Error) => {
+						throw new DatabaseError(err.message);
+					});
+				}
+				return result;
+			};
+		},
 	});
 };
 

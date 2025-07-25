@@ -30,6 +30,8 @@ export async function handleAutocomplete(interaction: APIApplicationCommandAutoc
 			// Get matching cosmetics
 			const matches = await searchCosmeticsByName(searchQuery, 10);
 
+			console.log('Returning autocomplete choices');
+
 			// Return the autocomplete choices
 			return new Response(
 				JSON.stringify({

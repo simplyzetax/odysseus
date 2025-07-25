@@ -4,6 +4,7 @@ import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { odysseus } from '@core/error';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/ClaimMfaEnabled',
@@ -15,19 +16,19 @@ app.post(
 	}),
 	mcpValidationMiddleware,
 	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 		if (!profile) {
 			return odysseus.mcp.profileNotFound.toResponse();
 		}
 
-		const claimed = await profile.getAttribute('mfa_reward_claimed');
+		const claimed = await profile.getAttribute(ATTRIBUTE_KEYS.MFA_REWARD_CLAIMED);
 		if (claimed !== undefined) {
 			return odysseus.mcp.operationForbidden.withMessage('MFA reward already claimed').toResponse();
 		}
 
 		const templateId = 'AthenaDance:EID_BoogieDown';
 
-		await profile.updateAttribute('mfa_reward_claimed', true);
+		await profile.updateAttribute(ATTRIBUTE_KEYS.MFA_REWARD_CLAIMED, true);
 		const newItem = await profile.addItem(templateId);
 
 		profile.trackChange({
