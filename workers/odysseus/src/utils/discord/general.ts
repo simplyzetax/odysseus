@@ -46,6 +46,7 @@ import {
 	RouteBases,
 	APIApplicationCommandInteractionDataBasicOption,
 } from 'discord-api-types/v10';
+import { ENV } from '@core/env';
 
 /**
  * A comprehensive Discord API wrapper for simplified interaction with Discord's API
@@ -385,14 +386,10 @@ export class DiscordAPI {
 /**
  * Helper function to create Discord API instance with environment variables
  */
-export function createDiscordAPI(env: {
-	DISCORD_APPLICATION_ID: string;
-	DISCORD_BOT_TOKEN: string;
-	DISCORD_PUBLIC_KEY: string;
-}): DiscordAPI {
-	if (!env.DISCORD_APPLICATION_ID || !env.DISCORD_BOT_TOKEN || !env.DISCORD_PUBLIC_KEY) {
+export function createDiscordAPI(): DiscordAPI {
+	if (!ENV.DISCORD_APPLICATION_ID || !ENV.DISCORD_BOT_TOKEN || !ENV.DISCORD_PUBLIC_KEY) {
 		throw new Error('Missing required Discord environment variables');
 	}
 
-	return new DiscordAPI(env.DISCORD_APPLICATION_ID, env.DISCORD_BOT_TOKEN, env.DISCORD_PUBLIC_KEY);
+	return new DiscordAPI(ENV.DISCORD_APPLICATION_ID, ENV.DISCORD_BOT_TOKEN, ENV.DISCORD_PUBLIC_KEY);
 }

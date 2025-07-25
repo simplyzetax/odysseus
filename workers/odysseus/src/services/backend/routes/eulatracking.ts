@@ -16,7 +16,7 @@ app.get(
 	async (c) => {
 		const appName = c.req.param('appName');
 
-		const eula = await c.env.R2.get(`${eulaKey}${appName}.json`);
+		const eula = await c.env.R2.get(`${eulaKey}${appName}.html`);
 		if (!eula) {
 			return odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found').toResponse();
 		}
@@ -44,7 +44,7 @@ app.post('/eulatracking/api/public/agreements/:appName', devAuthMiddleware, asyn
 
 	const body = await c.req.text();
 
-	const result = await c.env.R2.put(`${eulaKey}${appName}.json`, body);
+	const result = await c.env.R2.put(`${eulaKey}${appName}.html`, body);
 
 	return c.json({ message: 'EULA updated successfully', key: `${eulaKey}${appName}.json`, sha256: result?.checksums.sha256 });
 });
@@ -52,7 +52,7 @@ app.post('/eulatracking/api/public/agreements/:appName', devAuthMiddleware, asyn
 app.get('/eulatracking/api/shared/agreements/:appName', async (c) => {
 	const appName = c.req.param('appName');
 
-	const eula = await c.env.R2.get(`${eulaKey}${appName}.json`);
+	const eula = await c.env.R2.get(`${eulaKey}${appName}.html`);
 	if (!eula) {
 		return odysseus.cloudstorage.fileNotFound.withMessage('EULA file not found').toResponse();
 	}
