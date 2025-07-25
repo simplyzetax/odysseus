@@ -40,7 +40,7 @@ app.post(
 			});
 		}
 
-		c.executionCtx.waitUntil(db.update(ITEMS).set({ favorite: itemFavStatus }).where(inArray(ITEMS.id, itemIds)));
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

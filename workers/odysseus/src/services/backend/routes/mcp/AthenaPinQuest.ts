@@ -26,7 +26,7 @@ app.post(
 			value: pinnedQuest,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('pinned_quest', pinnedQuest));
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

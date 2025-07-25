@@ -19,8 +19,6 @@ app.post(
 
 		const { itemIds } = c.req.valid('json');
 
-		await profile.updateSeenStatus(itemIds);
-
 		for (const itemId of itemIds) {
 			profile.trackChange({
 				changeType: 'itemAttrChanged',
@@ -29,6 +27,8 @@ app.post(
 				attributeValue: true,
 			});
 		}
+
+		await profile.applyChanges();
 
 		const response = profile.createResponse();
 		return c.json(response);

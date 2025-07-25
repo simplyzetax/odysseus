@@ -32,9 +32,9 @@ app.post(
 				attributeName: ATTRIBUTE_KEYS.QUEST_NOTIFICATIONS,
 				attributeValue: true,
 			});
-
-			await profile.updateItem(item.id, { ...item.jsonAttributes, quest_notifications: true });
 		}
+
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

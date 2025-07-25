@@ -5,6 +5,7 @@ import { FortniteProfile } from '@utils/mcp/base-profile';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { odysseus } from '@core/error';
 import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
+import { NewItem } from '@core/db/schemas/items';
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/ClaimMfaEnabled',
@@ -28,14 +29,25 @@ app.post(
 
 		const templateId = 'AthenaDance:EID_BoogieDown';
 
-		await profile.updateAttribute(ATTRIBUTE_KEYS.MFA_REWARD_CLAIMED, true);
-		const newItem = await profile.addItem(templateId);
+		const newItem: NewItem = {
+			templateId,
+			profileId: profile.profileId,
+			quantity: 1,
+		};
+
+		profile.trackChange({
+			changeType: 'statModified',
+			name: ATTRIBUTE_KEYS.MFA_REWARD_CLAIMED,
+			value: true,
+		});
 
 		profile.trackChange({
 			changeType: 'itemAdded',
-			itemId: newItem.id,
+			itemId: newItem.id!,
 			item: FortniteProfile.formatItemForMCP(newItem),
 		});
+
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

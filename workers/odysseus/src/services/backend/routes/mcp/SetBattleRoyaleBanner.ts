@@ -39,8 +39,7 @@ app.post(
 			value: homebaseBannerColorId,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute(ATTRIBUTE_KEYS.BANNER_ICON, homebaseBannerIconId));
-		c.executionCtx.waitUntil(profile.updateAttribute(ATTRIBUTE_KEYS.BANNER_COLOR, homebaseBannerColorId));
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

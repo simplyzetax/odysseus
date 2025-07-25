@@ -35,14 +35,14 @@ app.post(
 			return odysseus.mcp.invalidPayload.withMessage('Item not found').toResponse();
 		}
 
-		await profile.modifyItem(item.id, 'favorite', body.bFavorite);
-
 		profile.trackChange({
 			changeType: 'itemAttrChanged',
 			itemId: item.id,
 			attributeName: 'favorite',
 			attributeValue: body.bFavorite,
 		});
+
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

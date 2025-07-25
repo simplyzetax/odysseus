@@ -32,14 +32,14 @@ app.post(
 		const items = await profile.getItems();
 		const itemsToRemove = items.filter((item) => body.giftBoxItemIds.includes(item.id));
 
-		await profile.removeItems(itemsToRemove.map((item) => item.id));
-
 		for (const item of itemsToRemove) {
 			profile.trackChange({
 				changeType: 'itemRemoved',
 				itemId: item.id,
 			});
 		}
+
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

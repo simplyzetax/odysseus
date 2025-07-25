@@ -27,7 +27,7 @@ app.post(
 			value: questToPinAsPartyAssist,
 		});
 
-		await profile.updateAttribute(ATTRIBUTE_KEYS.MTX_PARTY_ASSIST_QUEST, questToPinAsPartyAssist);
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

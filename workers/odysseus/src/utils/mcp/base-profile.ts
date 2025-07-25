@@ -1,7 +1,7 @@
 import { getDB } from '@core/db/client';
 import type { Attribute } from '@core/db/schemas/attributes';
 import { ATTRIBUTES } from '@core/db/schemas/attributes';
-import type { Item } from '@core/db/schemas/items';
+import type { Item, NewItem } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
 import { PROFILES, profileTypesEnum, profileTypeValues } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
@@ -10,6 +10,35 @@ import { ProfileChange } from '@otypes/fortnite/profileChanges';
 import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { ATTRIBUTE_KEYS } from './constants';
+
+/**
+ * ## Core Workflow:
+ *
+ * 1. **Track Changes Manually**: Use `trackChange()` to track what changes you want to make
+ * 2. **Apply Automatically**: Use `applyChanges()` to automatically apply all tracked changes to the database
+ *
+ * ```typescript
+ * // Step 1: Track all the changes you want to make
+ * profile.trackChange({
+ *   changeType: 'itemAttrChanged',
+ *   itemId: itemId,
+ *   attributeName: 'item_seen',
+ *   attributeValue: true,
+ * });
+ *
+ * profile.trackChange({
+ *   changeType: 'statModified',
+ *   name: 'level',
+ *   value: 50,
+ * });
+ *
+ * // Step 2: Apply all tracked changes automatically to the database
+ * await profile.applyChanges();
+ *
+ * // Step 3: Return the response with all changes included
+ * return c.json(profile.createResponse());
+ * ```
+ */
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
@@ -150,7 +179,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		}
 	}
 
-	public static formatItemForMCP(dbItem: Item): FormattedItem {
+	public static formatItemForMCP(dbItem: NewItem | Item): FormattedItem {
 		return {
 			templateId: dbItem.templateId,
 			attributes: {
@@ -226,10 +255,38 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	}
 
 	/**
-	 * Creates a response object for the profile
+	 * Tracks a change and immediately applies it to the database
+	 * This is a convenience method that combines trackChange and applyChanges for single operations
+	 * @param change - The change to track and apply
+	 */
+	public async trackAndApplyChange(change: ProfileChange) {
+		this.trackChange(change);
+
+		// Apply only the last change (the one we just added)
+		const lastChange = this.changes[this.changes.length - 1];
+		await this.applySingleChange(lastChange);
+	}
+
+	/**
+	 * Applies all tracked changes to the database
+	 * This processes all changes that have been tracked via trackChange()
+	 */
+	public async applyChanges() {
+		for (const change of this.changes) {
+			await this.applySingleChange(change);
+		}
+	}
+
+	/**
+	 * Creates a response object for the profile and optionally applies all changes first
+	 * @param autoApply - Whether to automatically apply all tracked changes before creating the response
 	 * @returns The response object
 	 */
-	public createResponse() {
+	public async createResponse(autoApply: boolean = false) {
+		if (autoApply) {
+			await this.applyChanges();
+		}
+
 		return {
 			profileId: this.profileType, // The profile type (e.g. "athena")
 			profileChanges: this.changes, // Array of tracked changes
@@ -237,6 +294,65 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			multiUpdate: [], // For updating multiple profiles at once
 			responseVersion: 1, // Standard API version
 		};
+	}
+
+	/**
+	 * Applies a single change to the database
+	 * @param change - The change to apply
+	 */
+	private async applySingleChange(change: ProfileChange) {
+		switch (change.changeType) {
+			case 'fullProfileUpdate':
+				// No database operations needed for full profile update
+				break;
+
+			case 'statModified':
+				await this.updateAttribute(change.name, change.value);
+				break;
+
+			case 'itemAttrChanged':
+				const item = await this.getItemBy('id', change.itemId);
+				if (!item) {
+					throw new Error(`Item with ID ${change.itemId} not found for attribute change`);
+				}
+
+				if (change.attributeName === 'favorite') {
+					await this.modifyItem(change.itemId, 'favorite', change.attributeValue);
+				} else if (change.attributeName === 'item_seen') {
+					await this.modifyItem(change.itemId, 'seen', change.attributeValue);
+				} else if (change.attributeName === 'quantity') {
+					await this.modifyItem(change.itemId, 'quantity', change.attributeValue);
+				} else {
+					const currentJsonAttrs = (item.jsonAttributes as Record<string, any>) || {};
+					const updatedJsonAttrs = {
+						...currentJsonAttrs,
+						[change.attributeName]: change.attributeValue,
+					};
+					await this.updateItem(change.itemId, updatedJsonAttrs);
+				}
+				break;
+
+			case 'itemAdded':
+				const templateId = change.item.templateId;
+				const addedItem = await this.addItem(templateId, change.item.attributes);
+
+				if (addedItem.id !== change.itemId) {
+					change.itemId = addedItem.id;
+				}
+				break;
+
+			case 'itemRemoved':
+				await this.removeItems(change.itemId);
+				break;
+
+			case 'itemQuantityChanged':
+				await this.modifyItem(change.itemId, 'quantity', change.quantity);
+				break;
+
+			default:
+				const _exhaustiveCheck: never = change;
+				throw new Error(`Unhandled change type: ${(change as any).changeType}`);
+		}
 	}
 
 	/**
@@ -274,7 +390,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param slotName - The slot name to check
 	 * @returns true if the slot name is a multi-slot item
 	 */
-	async isMultiSlotItem(slotName: string) {
+	isMultiSlotItem(slotName: string) {
 		return MULTI_ITEM_SLOTS.includes(slotName);
 	}
 
@@ -450,6 +566,109 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			await this.db.update(ITEMS).set({ seen: true }).where(eq(ITEMS.id, itemIds));
 		} else {
 			await this.db.update(ITEMS).set({ seen: true }).where(inArray(ITEMS.id, itemIds));
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply an item attribute change
+	 * @param itemId - The ID of the item to modify
+	 * @param attributeName - The name of the attribute to change
+	 * @param attributeValue - The new value for the attribute
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async changeItemAttribute(itemId: string, attributeName: string, attributeValue: any, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemAttrChanged',
+			itemId,
+			attributeName,
+			attributeValue,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply a stat modification
+	 * @param name - The name of the stat/attribute to modify
+	 * @param value - The new value for the stat
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async modifyStat(name: string, value: any, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'statModified',
+			name,
+			value,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply item addition
+	 * @param templateId - The template ID of the item to add
+	 * @param attributes - Optional attributes for the item
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 * @returns The added item
+	 */
+	public async addItemWithChange(templateId: string, attributes?: Record<string, any>, autoApply: boolean = true) {
+		// First add the item to get the actual ID
+		const addedItem = await this.addItem(templateId, attributes);
+
+		const change: ProfileChange = {
+			changeType: 'itemAdded',
+			itemId: addedItem.id,
+			item: FortniteProfile.formatItemForMCP(addedItem),
+		};
+
+		// Track the change (don't apply since we already added it)
+		this.trackChange(change);
+
+		return addedItem;
+	}
+
+	/**
+	 * Convenience method to track and apply item removal
+	 * @param itemId - The ID of the item to remove
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async removeItemWithChange(itemId: string, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemRemoved',
+			itemId,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply quantity changes
+	 * @param itemId - The ID of the item to modify
+	 * @param quantity - The new quantity
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async changeItemQuantity(itemId: string, quantity: number, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemQuantityChanged',
+			itemId,
+			quantity,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
 		}
 	}
 }

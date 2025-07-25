@@ -38,9 +38,9 @@ app.post(
 				attributeName: 'archived',
 				attributeValue: archived,
 			});
-
-			c.executionCtx.waitUntil(profile.updateItem(item.id, { ...item.jsonAttributes, archived }));
 		}
+
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

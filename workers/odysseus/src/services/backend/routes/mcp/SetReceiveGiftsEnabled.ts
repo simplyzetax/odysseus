@@ -27,7 +27,7 @@ app.post(
 			value: bReceiveGifts,
 		});
 
-		await profile.updateAttribute(ATTRIBUTE_KEYS.ALLOWED_TO_RECEIVE_GIFTS, bReceiveGifts);
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

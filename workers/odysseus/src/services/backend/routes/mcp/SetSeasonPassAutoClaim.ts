@@ -43,7 +43,7 @@ app.post(
 			value: seasonIdsAttribute?.valueJSON,
 		});
 
-		await profile.updateAttribute(ATTRIBUTE_KEYS.AUTO_SPEND_SEASON_CURRENCY_IDS, seasonIdsAttribute.valueJSON);
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},

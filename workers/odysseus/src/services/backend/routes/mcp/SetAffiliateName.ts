@@ -55,8 +55,7 @@ app.post(
 			value: affiliateName,
 		});
 
-		await profile.updateAttribute(ATTRIBUTE_KEYS.MTX_AFFILIATE_SET_TIME, now);
-		await profile.updateAttribute(ATTRIBUTE_KEYS.MTX_AFFILIATE, affiliateName);
+		await profile.applyChanges();
 
 		return c.json(profile.createResponse());
 	},
