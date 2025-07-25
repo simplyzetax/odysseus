@@ -107,8 +107,8 @@ app.post(
 			quantity: currencyAmount.quantity - offer.price,
 		});
 
-		await profile.applyChanges();
-		await athenaProfile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
+		c.executionCtx.waitUntil(athenaProfile.applyChanges());
 
 		return c.json(FortniteProfile.combineResponses([profile, athenaProfile]));
 	},

@@ -43,7 +43,7 @@ app.post(
 			value: seasonIdsAttribute?.valueJSON,
 		});
 
-		await profile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

@@ -133,7 +133,7 @@ app.post(
 			}
 		}
 
-		await profile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		const response = profile.createResponse();
 		return c.json(response);

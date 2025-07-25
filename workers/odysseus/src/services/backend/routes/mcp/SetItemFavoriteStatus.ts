@@ -42,7 +42,7 @@ app.post(
 			attributeValue: body.bFavorite,
 		});
 
-		await profile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

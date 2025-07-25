@@ -34,7 +34,7 @@ import { ATTRIBUTE_KEYS } from './constants';
  * });
  *
  * // Step 2: Apply all tracked changes automatically to the database
- * await profile.applyChanges();
+ * c.executionCtx.waitUntil(profile.applyChanges());
  *
  * // Step 3: Return the response with all changes included
  * return c.json(profile.createResponse());

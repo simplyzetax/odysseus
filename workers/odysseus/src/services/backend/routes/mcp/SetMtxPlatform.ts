@@ -34,7 +34,7 @@ app.post(
 			value: c.req.valid('json').newPlatform || 'EpicPC',
 		});
 
-		await profile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		const response = profile.createResponse();
 		return c.json(response);

@@ -39,7 +39,7 @@ app.post(
 			});
 		}
 
-		await profile.applyChanges();
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},
