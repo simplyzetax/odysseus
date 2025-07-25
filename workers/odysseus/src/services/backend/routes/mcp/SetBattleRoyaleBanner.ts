@@ -4,6 +4,7 @@ import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const setBattleRoyaleBannerSchema = type({
 	homebaseBannerIconId: 'string',
@@ -14,23 +15,15 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetBattleRoyaleBanner',
 	arktypeValidator('json', setBattleRoyaleBannerSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Missing profile ID'));
-		}
-
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
-		}
-
 		const { homebaseBannerIconId, homebaseBannerColorId } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const item = await profile.getItemBy('id', homebaseBannerIconId);
 		if (!item) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Item not found in profile'));
+			return odysseus.mcp.invalidPayload.withMessage('Item not found in profile').toResponse();
 		}
 
 		profile.trackChange({

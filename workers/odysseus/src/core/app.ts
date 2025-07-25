@@ -11,26 +11,25 @@ import { Bindings } from '@otypes/bindings';
 /**
  * The main app
  */
-const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>();
-export type App = typeof app;
-
-app.use(responseEnhancementsMiddleware);
-app.use(logger());
-app.use(cacheIdentifierMiddleware);
-app.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
+const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>()
+	.use(responseEnhancementsMiddleware)
+	.use(logger())
+	.use(cacheIdentifierMiddleware)
+	.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {
+	console.error(err);
 	if (err instanceof HTTPException) {
 		return err.getResponse();
 	} else if (err instanceof Error) {
 		if (err.message.includes('Failed query:')) {
-			return c.sendError(odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.'));
+			return odysseus.internal.serverError.withMessage('Failed database query. Look at the logs for more details.').toResponse();
 		}
-		return c.sendError(odysseus.internal.serverError.withMessage(err.message));
+		return odysseus.internal.serverError.withMessage(err.message).toResponse();
 	}
-	return c.sendError(odysseus.internal.serverError.withMessage('An unknown error occurred'));
+	return odysseus.internal.serverError.withMessage('An unknown error occurred').toResponse();
 });
 
-app.notFound((c) => c.sendError(odysseus.basic.notFound));
+app.notFound(() => odysseus.basic.notFound.toResponse());
 
 export { app };

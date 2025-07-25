@@ -5,8 +5,9 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { ITEMS } from '@core/db/schemas/items';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { getDB } from '@core/db/client';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const setItemFavoriteStatusBatchSchema = type({
 	itemIds: 'string[]',
@@ -17,25 +18,17 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetItemFavoriteStatusBatch',
 	arktypeValidator('json', setItemFavoriteStatusBatchSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Missing profile ID'));
-		}
-
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
-		}
-
 		const { itemIds, itemFavStatus } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const db = getDB(c.var.cacheIdentifier);
 
 		const items = await db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 		if (items.length !== itemIds.length) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Some items not found'));
+			return odysseus.mcp.invalidPayload.withMessage('Some items not found').toResponse();
 		}
 
 		for (const item of items) {

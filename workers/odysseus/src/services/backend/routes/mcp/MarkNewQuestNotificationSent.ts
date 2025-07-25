@@ -6,6 +6,7 @@ import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { inArray } from 'drizzle-orm';
 import { ITEMS } from '@core/db/schemas/items';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const markNewQuestNotificationSentSchema = type({
 	itemIds: 'string[]',
@@ -15,19 +16,11 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/MarkNewQuestNotificationSent',
 	arktypeValidator('json', markNewQuestNotificationSentSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-		if (!requestedProfileId) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Missing profile ID'));
-		}
-
-		if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
-		}
-
 		const { itemIds } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const items = await profile.db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 

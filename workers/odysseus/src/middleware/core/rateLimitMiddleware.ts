@@ -144,7 +144,7 @@ export const ratelimitMiddleware = (options: RateLimitOptions = {}) => {
 				}
 
 				c.res.headers.set('Retry-After', retryAfter.toString());
-				return c.sendError(odysseus.basic.throttled.withMessage(config.message));
+				return odysseus.basic.throttled.withMessage(config.message).toResponse();
 			}
 
 			// Consume one token

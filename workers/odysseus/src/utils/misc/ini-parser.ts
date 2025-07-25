@@ -1,4 +1,4 @@
-import type { Hotfix } from '@core/db/schemas/hotfixes';
+import type { Hotfix, NewHotfix } from '@core/db/schemas/hotfixes';
 
 export class IniParser {
 	private hotfixes: Hotfix[];
@@ -169,5 +169,90 @@ export class IniParser {
 	public getSectionsForFile(filename: string): string[] {
 		const fileSections = this.hotfixes.filter((h) => h.filename === filename).map((h) => h.section);
 		return Array.from(new Set(fileSections)).sort();
+	}
+
+	/**
+	 * Parses an .ini file content into an array of hotfix objects.
+	 * This does not save to the database, it just returns the representation.
+	 * @param iniContent The string content of the .ini file
+	 * @param filename The filename this content belongs to
+	 * @returns An array of NewHotfix objects
+	 */
+	public static parseIniToHotfixes(iniContent: string, filename: string): NewHotfix[] {
+		const hotfixes: NewHotfix[] = [];
+		const lines = iniContent.split(/\r?\n/);
+		let currentSection = '';
+
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+
+			if (trimmedLine === '' || trimmedLine.startsWith(';')) {
+				continue;
+			}
+
+			if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
+				currentSection = trimmedLine.substring(1, trimmedLine.length - 1);
+				continue;
+			}
+
+			if (currentSection) {
+				const parsedHotfix = IniParser.parseKeyValuePair(line, filename, currentSection);
+				if (parsedHotfix) {
+					hotfixes.push(parsedHotfix);
+				}
+			}
+		}
+
+		return hotfixes;
+	}
+
+	/**
+	 * Parses a single line of an .ini file into a hotfix object.
+	 * @param line The line to parse
+	 * @param filename The filename of the hotfix
+	 * @param section The section the hotfix belongs to
+	 * @returns A NewHotfix object or null if parsing fails
+	 */
+	public static parseKeyValuePair(line: string, filename: string, section: string): NewHotfix | null {
+		const parts = line.split(';');
+		const keyValuePart = parts[0];
+		const commentPart = parts.length > 1 ? parts.slice(1).join(';') : undefined;
+
+		const keyValue = keyValuePart.split('=');
+		if (keyValue.length < 2) {
+			return null;
+		}
+
+		const key = keyValue[0].trim();
+		const value = keyValue.slice(1).join('=').trim();
+
+		const hotfix: NewHotfix = {
+			filename,
+			section,
+			key,
+			value,
+			enabled: true,
+			scope: 'user',
+		};
+
+		if (commentPart) {
+			const metadata = commentPart.trim();
+			const metaParts = metadata.split(',').map((p) => p.trim());
+
+			for (const meta of metaParts) {
+				if (meta === 'disabled') {
+					hotfix.enabled = false;
+				} else if (meta.startsWith('scope:')) {
+					hotfix.scope = meta.substring('scope:'.length);
+				} else if (meta.startsWith('account:')) {
+					const accountId = meta.substring('account:'.length);
+					if (accountId) {
+						hotfix.accountId = accountId;
+					}
+				}
+			}
+		}
+
+		return hotfix;
 	}
 }

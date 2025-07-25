@@ -36,19 +36,21 @@
 			{
 				"name": "CACHE_DO",
 				"class_name": "CacheDurableObject",
-				"script_name": "odysseus",
 			},
 			{
 				"name": "XmppServer",
 				"class_name": "XMPPServer",
-				"script_name": "odysseus",
 			},
 		],
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["CacheDurableObject", "XMPPServer"],
+			"new_sqlite_classes": ["CacheDurableObject"],
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": ["XMPPServer"],
 		},
 	],
 	/**
@@ -56,7 +58,7 @@
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */
 	"placement": {
-		"mode": "smart",
+		"mode": "smart"
 	},
 	/**
 	 * Static Assets
@@ -71,7 +73,7 @@
 	],
 	"version_metadata": {
 		"binding": "CF_VERSION_METADATA",
-	},
+	}
 	/**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including

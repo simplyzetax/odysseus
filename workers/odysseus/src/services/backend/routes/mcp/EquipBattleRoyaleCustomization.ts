@@ -5,13 +5,14 @@ import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { type } from 'arktype';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 export const VALID_COSMETIC_SLOTS = [
-	'Character',
-	'Backpack',
-	'Pickaxe',
-	'Glider',
-	'SkyDiveContrail',
+	'AthenaCharacter',
+	'AthenaBackpack',
+	'AthenaPickaxe',
+	'AthenaGlider',
+	'AthenaSkyDiveContrail',
 	'MusicPack',
 	'LoadingScreen',
 	'Dance',
@@ -30,7 +31,7 @@ export const SLOT_CONFIGS = {
 const equipBattleRoyaleCustomizationSchema = type({
 	indexWithinSlot: 'number', // -1 = fill all slots for multi-slot items, 0+ = specific slot index
 	itemToSlot: 'string',
-	slotName: type(['===', ...VALID_COSMETIC_SLOTS]),
+	slotName: 'string',
 	'variantUpdates?': type({
 		channel: 'string',
 		active: 'string',
@@ -41,55 +42,59 @@ app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/EquipBattleRoyaleCustomization',
 	arktypeValidator('json', equipBattleRoyaleCustomizationSchema),
 	acidMiddleware,
+	mcpValidationMiddleware,
 	async (c) => {
-		const requestedProfileId = c.req.query('profileId');
-
 		const { indexWithinSlot, itemToSlot, slotName, variantUpdates } = c.req.valid('json');
 
-		if (!FortniteProfile.isExactProfileType(requestedProfileId, profileTypesEnum.athena)) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID, must be athena'));
-		}
-
-		const profile = await FortniteProfile.construct(c.var.accountId, requestedProfileId, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';
+
+		console.log('normalizedItemToSlot', normalizedItemToSlot);
 
 		// Only validate item if we're actually equipping something (not unequipping)
 		if (normalizedItemToSlot) {
 			const item = await profile.getItemBy('id', normalizedItemToSlot);
 			if (!item) {
-				return c.sendError(odysseus.mcp.invalidPayload.withMessage('Item not found'));
+				return odysseus.mcp.invalidPayload.withMessage('Item not found').toResponse();
 			}
 
 			// More robust template ID validation - check if the item type matches the slot category
 			const itemType = item.templateId.split(':')[0];
-			const expectedPrefix = slotName.toLowerCase();
 
-			if (!itemType.toLowerCase().startsWith(expectedPrefix)) {
-				return c.sendError(odysseus.mcp.invalidPayload.withMessage(`Cannot slot item of type ${itemType} in slot of category ${slotName}`));
+			// Handle Athena prefix mapping - some slots have Athena prefix, others don't
+			const normalizedSlotName = slotName.toLowerCase();
+			const normalizedItemType = itemType.toLowerCase();
+
+			// Check if the item type matches the slot either directly or with Athena prefix
+			const isValidSlot =
+				normalizedItemType.startsWith(normalizedSlotName) ||
+				normalizedItemType.startsWith(`athena${normalizedSlotName}`) ||
+				(normalizedSlotName.startsWith('athena') && normalizedItemType.startsWith(normalizedSlotName));
+
+			if (!isValidSlot) {
+				return odysseus.mcp.invalidPayload.withMessage(`Cannot slot item of type ${itemType} in slot of category ${slotName}`).toResponse();
 			}
 		}
 
 		// Required slots can't be empty
 		if (REQUIRED_SLOTS.includes(slotName as (typeof REQUIRED_SLOTS)[number]) && !normalizedItemToSlot) {
-			return c.sendError(odysseus.mcp.invalidPayload.withMessage(`${slotName} cannot be empty`));
+			return odysseus.mcp.invalidPayload.withMessage(`${slotName} cannot be empty`).toResponse();
 		}
 
 		if (await profile.isMultiSlotItem(slotName)) {
 			// Get slot configuration
 			const slotConfig = SLOT_CONFIGS[slotName as keyof typeof SLOT_CONFIGS];
 			if (!slotConfig) {
-				return c.sendError(odysseus.mcp.invalidPayload.withMessage(`Invalid multi-slot item type: ${slotName}`));
+				return odysseus.mcp.invalidPayload.withMessage(`Invalid multi-slot item type: ${slotName}`).toResponse();
 			}
 
 			// Validate index range
 			if (indexWithinSlot < -1 || indexWithinSlot > slotConfig.maxIndex) {
-				return c.sendError(
-					odysseus.mcp.invalidPayload.withMessage(
-						`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${slotConfig.maxIndex}`,
-					),
-				);
+				return odysseus.mcp.invalidPayload
+					.withMessage(`Invalid index within slot: ${indexWithinSlot}. Valid range: -1 to ${slotConfig.maxIndex}`)
+					.toResponse();
 			}
 
 			const emptyArray = new Array(slotConfig.maxSlots).fill('');

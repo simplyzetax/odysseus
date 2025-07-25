@@ -3,14 +3,15 @@ import { getDB } from '@core/db/client';
 import { HOTFIXES } from '@core/db/schemas/hotfixes';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { clientTokenVerify } from '@middleware/auth/clientAuthMiddleware';
+import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { IniParser } from '@utils/misc/ini-parser';
+import { sql } from 'drizzle-orm';
 import { md5, sha1, sha256 } from 'hono/utils/crypto';
 
 const SETTINGS_FILE = 'clientsettings.sav';
 
-app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenVerify, async (c) => {
+app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), async (c) => {
 	const db = getDB(c.var.cacheIdentifier);
 	const hotfixes = await db.select().from(HOTFIXES);
 
@@ -38,7 +39,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), clientTokenV
 	return c.json(response);
 });
 
-app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), clientTokenVerify, async (c) => {
+app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), async (c) => {
 	const filename = c.req.param('filename');
 	const hotfixes = await getDB(c.var.cacheIdentifier).select().from(HOTFIXES);
 	const parser = new IniParser(hotfixes);
@@ -47,38 +48,73 @@ app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), cl
 	const content = parser.getIniForFile(filename, false, 'global', false);
 
 	if (!content) {
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${filename} not found`));
+		return odysseus.cloudstorage.fileNotFound.withMessage(`File ${filename} not found`).toResponse();
 	}
 
-	return c.sendIni(content);
+	return c.sendOctet(content);
+});
+
+app.post('/fortnite/api/cloudstorage/system/:filename', devAuthMiddleware, ratelimitMiddleware(), async (c) => {
+	const formData = await c.req.formData();
+	const file = formData.get('file');
+
+	if (!(file instanceof File)) {
+		return odysseus.authentication.invalidRequest.withMessage('File not provided or is invalid.').toResponse();
+	}
+
+	const filename = file.name;
+	const body = await file.text();
+
+	const db = getDB(c.var.cacheIdentifier);
+
+	const newHotfixes = IniParser.parseIniToHotfixes(body, filename);
+	if (newHotfixes.length > 0) {
+		await db
+			.insert(HOTFIXES)
+			.values(newHotfixes)
+			.onConflictDoUpdate({
+				target: [HOTFIXES.filename, HOTFIXES.section, HOTFIXES.key],
+				set: {
+					value: sql`excluded.value`,
+				},
+			});
+	} else {
+		return odysseus.authentication.invalidRequest.withMessage('No new hotfixes found.').toResponse();
+	}
+
+	return c.json({
+		success: true,
+		message: 'Hotfixes uploaded successfully.',
+		hotfixes: newHotfixes,
+	});
 });
 
 // User cloudstorage endpoints
 app.get('/fortnite/api/cloudstorage/user/:accountId/:file', ratelimitMiddleware(), acidMiddleware, async (c) => {
 	const fileName = c.req.param('file');
 	if (fileName.toLowerCase() !== SETTINGS_FILE) {
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
+		return odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`).toResponse();
 	}
 
 	try {
 		// First check if file exists using head() for better performance
 		const fileData = await c.env.R2.head(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
 		if (!fileData) {
-			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
+			return odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`).toResponse();
 		}
 
 		// File exists, now get the actual content
 		const file = await c.env.R2.get(`settings/${c.var.accountId}/${SETTINGS_FILE}`);
 		if (!file) {
 			// This shouldn't happen since head() succeeded, but defensive programming
-			return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
+			return odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`).toResponse();
 		}
 
 		const fileBuffer = await file.arrayBuffer();
 		return c.body(fileBuffer);
 	} catch (error) {
 		console.error(`Error fetching user file ${fileName} for ${c.var.accountId}:`, error);
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`Failed to fetch file ${fileName}`));
+		return odysseus.cloudstorage.fileNotFound.withMessage(`Failed to fetch file ${fileName}`).toResponse();
 	}
 });
 
@@ -111,20 +147,20 @@ app.get('/fortnite/api/cloudstorage/user/:accountId', ratelimitMiddleware(), aci
 		return c.json(jsonResponse);
 	} catch (error) {
 		console.error(`Error fetching user file listing for ${c.var.accountId}:`, error);
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage('Failed to fetch user files'));
+		return odysseus.cloudstorage.fileNotFound.withMessage('Failed to fetch user files').toResponse();
 	}
 });
 
 app.put('/fortnite/api/cloudstorage/user/:accountId/:file', ratelimitMiddleware(), acidMiddleware, async (c) => {
 	const fileName = c.req.param('file');
 	if (fileName.toLowerCase() !== SETTINGS_FILE) {
-		return c.sendError(odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`));
+		return odysseus.cloudstorage.fileNotFound.withMessage(`File ${fileName} not found`).toResponse();
 	}
 
 	try {
 		const body = await c.req.arrayBuffer();
 		if (!body || body.byteLength === 0) {
-			return c.sendError(odysseus.cloudstorage.invalidBody);
+			return odysseus.cloudstorage.invalidBody.toResponse();
 		}
 
 		// Calculate md5 hash for the file
@@ -140,6 +176,6 @@ app.put('/fortnite/api/cloudstorage/user/:accountId/:file', ratelimitMiddleware(
 		return c.sendStatus(204);
 	} catch (error) {
 		console.error(`Error saving settings for ${c.var.accountId}:`, error);
-		return c.sendError(odysseus.cloudstorage.invalidBody.withMessage('Failed to save user settings'));
+		return odysseus.cloudstorage.invalidBody.withMessage('Failed to save user settings').toResponse();
 	}
 });

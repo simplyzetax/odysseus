@@ -1,13 +1,11 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
 import { ACCOUNTS } from './account';
 
 export const HOTFIXES = pgTable(
 	'hotfixes',
 	{
-		id: uuid('id')
-			.primaryKey()
-			.default(sql`uuid_generate_v4()`),
+		id: uuid('id').primaryKey().defaultRandom(),
 		filename: text('file').notNull(),
 		section: text('section').notNull(),
 		key: text('key').notNull(),
@@ -19,6 +17,7 @@ export const HOTFIXES = pgTable(
 	(hotfixes) => {
 		return {
 			nameIndex: index('filename_idx').on(hotfixes.filename),
+			unique_hotfix: uniqueIndex('unique_hotfix_idx').on(hotfixes.filename, hotfixes.section, hotfixes.key),
 		};
 	},
 );

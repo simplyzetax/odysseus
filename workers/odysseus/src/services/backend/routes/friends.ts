@@ -27,7 +27,7 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 	const method = c.req.method;
 
 	if (!friendId) {
-		return c.sendError(odysseus.friends.friendshipNotFound.withMessage('Friend ID is required'));
+		return odysseus.friends.friendshipNotFound.withMessage('Friend ID is required').toResponse();
 	}
 
 	const db = getDB(c.var.cacheIdentifier);
@@ -39,9 +39,9 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 		.where(and(eq(FRIENDS.accountId, c.var.accountId), eq(FRIENDS.targetId, friendId), eq(FRIENDS.status, 'ACCEPTED')));
 
 	if (!friendship) {
-		return c.sendError(
-			odysseus.friends.friendshipNotFound.withMessage(`Friendship between ${c.var.accountId} and ${friendId} does not exist`),
-		);
+		return odysseus.friends.friendshipNotFound
+			.withMessage(`Friendship between ${c.var.accountId} and ${friendId} does not exist`)
+			.toResponse();
 	}
 
 	if (method === 'PUT') {
@@ -52,13 +52,13 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 		const allowedCharacters = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
 		for (const char of body) {
 			if (!allowedCharacters.includes(char)) {
-				return c.sendError(odysseus.internal.validationFailed.withMessage('Validation Failed. Invalid fields were [alias]'));
+				return odysseus.internal.validationFailed.withMessage('Validation Failed. Invalid fields were [alias]').toResponse();
 			}
 		}
 
 		// Validate alias length (no trimming, exact length check)
 		if (body.length < 3 || body.length > 16) {
-			return c.sendError(odysseus.internal.validationFailed.withMessage('Validation Failed. Invalid fields were [alias]'));
+			return odysseus.internal.validationFailed.withMessage('Validation Failed. Invalid fields were [alias]').toResponse();
 		}
 
 		// Update alias

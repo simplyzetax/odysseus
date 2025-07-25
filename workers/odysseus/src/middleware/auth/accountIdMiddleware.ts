@@ -7,18 +7,18 @@ import { createMiddleware } from 'hono/factory';
 export const acidMiddleware = createMiddleware(
 	async (c: Context<{ Bindings: Bindings; Variables: { accountId: string; token: string } }>, next) => {
 		const Authorization = c.req.header('Authorization');
-		if (!Authorization?.startsWith('Bearer ')) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header'));
+		if (!Authorization?.toLowerCase().startsWith('bearer ')) {
+			return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
 		}
 
 		const token = Authorization.split(' ')[1];
 		if (!token) {
-			return c.sendError(odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header'));
+			return odysseus.authentication.invalidHeader.withMessage('Missing token in Authorization header').toResponse();
 		}
 
 		const verifiedToken = await JWT.verifyToken(token);
 		if (!verifiedToken?.sub) {
-			return c.sendError(odysseus.authentication.invalidToken.withMessage('Invalid or expired token'));
+			return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
 		}
 
 		c.set('accountId', verifiedToken.sub);

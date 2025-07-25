@@ -1,31 +1,27 @@
 import { app } from '@core/app';
+import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
+import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
-const athenaPinQuestSchema = type({
-	pinnedQuest: 'string',
-});
-
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/AthenaPinQuest',
-	arktypeValidator('json', athenaPinQuestSchema),
+	'/fortnite/api/game/v2/profile/:accountId/client/ClientQuestLogin',
 	acidMiddleware,
+	ratelimitMiddleware({
+		capacity: 10,
+		initialTokens: 10,
+		refillRate: 0.5,
+	}),
 	mcpValidationMiddleware,
 	async (c) => {
-		const { pinnedQuest } = c.req.valid('json');
-
 		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profileObject = await profile.buildProfileObject();
 
 		profile.trackChange({
-			changeType: 'statModified',
-			name: 'pinned_quest',
-			value: pinnedQuest,
+			changeType: 'fullProfileUpdate',
+			profile: profileObject,
 		});
-
-		c.executionCtx.waitUntil(profile.updateAttribute('pinned_quest', pinnedQuest));
 
 		return c.json(profile.createResponse());
 	},

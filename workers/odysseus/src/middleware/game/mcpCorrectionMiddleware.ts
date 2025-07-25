@@ -12,7 +12,7 @@ function parseRevisionNumber(rvnParam: string | undefined): number {
 	const rvn = parseInt(rvnParam || '0', 10);
 
 	if (isNaN(rvn) || rvn < 0) {
-		odysseus.mcp.invalidPayload.withMessage('Invalid revision number').throwHttpException();
+		return 0;
 	}
 
 	return rvn;

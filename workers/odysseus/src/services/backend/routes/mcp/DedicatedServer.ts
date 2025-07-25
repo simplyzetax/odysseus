@@ -1,17 +1,12 @@
 import { app } from '@core/app';
-import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 //TODO: Add auth to this that a gameserver could use
-app.post('/fortnite/api/game/v2/profile/:accountId/dedicated_server/:operation', async (c) => {
+app.post('/fortnite/api/game/v2/profile/:accountId/dedicated_server/:operation', mcpValidationMiddleware, async (c) => {
 	const accountId = c.req.param('accountId');
-	const requestedProfileId = c.req.query('profileId');
 
-	if (!FortniteProfile.isValidProfileType(requestedProfileId)) {
-		return c.sendError(odysseus.mcp.invalidPayload.withMessage('Invalid profile ID'));
-	}
-
-	const profile = await FortniteProfile.construct(accountId, requestedProfileId, c.var.cacheIdentifier);
+	const profile = await FortniteProfile.construct(accountId, c.var.profileType, c.var.cacheIdentifier);
 
 	const profileObject = profile.buildProfileObject();
 

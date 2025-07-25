@@ -16,7 +16,7 @@ app.delete('/cache', async (c) => {
 	} else {
 		cacheIdentifier = (await getSignedCookie(c, c.env.JWT_SECRET, 'cacheIdentifier')) || undefined;
 		if (!cacheIdentifier) {
-			return c.sendError(odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter'));
+			return odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter').toResponse();
 		}
 		colo = cacheIdentifier.split('-')[0];
 	}
@@ -66,7 +66,7 @@ app.get('/cache/stats', devAuthMiddleware, async (c) => {
 	} else {
 		const cacheIdentifier = await getSignedCookie(c, c.env.JWT_SECRET, 'cacheIdentifier');
 		if (!cacheIdentifier) {
-			return c.sendError(odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter'));
+			return odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter').toResponse();
 		}
 		colo = cacheIdentifier.split('-')[0];
 	}
@@ -92,7 +92,7 @@ app.get('/cache/entries', devAuthMiddleware, async (c) => {
 	} else {
 		const cacheIdentifier = await getSignedCookie(c, c.env.JWT_SECRET, 'cacheIdentifier');
 		if (!cacheIdentifier) {
-			return c.sendError(odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter'));
+			return odysseus.basic.badRequest.withMessage('Missing cache identifier or colo parameter').toResponse();
 		}
 		colo = cacheIdentifier.split('-')[0];
 	}

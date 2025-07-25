@@ -5,15 +5,10 @@ import type { Item } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
 import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
-import { Bindings } from '@otypes/bindings';
 import { FormattedItem } from '@otypes/fortnite/item';
 import { ProfileChange } from '@otypes/fortnite/profileChanges';
 import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import type { Context } from 'hono';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
-import { ENV } from '@core/env';
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
@@ -25,7 +20,6 @@ interface ProfileClassMap {
 	profile0: FortniteProfileWithDBProfile<'profile0'>;
 }
 
-// Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
 
 export const MULTI_ITEM_SLOTS = ['Dance', 'ItemWrap'];
@@ -150,6 +144,17 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 			return currentValue;
 		}
 	}
+
+	public static formatItemForMCP(dbItem: Item): FormattedItem {
+		return {
+			templateId: dbItem.templateId,
+			attributes: {
+				quantity: dbItem.quantity ?? 1,
+				favorite: dbItem.favorite ?? false,
+				item_seen: dbItem.seen ? 1 : 0,
+			},
+		};
+	}
 }
 
 /**
@@ -236,22 +241,25 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @returns The item
 	 */
 	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
-		// Automatically generate column mapping from Arktype schema shape
-		const schemaShape = itemSelectSchema.infer;
-		const columnMap = Object.keys(schemaShape).reduce(
-			(acc, key) => {
-				acc[key as keyof Item] = ITEMS[key as keyof typeof ITEMS];
-				return acc;
-			},
-			{} as Record<keyof Item, any>,
-		);
+		// Map item properties to their corresponding ITEMS columns
+		const columnMap = {
+			id: ITEMS.id,
+			templateId: ITEMS.templateId,
+			profileId: ITEMS.profileId,
+			jsonAttributes: ITEMS.jsonAttributes,
+			quantity: ITEMS.quantity,
+			favorite: ITEMS.favorite,
+			seen: ITEMS.seen,
+		} as const;
 
-		const column = columnMap[columnName];
+		const column = columnMap[columnName as keyof typeof columnMap];
 		if (!column) {
 			throw new Error(`Invalid column name: ${String(columnName)}`);
 		}
 
-		const [item] = await this.db.select().from(ITEMS).where(eq(column, value));
+		// Handle null values by using isNull instead of eq
+		const whereCondition = value === null ? sql`${column} IS NULL` : eq(column, value);
+		const [item] = await this.db.select().from(ITEMS).where(whereCondition);
 
 		return item;
 	}
@@ -373,12 +381,25 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param itemId - The ID of the item to add
 	 * @param attributes - The attributes json value of the item
 	 */
-	async addItem(itemId: string, attributes: Record<string, any>) {
-		await this.db.insert(ITEMS).values({
-			profileId: this.profileId,
-			templateId: itemId,
-			jsonAttributes: attributes,
-		});
+	async addItem(itemId: string, attributes?: Record<string, any>) {
+		const [item] = await this.db
+			.insert(ITEMS)
+			.values({
+				profileId: this.profileId,
+				templateId: itemId,
+				jsonAttributes: attributes,
+			})
+			.returning();
+
+		return item;
+	}
+
+	async removeItems(itemIds: string[] | string) {
+		if (typeof itemIds === 'string') {
+			await this.db.delete(ITEMS).where(eq(ITEMS.id, itemIds));
+		} else {
+			await this.db.delete(ITEMS).where(inArray(ITEMS.id, itemIds));
+		}
 	}
 
 	async updateItem(itemId: string, attributes: Record<string, any>) {

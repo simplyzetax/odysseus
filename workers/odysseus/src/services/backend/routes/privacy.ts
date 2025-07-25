@@ -7,11 +7,10 @@ import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { eq } from 'drizzle-orm';
 
 app.get('/fortnite/api/game/v2/privacy/account/:accountId', accountMiddleware, async (c) => {
-	const response = {
+	return c.json({
 		...c.var.account.settings.privacy,
 		accountId: c.var.account.id,
-	};
-	return c.json(response);
+	});
 });
 
 app.post(

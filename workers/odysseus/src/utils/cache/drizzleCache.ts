@@ -29,32 +29,6 @@ interface MutationParams {
 	tables: string | string[] | Table<any> | Table<any>[];
 }
 
-/**
- * Cloudflare Durable Object-based cache implementation for Drizzle ORM
- *
- * This cache uses Cloudflare Durable Objects to provide distributed, persistent caching
- * across the Cloudflare edge network. It supports intelligent invalidation based on
- * database tables and custom tags.
- *
- * Features:
- * - Distributed caching via Cloudflare Durable Objects
- * - Table-based cache invalidation
- * - Tag-based cache invalidation
- * - Configurable TTL per cache entry
- * - Environment-based cache disabling for development
- * - Comprehensive error handling and logging
- *
- * @example
- * ```typescript
- * const cache = new CloudflareDurableObjectRPCDrizzleCache(
- *   env.CACHE_DO,
- *   "my-cache",
- *   "user-123"
- * );
- *
- * const db = drizzle(connectionString, { cache });
- * ```
- */
 export class CloudflareDurableObjectRPCDrizzleCache extends Cache {
 	private readonly globalTtl: number;
 	private readonly durableObject: DurableObjectStub<CacheDurableObject>;
