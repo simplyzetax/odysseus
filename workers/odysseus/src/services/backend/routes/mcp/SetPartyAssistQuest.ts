@@ -5,6 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const setPartyAssistQuestSchema = type({
 	questToPinAsPartyAssist: 'string',
@@ -18,15 +19,15 @@ app.post(
 	async (c) => {
 		const { questToPinAsPartyAssist } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'mtx_party_assist_quest',
+			name: ATTRIBUTE_KEYS.MTX_PARTY_ASSIST_QUEST,
 			value: questToPinAsPartyAssist,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('mtx_party_assist_quest', questToPinAsPartyAssist));
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

@@ -5,6 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const setSeasonPassAutoClaimSchema = type({
 	bEnabled: 'boolean',
@@ -19,10 +20,11 @@ app.post(
 	async (c) => {
 		const { bEnabled, seasonIds } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const seasonIdsAttribute =
-			(await profile.getAttribute('auto_spend_season_currency_ids')) || profile.createAttribute('auto_spend_season_currency_ids', []);
+			(await profile.getAttribute(ATTRIBUTE_KEYS.AUTO_SPEND_SEASON_CURRENCY_IDS)) ||
+			profile.createAttribute(ATTRIBUTE_KEYS.AUTO_SPEND_SEASON_CURRENCY_IDS, []);
 
 		if (!Array.isArray(seasonIdsAttribute.valueJSON)) {
 			seasonIdsAttribute.valueJSON = [];
@@ -37,11 +39,11 @@ app.post(
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'auto_spend_season_currency_ids',
+			name: ATTRIBUTE_KEYS.AUTO_SPEND_SEASON_CURRENCY_IDS,
 			value: seasonIdsAttribute?.valueJSON,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('auto_spend_season_currency_ids', seasonIdsAttribute.valueJSON));
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

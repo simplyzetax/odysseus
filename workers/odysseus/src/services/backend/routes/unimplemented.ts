@@ -4,13 +4,13 @@ app.post('/fortnite/api/game/v2/chat/*/*/*/pc', (c) => {
 	return c.json({ GlobalChatRooms: [{ roomName: 'lawinserverglobal' }] });
 });
 
-app.post('/fortnite/api/game/v2/tryPlayOnPlatform/account/*', (c) => {
+app.post('/fortnite/api/game/v2/tryPlayOnPlatform/account/:accountId', (c) => {
 	return c.text('true');
 });
 
 app.get('/launcher/api/public/distributionpoints/', (c) => {
 	return c.json({
-		distributions: ['https://download.odysseus.fortnite.ac'],
+		distributions: ['https://download.odysseus.athena.wiki'],
 	});
 });
 
@@ -25,42 +25,19 @@ app.get('/launcher/api/public/assets/:someId', async (c) => {
 			MANIFEST: {
 				signature: 'Odysseus',
 				distribution: 'https://odysseus.ol.epicgames.com/',
-				path: 'Builds/Fortnite/Content/CloudDir/LawinServer.manifest',
+				path: 'Builds/Fortnite/Content/CloudDir/Odysseus.manifest',
 				hash: '55bb954f5596cadbe03693e1c06ca73368d427f3',
 				additionalDistributions: [],
 			},
 			CHUNKS: {
 				signature: 'Odysseus',
 				distribution: 'https://odysseus.ol.epicgames.com/',
-				path: 'Builds/Fortnite/Content/CloudDir/LawinServer.manifest',
+				path: 'Builds/Fortnite/Content/CloudDir/Odysseus.manifest',
 				additionalDistributions: [],
 			},
 		},
 		assetId: 'FortniteContentBuilds',
 	});
-});
-
-//TODO: Implement with asset fetcher
-app.get('/Builds/Fortnite/Content/CloudDir/*.manifest', async () => {
-	/*
-        const manifest = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "LawinServer.manifest"));
-    
-        return c.sendIni(manifest)
-        */
-});
-
-//TODO: Implement with asset fetcher
-app.get('/Builds/Fortnite/Content/CloudDir/*.chunk', async () => {
-	/*const chunk = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "LawinServer.chunk"));
-
-    return c.sendIni(chunk)*/
-});
-
-app.get('/Builds/Fortnite/Content/CloudDir/*.ini', async () => {
-	/*const ini = fs.readFileSync(path.join(__dirname, "..", "responses", "CloudDir", "Full.ini"));
-
-    res.status(200).send(ini).end();
-    */
 });
 
 app.get('/socialban/api/public/v1/*', (c) => {
@@ -70,7 +47,7 @@ app.get('/socialban/api/public/v1/*', (c) => {
 	});
 });
 
-app.get('/fortnite/api/game/v2/events/tournamentandhistory/*/EU/WindowsClient', (c) => {
+app.get('/fortnite/api/game/v2/events/tournamentandhistory/*/:region/WindowsClient', (c) => {
 	return c.json({});
 });
 

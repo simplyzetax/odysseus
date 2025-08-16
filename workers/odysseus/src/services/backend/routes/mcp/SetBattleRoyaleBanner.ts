@@ -5,6 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 
 const setBattleRoyaleBannerSchema = type({
 	homebaseBannerIconId: 'string',
@@ -19,7 +20,7 @@ app.post(
 	async (c) => {
 		const { homebaseBannerIconId, homebaseBannerColorId } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const item = await profile.getItemBy('id', homebaseBannerIconId);
 		if (!item) {
@@ -28,18 +29,17 @@ app.post(
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'banner_icon',
+			name: ATTRIBUTE_KEYS.BANNER_ICON,
 			value: homebaseBannerIconId,
 		});
 
 		profile.trackChange({
 			changeType: 'statModified',
-			name: 'banner_color',
+			name: ATTRIBUTE_KEYS.BANNER_COLOR,
 			value: homebaseBannerColorId,
 		});
 
-		c.executionCtx.waitUntil(profile.updateAttribute('banner_icon', homebaseBannerIconId));
-		c.executionCtx.waitUntil(profile.updateAttribute('banner_color', homebaseBannerColorId));
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

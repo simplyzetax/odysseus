@@ -22,7 +22,7 @@ app.post(
 	async (c) => {
 		const { itemIds, archived } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const db = getDB(c.var.cacheIdentifier);
 
@@ -38,9 +38,9 @@ app.post(
 				attributeName: 'archived',
 				attributeValue: archived,
 			});
-
-			c.executionCtx.waitUntil(profile.updateItem(item.id, { ...item.jsonAttributes, archived }));
 		}
+
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

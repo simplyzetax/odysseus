@@ -163,8 +163,8 @@ app.put('/fortnite/api/cloudstorage/user/:accountId/:file', ratelimitMiddleware(
 			return odysseus.cloudstorage.invalidBody.toResponse();
 		}
 
-		// Calculate md5 hash for the file
-		const fileHash = await md5(body);
+		const bodyAsString = new TextDecoder().decode(body);
+		const fileHash = await md5(bodyAsString);
 
 		await c.env.R2.put(`settings/${c.var.accountId}/${SETTINGS_FILE}`, body, {
 			httpMetadata: {

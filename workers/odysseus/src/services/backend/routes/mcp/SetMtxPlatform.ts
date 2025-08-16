@@ -1,12 +1,20 @@
 import { app } from '@core/app';
 import { odysseus } from '@core/error';
+import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
+import { type } from 'arktype';
+
+const setMtxPlatformSchema = type({
+	newPlatform: 'string',
+});
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetMtxPlatform',
+	arktypeValidator('json', setMtxPlatformSchema),
 	acidMiddleware,
 	ratelimitMiddleware({
 		capacity: 10,
@@ -15,16 +23,18 @@ app.post(
 	}),
 	mcpValidationMiddleware,
 	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
-		const profileObject = await profile.buildProfileObject();
-
-		//TODO: Properly implement this
-		//await profile.updateAttribute('mtx_platform', 'epic');
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		if (!profile) {
+			return odysseus.mcp.profileNotFound.toResponse();
+		}
 
 		profile.trackChange({
-			changeType: 'fullProfileUpdate',
-			profile: profileObject,
+			changeType: 'statModified',
+			name: ATTRIBUTE_KEYS.CURRENT_MTX_PLATFORM,
+			value: c.req.valid('json').newPlatform || 'EpicPC',
 		});
+
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		const response = profile.createResponse();
 		return c.json(response);

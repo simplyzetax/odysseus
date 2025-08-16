@@ -3,12 +3,34 @@
  */
 
 import { AllCosmeticsResponseData, Client, Language } from 'fnapicom';
+import { WorkerCache } from '@utils/cache/workerCache';
 
 export const fnApiClient = new Client({
 	language: Language.English,
 });
 
 type FortniteCosmetic = AllCosmeticsResponseData['data']['br'][number];
+
+// Cache for 2 hours since cosmetics don't change very frequently
+const fortniteCache = WorkerCache.withPrefix('fortnite-api', 60 * 60 * 2);
+
+/**
+ * Gets all cosmetics data with caching
+ * @returns All cosmetics data from API or cache
+ */
+async function getAllCosmeticsWithCache(): Promise<AllCosmeticsResponseData['data'] | null> {
+	return await fortniteCache.getOrSet('all-cosmetics', async () => {
+		console.log('Fetching fresh cosmetics data from API');
+		const result = await fnApiClient.allCosmetics();
+		console.log(`API status: ${result.status}`);
+
+		if (!result.data) {
+			throw new Error('No cosmetics data received from API');
+		}
+
+		return result.data;
+	});
+}
 
 /**
  * Searches for cosmetics by name prefix
@@ -18,9 +40,7 @@ type FortniteCosmetic = AllCosmeticsResponseData['data']['br'][number];
  */
 export async function searchCosmeticsByName(searchQuery: string, limit: number = 25) {
 	try {
-		const result = await fnApiClient.allCosmetics();
-		console.log(result.status);
-		const allCosmetics = result.data;
+		const allCosmetics = await getAllCosmeticsWithCache();
 		if (!allCosmetics || !allCosmetics.br) return [];
 
 		const searchLower = searchQuery.toLowerCase();

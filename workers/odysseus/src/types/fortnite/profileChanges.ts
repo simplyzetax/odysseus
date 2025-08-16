@@ -1,3 +1,4 @@
+import { ATTRIBUTE_KEYS } from '@utils/mcp/constants';
 import type { FormattedItem } from './item';
 
 export interface BaseProfileChange {

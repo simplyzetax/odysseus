@@ -4,8 +4,6 @@ import { nanoid } from 'nanoid';
 import { getDB } from '@core/db/client';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { eq, and } from 'drizzle-orm';
-import type { Context } from 'hono';
-import { Bindings } from '@otypes/bindings';
 import { ENV } from '@core/env';
 
 export class Party implements PartyData {

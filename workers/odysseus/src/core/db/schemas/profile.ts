@@ -17,8 +17,11 @@ export type Profile = typeof PROFILES.$inferSelect;
 export type NewProfile = typeof PROFILES.$inferInsert;
 
 export const profileSelectSchema = createSelectSchema(PROFILES);
-
-const profileTypeValues = ['athena', 'common_core', 'common_public', 'creative', 'profile0'] as const;
-export const profileTypesEnum = Object.fromEntries(profileTypeValues.map((value) => [value, value])) as {
-	[K in (typeof profileTypeValues)[number]]: K;
-};
+export const profileTypeValues = ['athena', 'common_core', 'common_public', 'creative', 'profile0'] as const;
+export const profileTypesEnum = {
+	athena: 'athena',
+	common_core: 'common_core',
+	common_public: 'common_public',
+	creative: 'creative',
+	profile0: 'profile0',
+} as const;

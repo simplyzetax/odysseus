@@ -5,7 +5,7 @@ import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { ITEMS } from '@core/db/schemas/items';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { getDB } from '@core/db/client';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
@@ -22,7 +22,7 @@ app.post(
 	async (c) => {
 		const { itemIds, itemFavStatus } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		const db = getDB(c.var.cacheIdentifier);
 
@@ -40,7 +40,7 @@ app.post(
 			});
 		}
 
-		c.executionCtx.waitUntil(db.update(ITEMS).set({ favorite: itemFavStatus }).where(inArray(ITEMS.id, itemIds)));
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		return c.json(profile.createResponse());
 	},

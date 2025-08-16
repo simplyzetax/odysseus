@@ -1,4 +1,4 @@
-import { createDiscordAPI } from '@utils/discord/general';
+import { DiscordAPI } from '@utils/discord/general';
 import { searchCosmeticsByName } from '@utils/fortniteapi/general';
 import { env } from 'cloudflare:workers';
 import { InteractionResponseType } from 'discord-api-types/v10';
@@ -10,7 +10,7 @@ import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-t
  * @returns Response object containing autocomplete choices for Discord
  */
 export async function handleAutocomplete(interaction: APIApplicationCommandAutocompleteInteraction): Promise<Response> {
-	const discord = createDiscordAPI(env);
+	const discord = DiscordAPI.construct(env);
 
 	if (interaction.data.name === 'additem') {
 		// Check which option is being autocompleted
@@ -29,6 +29,8 @@ export async function handleAutocomplete(interaction: APIApplicationCommandAutoc
 
 			// Get matching cosmetics
 			const matches = await searchCosmeticsByName(searchQuery, 10);
+
+			console.log('Returning autocomplete choices');
 
 			// Return the autocomplete choices
 			return new Response(

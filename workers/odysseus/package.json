@@ -8,8 +8,6 @@
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
 		"start": "wrangler dev",
-		"lint": "eslint .",
-		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"cf-typegen": "wrangler types",

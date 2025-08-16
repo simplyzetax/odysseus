@@ -2,8 +2,8 @@
 export interface FormattedItem {
 	templateId: string;
 	attributes: Record<string, any> & {
-		quantity: number;
 		favorite?: boolean;
-		item_seen?: 0 | 1;
+		item_seen?: boolean;
 	};
+	quantity: number;
 }

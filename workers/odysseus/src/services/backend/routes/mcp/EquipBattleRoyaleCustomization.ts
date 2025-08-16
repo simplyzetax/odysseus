@@ -46,7 +46,7 @@ app.post(
 	async (c) => {
 		const { indexWithinSlot, itemToSlot, slotName, variantUpdates } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.fromAccountId(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
 
 		// Normalize itemToSlot - trim whitespace and treat empty strings as null
 		const normalizedItemToSlot = itemToSlot?.trim() || '';
@@ -83,7 +83,7 @@ app.post(
 			return odysseus.mcp.invalidPayload.withMessage(`${slotName} cannot be empty`).toResponse();
 		}
 
-		if (await profile.isMultiSlotItem(slotName)) {
+		if (profile.isMultiSlotItem(slotName)) {
 			// Get slot configuration
 			const slotConfig = SLOT_CONFIGS[slotName as keyof typeof SLOT_CONFIGS];
 			if (!slotConfig) {
@@ -107,15 +107,12 @@ app.post(
 				indexWithinSlot,
 			);
 
-			await profile.updateAttribute(attributeName, updatedValue);
 			profile.trackChange({
 				changeType: 'statModified',
 				name: attributeName,
 				value: updatedValue,
 			});
 		} else {
-			await profile.updateAttribute(FortniteProfile.getFavoriteAttributeKey(slotName), normalizedItemToSlot);
-
 			profile.trackChange({
 				changeType: 'statModified',
 				name: FortniteProfile.getFavoriteAttributeKey(slotName),
@@ -127,7 +124,6 @@ app.post(
 		if (variantUpdates && variantUpdates.length > 0 && normalizedItemToSlot) {
 			for (const variantUpdate of variantUpdates) {
 				const variantAttributeName = `${normalizedItemToSlot}_variants_${variantUpdate.channel}`;
-				await profile.updateAttribute(variantAttributeName, variantUpdate.active);
 
 				profile.trackChange({
 					changeType: 'statModified',
@@ -136,6 +132,8 @@ app.post(
 				});
 			}
 		}
+
+		c.executionCtx.waitUntil(profile.applyChanges());
 
 		const response = profile.createResponse();
 		return c.json(response);

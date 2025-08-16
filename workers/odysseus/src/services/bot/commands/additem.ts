@@ -2,7 +2,7 @@ import { getDB } from '@core/db/client';
 import { ACCOUNTS } from '@core/db/schemas/account';
 import { ITEMS } from '@core/db/schemas/items';
 import { PROFILES } from '@core/db/schemas/profile';
-import { createDiscordAPI } from '@utils/discord/general';
+import { DiscordAPI } from '@utils/discord/general';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { ApplicationCommandOptionType } from 'discord-api-types/v10';
 import { and, eq } from 'drizzle-orm';
@@ -12,7 +12,7 @@ import { fnApiClient } from '@utils/fortniteapi/general';
 export const additemCommand: CommandHandler = {
 	name: 'additem',
 	async execute(interaction, c) {
-		const discord = createDiscordAPI(c.env);
+		const discord = DiscordAPI.construct(c.env);
 		const db = getDB(c.var.cacheIdentifier);
 
 		const deferredResponse = discord.createDeferredResponse(true);
@@ -41,6 +41,12 @@ export const additemCommand: CommandHandler = {
 
 					const [userAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.discordId, user.id));
 					if (!userAccount) throw new Error('You need to register first using /register');
+
+					const [existingItem] = await db
+						.select()
+						.from(ITEMS)
+						.where(and(eq(ITEMS.profileId, userAccount.id), eq(ITEMS.templateId, itemId)));
+					if (existingItem) throw new Error('Item already exists');
 
 					const [profile] = await db
 						.select()

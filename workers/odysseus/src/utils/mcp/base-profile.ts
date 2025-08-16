@@ -1,31 +1,56 @@
 import { getDB } from '@core/db/client';
 import type { Attribute } from '@core/db/schemas/attributes';
 import { ATTRIBUTES } from '@core/db/schemas/attributes';
-import type { Item } from '@core/db/schemas/items';
+import type { Item, NewItem } from '@core/db/schemas/items';
 import { ITEMS, itemSelectSchema } from '@core/db/schemas/items';
-import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
+import type { Profile } from '@core/db/schemas/profile';
+import { PROFILES, profileTypesEnum, profileTypeValues } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
-import { Bindings } from '@otypes/bindings';
 import { FormattedItem } from '@otypes/fortnite/item';
 import { ProfileChange } from '@otypes/fortnite/profileChanges';
 import { ProfileType } from '@otypes/fortnite/profiles';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import type { Context } from 'hono';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
-import { ENV } from '@core/env';
+import { ATTRIBUTE_KEYS } from './constants';
+
+/**
+ * ## Core Workflow:
+ *
+ * 1. **Track Changes Manually**: Use `trackChange()` to track what changes you want to make
+ * 2. **Apply Automatically**: Use `applyChanges()` to automatically apply all tracked changes to the database
+ *
+ * ```typescript
+ * // Step 1: Track all the changes you want to make
+ * profile.trackChange({
+ *   changeType: 'itemAttrChanged',
+ *   itemId: itemId,
+ *   attributeName: 'item_seen',
+ *   attributeValue: true,
+ * });
+ *
+ * profile.trackChange({
+ *   changeType: 'statModified',
+ *   name: 'level',
+ *   value: 50,
+ * });
+ *
+ * // Step 2: Apply all tracked changes automatically to the database
+ * c.executionCtx.waitUntil(profile.applyChanges());
+ *
+ * // Step 3: Return the response with all changes included
+ * return c.json(profile.createResponse());
+ * ```
+ */
 
 // Type mapping for profile types to their corresponding classes
 // Using generic type to avoid circular dependency
 interface ProfileClassMap {
-	athena: FortniteProfileWithDBProfile<'athena'>;
-	common_core: FortniteProfileWithDBProfile<'common_core'>;
-	common_public: FortniteProfileWithDBProfile<'common_public'>;
-	creative: FortniteProfileWithDBProfile<'creative'>;
-	profile0: FortniteProfileWithDBProfile<'profile0'>;
+	[profileTypesEnum.athena]: FortniteProfileWithDBProfile<'athena'>;
+	[profileTypesEnum.common_core]: FortniteProfileWithDBProfile<'common_core'>;
+	[profileTypesEnum.common_public]: FortniteProfileWithDBProfile<'common_public'>;
+	[profileTypesEnum.creative]: FortniteProfileWithDBProfile<'creative'>;
+	[profileTypesEnum.profile0]: FortniteProfileWithDBProfile<'profile0'>;
 }
 
-// Type for the items map returned by getItems
 export type ItemsMap = Record<string, FormattedItem>;
 
 export const MULTI_ITEM_SLOTS = ['Dance', 'ItemWrap'];
@@ -38,7 +63,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 */
 	static isValidProfileType(profileType: string | undefined): profileType is ProfileType {
 		if (!profileType) return false;
-		return Object.keys(profileTypesEnum).includes(profileType);
+		return (profileTypeValues as readonly string[]).includes(profileType);
 	}
 
 	/**
@@ -52,13 +77,17 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	}
 
 	/**
-	 * Constructs a new profile instance
-	 * @param c - The context
+	 * Constructs a new profile instance from an accountId and profileType
 	 * @param accountId - The account ID
 	 * @param profileType - The profile type, from {@link ProfileType}
+	 * @param cacheIdentifier - The cache identifier
 	 * @returns The profile instance
 	 */
-	static async construct<T extends ProfileType>(accountId: string, profileType: T, cacheIdentifier: string): Promise<ProfileClassMap[T]> {
+	static async fromAccountId<T extends ProfileType>(
+		accountId: string,
+		profileType: T,
+		cacheIdentifier: string,
+	): Promise<ProfileClassMap[T]> {
 		const baseProfile = new FortniteProfile(accountId, profileType, cacheIdentifier);
 		return baseProfile.get();
 	}
@@ -96,13 +125,13 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		}
 
 		// For athena profile, we need to dynamically import to avoid circular dependency
-		if (this.profileType === 'athena') {
+		if (this.profileType === profileTypesEnum.athena) {
 			const { AthenaProfile } = await import('./profiles/athena');
 			return new AthenaProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as any;
 		}
 
 		// For other profile types, use the base class
-		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile.id, this.cacheIdentifier) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -110,8 +139,14 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @param profileId - The profile unique id
 	 * @returns The profile
 	 */
-	public getWithProfileUniqueId(profileId: string): ProfileClassMap[T] {
-		return new FortniteProfileWithDBProfile(this.accountId, this as any, profileId, this.cacheIdentifier) as ProfileClassMap[T];
+	public async getWithProfileUniqueId(profileId: string): Promise<ProfileClassMap[T]> {
+		const [dbProfile] = await this.db.select().from(PROFILES).where(eq(PROFILES.id, profileId));
+
+		if (!dbProfile) {
+			odysseus.mcp.profileNotFound.variable([this.accountId]).throwHttpException();
+		}
+
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -128,7 +163,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	}
 
 	public static getFavoriteAttributeKey(slotName: string): string {
-		return slotName.toLowerCase() === 'itemwrap' ? 'favorite_itemwraps' : `favorite_${slotName.toLowerCase()}`;
+		return slotName.toLowerCase() === 'itemwrap' ? ATTRIBUTE_KEYS.FAVORITE_ITEMWRAPS : `favorite_${slotName.toLowerCase()}`;
 	}
 
 	public static updateMultiSlotValue(slotName: string, currentValue: any, itemToSlot: string, indexWithinSlot: number): string[] {
@@ -150,6 +185,69 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 			return currentValue;
 		}
 	}
+
+	public static formatItemForMCP(dbItem: NewItem | Item): FormattedItem {
+		return {
+			templateId: dbItem.templateId,
+			attributes: {
+				favorite: dbItem.favorite ?? false,
+				item_seen: dbItem.seen ?? false,
+			},
+			quantity: dbItem.quantity ?? 1,
+		};
+	}
+
+	/**
+	 * Combines multiple profile responses into a single uniform response.
+	 * This is useful for MCP endpoints that perform operations on multiple profiles at once.
+	 *
+	 * @param profiles - An array of {@link FortniteProfileWithDBProfile} instances.
+	 * @param profileId - The profile ID to use in the response. Defaults to 'common_core'.
+	 * @returns A single response object with combined changes, multi-updates, and notifications.
+	 */
+	public static combineResponses(profiles: FortniteProfileWithDBProfile<any>[], profileId: string = 'common_core'): object {
+		let primaryProfileChanges: ProfileChange[] = [];
+		const multiUpdate: object[] = [];
+		const combinedNotifications: object[] = [];
+
+		const primaryProfile = profiles.find((p) => p.profileType === profileId);
+		if (primaryProfile) {
+			primaryProfileChanges = primaryProfile.changes;
+		}
+
+		for (const profile of profiles) {
+			combinedNotifications.push(...profile.notifications);
+
+			// If it's a secondary profile and has changes, add it to multiUpdate.
+			if (profile.profileType !== profileId && profile.changes.length > 0) {
+				const dbProfile = profile.dbProfile as Profile;
+				multiUpdate.push({
+					profileRevision: dbProfile.rvn,
+					profileId: profile.profileType,
+					profileChangesBaseRevision: dbProfile.rvn,
+					profileChanges: profile.changes,
+					profileCommandRevision: 0,
+				});
+			}
+		}
+
+		const response: any = {
+			profileId,
+			profileChanges: primaryProfileChanges,
+			serverTime: new Date().toISOString(),
+			responseVersion: 1,
+		};
+
+		if (multiUpdate.length > 0) {
+			response.multiUpdate = multiUpdate;
+		}
+
+		if (combinedNotifications.length > 0) {
+			response.notifications = combinedNotifications;
+		}
+
+		return response;
+	}
 }
 
 /**
@@ -162,11 +260,15 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	}
 
 	changes: ProfileChange[] = [];
+	notifications: object[] = [];
+	multiChanges: ProfileChange[][] = [];
 	profileId: string;
+	dbProfile: Profile;
 
-	constructor(accountId: string, baseProfile: FortniteProfile<T>, profileId: string, cacheIdentifier: string) {
+	constructor(accountId: string, baseProfile: FortniteProfile<T>, dbProfile: Profile, cacheIdentifier: string) {
 		super(accountId, baseProfile.profileType, cacheIdentifier);
-		this.profileId = profileId;
+		this.profileId = dbProfile.id;
+		this.dbProfile = dbProfile;
 	}
 
 	/**
@@ -215,8 +317,46 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 		this.changes.push(change);
 	}
 
+	public trackNotification(notification: object) {
+		this.notifications.push(notification);
+	}
+
+	public trackMultiChanges(changes: ProfileChange[]) {
+		this.multiChanges.push(changes);
+	}
+
 	/**
-	 * Creates a response object for the profile
+	 * Tracks a change and immediately applies it to the database
+	 * This is a convenience method that combines trackChange and applyChanges for single operations
+	 * @param change - The change to track and apply
+	 */
+	public async trackAndApplyChange(change: ProfileChange) {
+		this.trackChange(change);
+
+		// Apply only the last change (the one we just added)
+		const lastChange = this.changes[this.changes.length - 1];
+		await this.applySingleChange(lastChange);
+	}
+
+	/**
+	 * Applies all tracked changes to the database
+	 * This processes all changes that have been tracked via trackChange()
+	 */
+	public async applyChanges() {
+		for (const changes of this.multiChanges) {
+			for (const change of changes) {
+				await this.applySingleChange(change);
+			}
+		}
+
+		for (const change of this.changes) {
+			await this.applySingleChange(change);
+		}
+	}
+
+	/**
+	 * Creates a response object for the profile and optionally applies all changes first
+	 * @param autoApply - Whether to automatically apply all tracked changes before creating the response
 	 * @returns The response object
 	 */
 	public createResponse() {
@@ -224,9 +364,69 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			profileId: this.profileType, // The profile type (e.g. "athena")
 			profileChanges: this.changes, // Array of tracked changes
 			serverTime: new Date().toISOString(),
-			multiUpdate: [], // For updating multiple profiles at once
+			multiUpdate: this.multiChanges, // For updating multiple profiles at once
 			responseVersion: 1, // Standard API version
+			...(this.notifications && { notifications: this.notifications }),
 		};
+	}
+
+	/**
+	 * Applies a single change to the database
+	 * @param change - The change to apply
+	 */
+	private async applySingleChange(change: ProfileChange) {
+		switch (change.changeType) {
+			case 'fullProfileUpdate':
+				// No database operations needed for full profile update
+				break;
+
+			case 'statModified':
+				await this.updateAttribute(change.name, change.value);
+				break;
+
+			case 'itemAttrChanged':
+				const item = await this.getItemBy('id', change.itemId);
+				if (!item) {
+					throw new Error(`Item with ID ${change.itemId} not found for attribute change`);
+				}
+
+				if (change.attributeName === 'favorite') {
+					await this.modifyItem(change.itemId, 'favorite', change.attributeValue);
+				} else if (change.attributeName === 'item_seen') {
+					await this.modifyItem(change.itemId, 'seen', change.attributeValue);
+				} else if (change.attributeName === 'quantity') {
+					await this.modifyItem(change.itemId, 'quantity', change.attributeValue);
+				} else {
+					const currentJsonAttrs = (item.jsonAttributes as Record<string, any>) || {};
+					const updatedJsonAttrs = {
+						...currentJsonAttrs,
+						[change.attributeName]: change.attributeValue,
+					};
+					await this.updateItem(change.itemId, updatedJsonAttrs);
+				}
+				break;
+
+			case 'itemAdded':
+				const templateId = change.item.templateId;
+				const addedItem = await this.addItem(templateId, change.item.attributes);
+
+				if (addedItem.id !== change.itemId) {
+					change.itemId = addedItem.id;
+				}
+				break;
+
+			case 'itemRemoved':
+				await this.removeItems(change.itemId);
+				break;
+
+			case 'itemQuantityChanged':
+				await this.modifyItem(change.itemId, 'quantity', change.quantity);
+				break;
+
+			default:
+				const _exhaustiveCheck: never = change;
+				throw new Error(`Unhandled change type: ${(change as any).changeType}`);
+		}
 	}
 
 	/**
@@ -235,7 +435,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param value - The value to search for
 	 * @returns The item
 	 */
-	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K]) {
+	async getItemBy<K extends keyof Item>(columnName: K, value: Item[K], disableCache: boolean = false) {
 		// Map item properties to their corresponding ITEMS columns
 		const columnMap = {
 			id: ITEMS.id,
@@ -254,7 +454,9 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 
 		// Handle null values by using isNull instead of eq
 		const whereCondition = value === null ? sql`${column} IS NULL` : eq(column, value);
-		const [item] = await this.db.select().from(ITEMS).where(whereCondition);
+		const [item] = disableCache
+			? await this.db.select().from(ITEMS).where(whereCondition).$withCache(false)
+			: await this.db.select().from(ITEMS).where(whereCondition);
 
 		return item;
 	}
@@ -264,7 +466,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	 * @param slotName - The slot name to check
 	 * @returns true if the slot name is a multi-slot item
 	 */
-	async isMultiSlotItem(slotName: string) {
+	isMultiSlotItem(slotName: string) {
 		return MULTI_ITEM_SLOTS.includes(slotName);
 	}
 
@@ -295,14 +497,15 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			};
 
 			// Only add favorite and item_seen attributes for Athena profile type
-			if (this.profileType === 'athena') {
+			if (this.profileType === profileTypesEnum.athena) {
 				baseAttributes.favorite = dbItem.favorite ?? false;
-				baseAttributes.item_seen = dbItem.seen ? 1 : 0;
+				baseAttributes.item_seen = dbItem.seen ?? false;
 			}
 
 			itemsMap[dbItem.id] = {
 				templateId: dbItem.templateId,
 				attributes: baseAttributes,
+				quantity: dbItem.quantity ?? 1,
 			};
 		}
 
@@ -362,7 +565,7 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			.values({
 				profileId: this.profileId,
 				type: this.profileType,
-				key: attributeName as string,
+				key: attributeName,
 				valueJSON: value,
 			})
 			.onConflictDoUpdate({
@@ -371,17 +574,34 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			});
 	}
 
+	async updateAttributes(attributes: Record<string, any>) {
+		await this.db.update(ATTRIBUTES).set(attributes).where(eq(ATTRIBUTES.profileId, this.profileId));
+	}
+
 	/**
 	 * Adds an item to the database
 	 * @param itemId - The ID of the item to add
 	 * @param attributes - The attributes json value of the item
 	 */
-	async addItem(itemId: string, attributes: Record<string, any>) {
-		await this.db.insert(ITEMS).values({
-			profileId: this.profileId,
-			templateId: itemId,
-			jsonAttributes: attributes,
-		});
+	async addItem(itemId: string, attributes?: Record<string, any>) {
+		const [item] = await this.db
+			.insert(ITEMS)
+			.values({
+				profileId: this.profileId,
+				templateId: itemId,
+				jsonAttributes: attributes,
+			})
+			.returning();
+
+		return item;
+	}
+
+	async removeItems(itemIds: string[] | string) {
+		if (typeof itemIds === 'string') {
+			await this.db.delete(ITEMS).where(eq(ITEMS.id, itemIds));
+		} else {
+			await this.db.delete(ITEMS).where(inArray(ITEMS.id, itemIds));
+		}
 	}
 
 	async updateItem(itemId: string, attributes: Record<string, any>) {
@@ -423,6 +643,109 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 			await this.db.update(ITEMS).set({ seen: true }).where(eq(ITEMS.id, itemIds));
 		} else {
 			await this.db.update(ITEMS).set({ seen: true }).where(inArray(ITEMS.id, itemIds));
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply an item attribute change
+	 * @param itemId - The ID of the item to modify
+	 * @param attributeName - The name of the attribute to change
+	 * @param attributeValue - The new value for the attribute
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async changeItemAttribute(itemId: string, attributeName: string, attributeValue: any, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemAttrChanged',
+			itemId,
+			attributeName,
+			attributeValue,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply a stat modification
+	 * @param name - The name of the stat/attribute to modify
+	 * @param value - The new value for the stat
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async modifyStat(name: string, value: any, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'statModified',
+			name,
+			value,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply item addition
+	 * @param templateId - The template ID of the item to add
+	 * @param attributes - Optional attributes for the item
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 * @returns The added item
+	 */
+	public async addItemWithChange(templateId: string, attributes?: Record<string, any>, autoApply: boolean = true) {
+		// First add the item to get the actual ID
+		const addedItem = await this.addItem(templateId, attributes);
+
+		const change: ProfileChange = {
+			changeType: 'itemAdded',
+			itemId: addedItem.id,
+			item: FortniteProfile.formatItemForMCP(addedItem),
+		};
+
+		// Track the change (don't apply since we already added it)
+		this.trackChange(change);
+
+		return addedItem;
+	}
+
+	/**
+	 * Convenience method to track and apply item removal
+	 * @param itemId - The ID of the item to remove
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async removeItemWithChange(itemId: string, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemRemoved',
+			itemId,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
+		}
+	}
+
+	/**
+	 * Convenience method to track and apply quantity changes
+	 * @param itemId - The ID of the item to modify
+	 * @param quantity - The new quantity
+	 * @param autoApply - Whether to immediately apply the change to the database
+	 */
+	public async changeItemQuantity(itemId: string, quantity: number, autoApply: boolean = true) {
+		const change: ProfileChange = {
+			changeType: 'itemQuantityChanged',
+			itemId,
+			quantity,
+		};
+
+		if (autoApply) {
+			await this.trackAndApplyChange(change);
+		} else {
+			this.trackChange(change);
 		}
 	}
 }

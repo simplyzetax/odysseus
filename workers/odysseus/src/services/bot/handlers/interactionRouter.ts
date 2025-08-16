@@ -1,4 +1,4 @@
-import { createDiscordAPI } from '@utils/discord/general';
+import { DiscordAPI } from '@utils/discord/general';
 import { commandsMap } from '@services/bot/commands/index';
 import { handleAutocomplete } from './autocomplete';
 import { handleMessageComponent } from './messageComponent';
@@ -16,7 +16,7 @@ import {
  * @returns Response object for the Discord interaction
  */
 export async function handleInteraction(rawBody: string, c: any): Promise<Response> {
-	const discord = createDiscordAPI(c.env);
+	const discord = DiscordAPI.construct(c.env);
 
 	// Parse the interaction
 	const interaction = discord.parseInteraction(rawBody) as APIInteraction;

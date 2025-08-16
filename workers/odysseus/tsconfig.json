@@ -9,6 +9,7 @@
 		"lib": ["es2021"],
 		/* Specify what JSX code is generated. */
 		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx",
 		/* Specify what module code is generated. */
 		"module": "es2022",
 		/* Specify how TypeScript looks up a file from a given module specifier. */
@@ -44,6 +45,6 @@
 		}
 	},
 	"exclude": ["test"],
-	"include": ["worker-configuration.d.ts", "src/**/*.ts", "src/types/vite-env.d.ts", "./drizzle/**/*.ts"],
+	"include": ["worker-configuration.d.ts", "src/**/*.ts", "src/types/vite-env.d.ts", "./drizzle/**/*.ts", "src/core/app.tsx"],
 	"composite": true
 }
