@@ -14,10 +14,7 @@
 		"isolatedModules": true,
 		"noEmit": true
 	},
-	"include": [],
+	"include": ["scripts/**/*"],
 	"exclude": ["node_modules", "dist", ".wrangler"],
-	"references": [
-		{ "path": "./workers/odysseus" },
-		{ "path": "./workers/manifestify" }
-	]
-} 
+	"references": [{ "path": "./workers/odysseus" }, { "path": "./workers/manifestify" }]
+}

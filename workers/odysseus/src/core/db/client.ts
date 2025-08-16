@@ -11,7 +11,7 @@ import { env } from 'cloudflare:workers';
 export const getDB = (cacheIdentifier: string) => {
 	const durableObjectCache = new CloudflareDurableObjectRPCDrizzleCache(cacheIdentifier);
 
-	return drizzle(env.DB.connectionString, {
+	return drizzle(env.DATABASE_URL, {
 		cache: durableObjectCache,
 		/*logger: {
 			logQuery: (query, params) => {
