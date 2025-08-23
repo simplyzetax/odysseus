@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import migrations from "../../../drizzle/migrations/migrations.js";
 import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
 import { drizzle, DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
+import { sha256 } from "hono/utils/crypto";
 
 export class DatabaseDurableObject extends DurableObject {
 
@@ -14,8 +15,16 @@ export class DatabaseDurableObject extends DurableObject {
         this.db = drizzle(this.ctx.storage, { logger: false });
 
         this.ctx.blockConcurrencyWhile(async () => {
-            console.log('Migrating database');
-            await migrate(this.db, migrations);
+            const hash = await sha256(JSON.stringify(migrations));
+            if (!hash) {
+                throw new Error("Failed to generate migration hash");
+            }
+            const storedHash = await this.ctx.storage.get<string>("migration_hash");
+            if (!storedHash || storedHash !== hash) {
+                await migrate(this.db, migrations);
+                await this.ctx.storage.put("migration_hash", hash);
+                console.log("Database migrated");
+            }
         });
     }
 
