@@ -6,9 +6,9 @@ import { starbase } from './driver';
  * @param c - The context
  * @returns The database client
  */
-export const getDB = (cacheIdentifier: string) => {
+export const getDB = (databaseIdentifier: string) => {
 	return drizzle(
-		...starbase("db")
+		...starbase(databaseIdentifier)
 	);
 };
 

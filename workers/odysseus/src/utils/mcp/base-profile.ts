@@ -52,15 +52,15 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @param profileType - The profile type, from {@link ProfileType}
 	 * @returns The profile instance
 	 */
-	static async construct<T extends ProfileType>(accountId: string, profileType: T, cacheIdentifier: string): Promise<ProfileClassMap[T]> {
-		const baseProfile = new FortniteProfile(accountId, profileType, cacheIdentifier);
+	static async construct<T extends ProfileType>(accountId: string, profileType: T, databaseIdentifier: string): Promise<ProfileClassMap[T]> {
+		const baseProfile = new FortniteProfile(accountId, profileType, databaseIdentifier);
 		return baseProfile.get();
 	}
 
 	public accountId: string;
 	public profileType: T;
 	public db: ReturnType<typeof getDB>;
-	public cacheIdentifier: string;
+	public databaseIdentifier: string;
 
 	/**
 	 * Constructs a new profile instance
@@ -68,11 +68,11 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @param accountId - The account ID
 	 * @param profileType - The profile type, from {@link ProfileType}
 	 */
-	constructor(accountId: string, profileType: T, cacheIdentifier: string) {
+	constructor(accountId: string, profileType: T, databaseIdentifier: string) {
 		this.accountId = accountId;
 		this.profileType = profileType;
-		this.db = getDB(cacheIdentifier);
-		this.cacheIdentifier = cacheIdentifier;
+		this.db = getDB(databaseIdentifier);
+		this.databaseIdentifier = databaseIdentifier;
 	}
 
 	/**
@@ -92,11 +92,11 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 		// For athena profile, we need to dynamically import to avoid circular dependency
 		if (this.profileType === 'athena') {
 			const { AthenaProfile } = await import('./profiles/athena');
-			return new AthenaProfile(this.accountId, this as any, dbProfile, this.cacheIdentifier) as any;
+			return new AthenaProfile(this.accountId, this as any, dbProfile, this.databaseIdentifier) as any;
 		}
 
 		// For other profile types, use the base class
-		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile.id, this.cacheIdentifier) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, dbProfile.id, this.databaseIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -105,7 +105,7 @@ export class FortniteProfile<T extends ProfileType = ProfileType> {
 	 * @returns The profile
 	 */
 	public getWithProfileUniqueId(profileId: string): ProfileClassMap[T] {
-		return new FortniteProfileWithDBProfile(this.accountId, this as any, profileId, this.cacheIdentifier) as ProfileClassMap[T];
+		return new FortniteProfileWithDBProfile(this.accountId, this as any, profileId, this.databaseIdentifier) as ProfileClassMap[T];
 	}
 
 	/**
@@ -169,8 +169,8 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 	changes: ProfileChange[] = [];
 	profileId: string;
 
-	constructor(accountId: string, baseProfile: FortniteProfile<T>, profileId: string, cacheIdentifier: string) {
-		super(accountId, baseProfile.profileType, cacheIdentifier);
+	constructor(accountId: string, baseProfile: FortniteProfile<T>, profileId: string, databaseIdentifier: string) {
+		super(accountId, baseProfile.profileType, databaseIdentifier);
 		this.profileId = profileId;
 	}
 
@@ -212,9 +212,9 @@ export class FortniteProfileWithDBProfile<T extends ProfileType = ProfileType> e
 		if (this.changes.length > 0 && this.changes[0].changeType !== change.changeType) {
 			throw new Error(
 				'Cannot mix different change types in one response. All changes are: ' +
-					this.changes.map((c) => c.changeType).join(', ') +
-					' and new change is: ' +
-					change.changeType,
+				this.changes.map((c) => c.changeType).join(', ') +
+				' and new change is: ' +
+				change.changeType,
 			);
 		}
 		this.changes.push(change);

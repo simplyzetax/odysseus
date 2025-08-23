@@ -1,4 +1,4 @@
-import { databaseIdentifierMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
+import { databaseIdentifierMiddleware } from '@middleware/core/databaseIdentifierMiddleware';
 import { responseEnhancementsMiddleware } from '@middleware/core/remMiddleware';
 import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
 import { Hono } from 'hono';

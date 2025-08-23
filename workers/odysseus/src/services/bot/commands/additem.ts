@@ -8,12 +8,14 @@ import { ApplicationCommandOptionType } from 'discord-api-types/v10';
 import { and, eq } from 'drizzle-orm';
 import type { CommandHandler } from '@services/bot/types/interactions';
 import { fnApiClient } from '@utils/fortniteapi/general';
+import { Context } from 'hono';
+import { Bindings } from '@otypes/bindings';
 
 export const additemCommand: CommandHandler = {
 	name: 'additem',
-	async execute(interaction, c) {
+	async execute(interaction, c: Context<{ Variables: { databaseIdentifier: string }, Bindings: Bindings }>) {
 		const discord = DiscordAPI.construct(c.env);
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const deferredResponse = discord.createDeferredResponse(true);
 

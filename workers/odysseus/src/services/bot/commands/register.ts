@@ -4,12 +4,14 @@ import { PROFILES, profileTypesEnum } from '@core/db/schemas/profile';
 import { DiscordAPI } from '@utils/discord/general';
 import { eq } from 'drizzle-orm';
 import type { CommandHandler } from '@services/bot/types/interactions';
+import { Bindings } from '@otypes/bindings';
+import { Context } from 'hono';
 
 export const registerCommand: CommandHandler = {
 	name: 'register',
-	async execute(interaction, c) {
+	async execute(interaction, c: Context<{ Variables: { databaseIdentifier: string }, Bindings: Bindings }>) {
 		const discord = DiscordAPI.construct(c.env);
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		// Send deferred response
 		const deferredResponse = discord.createDeferredResponse(true);

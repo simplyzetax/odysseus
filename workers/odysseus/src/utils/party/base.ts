@@ -75,8 +75,8 @@ export class Party implements PartyData {
 	/**
 	 * Get accepted friends for a user
 	 */
-	static async getFriends(accountId: string, cacheIdentifier: string): Promise<string[]> {
-		const db = getDB(cacheIdentifier);
+	static async getFriends(accountId: string, databaseIdentifier: string): Promise<string[]> {
+		const db = getDB(databaseIdentifier);
 
 		const friends = await db
 			.select({ targetId: FRIENDS.targetId })
@@ -89,8 +89,8 @@ export class Party implements PartyData {
 	/**
 	 * Check if two users are friends
 	 */
-	static async areFriends(accountId1: string, accountId2: string, cacheIdentifier: string): Promise<boolean> {
-		const db = getDB(cacheIdentifier);
+	static async areFriends(accountId1: string, accountId2: string, databaseIdentifier: string): Promise<boolean> {
+		const db = getDB(databaseIdentifier);
 
 		const [friendship] = await db
 			.select()
@@ -103,8 +103,8 @@ export class Party implements PartyData {
 	/**
 	 * Get mutual friends between the inviter's party and the invited user
 	 */
-	async getMutualFriends(invitedId: string, cacheIdentifier: string): Promise<string[]> {
-		const invitedFriends = await Party.getFriends(invitedId, cacheIdentifier);
+	async getMutualFriends(invitedId: string, databaseIdentifier: string): Promise<string[]> {
+		const invitedFriends = await Party.getFriends(invitedId, databaseIdentifier);
 
 		return this.members.filter((member) => invitedFriends.includes(member.account_id)).map((member) => member.account_id);
 	}
@@ -177,7 +177,7 @@ export class Party implements PartyData {
 		});
 	}
 
-	async inviteUser(invitedId: string, inviterId: string, meta: Record<string, string>, cacheIdentifier: string) {
+	async inviteUser(invitedId: string, inviterId: string, meta: Record<string, string>, databaseIdentifier: string) {
 		const inviter = this.members.find((x) => x.account_id == inviterId);
 
 		if (!inviter) {
@@ -185,7 +185,7 @@ export class Party implements PartyData {
 		}
 
 		// Check if inviter and invited user are friends
-		const areFriends = await Party.areFriends(inviterId, invitedId, cacheIdentifier);
+		const areFriends = await Party.areFriends(inviterId, invitedId, databaseIdentifier);
 		if (!areFriends) {
 			throw odysseus.party.pingForbidden.withMessage(`User [${inviterId}] is not authorized to invite [${invitedId}] - not friends.`);
 		}
@@ -205,7 +205,7 @@ export class Party implements PartyData {
 		await this.saveToKV();
 
 		// Get mutual friends for the notification
-		const mutualFriends = await this.getMutualFriends(invitedId, cacheIdentifier);
+		const mutualFriends = await this.getMutualFriends(invitedId, databaseIdentifier);
 
 		this.broadcastMessage({
 			sent: new Date(),
@@ -295,17 +295,17 @@ export class Party implements PartyData {
 		await this.saveToKV();
 
 		/*this.broadcastMessage(
-            {
-                account_id: memeberId,
-                member_state_update: {},
-                ns: "Fortnite",
-                party_id: this.id,
-                revision: this.revision,
-                sent: new Date(),
-                type: "com.epicgames.social.party.notification.v0.MEMBER_LEFT"
-            }
-        )
-        */
+			{
+				account_id: memeberId,
+				member_state_update: {},
+				ns: "Fortnite",
+				party_id: this.id,
+				revision: this.revision,
+				sent: new Date(),
+				type: "com.epicgames.social.party.notification.v0.MEMBER_LEFT"
+			}
+		)
+		*/
 	}
 
 	async reconnect(connection: JoinPartyConnection, accountId: string, _meta?: Record<string, string>) {
@@ -318,21 +318,21 @@ export class Party implements PartyData {
 		member.connections = [connection];
 		await this.saveToKV();
 		/*
-        this.broadcastMessage(
-            {
-                sent: new Date(),
-                type: "com.epicgames.social.party.notification.v0.MEMBER_JOINED",
-                connection: member.connections[0],
-                revision: member.revision,
-                ns: "Fortnite",
-                party_id: this.id,
-                account_id: member.account_id,
-                account_dn: accountId,
-                member_state_updated: connection.meta,
-                joined_at: member.joined_at,
-                updated_at: member.updated_at
-            }
-        );*/
+		this.broadcastMessage(
+			{
+				sent: new Date(),
+				type: "com.epicgames.social.party.notification.v0.MEMBER_JOINED",
+				connection: member.connections[0],
+				revision: member.revision,
+				ns: "Fortnite",
+				party_id: this.id,
+				account_id: member.account_id,
+				account_dn: accountId,
+				member_state_updated: connection.meta,
+				joined_at: member.joined_at,
+				updated_at: member.updated_at
+			}
+		);*/
 	}
 
 	async addMember(connection: JoinPartyConnection, accountId: string, meta?: Record<string, string>) {

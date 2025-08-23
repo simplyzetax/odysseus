@@ -5,7 +5,7 @@ import { FortniteProfileWithDBProfile } from '@utils/mcp/base-profile';
 import { Bindings } from '@otypes/bindings';
 
 export class AthenaProfile extends FortniteProfileWithDBProfile<'athena'> {
-	constructor(accountId: string, baseProfile: FortniteProfile<'athena'>, dbProfile: Profile, cacheIdentifier: string) {
-		super(accountId, baseProfile, dbProfile.id, cacheIdentifier);
+	constructor(accountId: string, baseProfile: FortniteProfile<'athena'>, dbProfile: Profile, databaseIdentifier: string) {
+		super(accountId, baseProfile, dbProfile.id, databaseIdentifier);
 	}
 }
