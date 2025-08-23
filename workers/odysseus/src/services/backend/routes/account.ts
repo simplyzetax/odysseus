@@ -19,7 +19,7 @@ app.get(
 			return odysseus.account.invalidAccountIdCount.withMessage('Account ID is required').toResponse();
 		}
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		// Normalize accountIds to always be an array
 		const accountIds = Array.isArray(accountIdQuery) ? accountIdQuery : [accountIdQuery];
@@ -69,7 +69,7 @@ app.get(
 			return odysseus.account.accountNotFound.withMessage('Display name is required').toResponse();
 		}
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		// Fetch account by display name (case-insensitive)
 		const [account] = await db
@@ -103,7 +103,7 @@ app.get(
 			return odysseus.account.invalidAccountIdCount.withMessage("Query parameter 'q' is required").toResponse();
 		}
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 		const [account] = await db
 			.select()
 			.from(ACCOUNTS)
@@ -130,7 +130,7 @@ app.get(
 		refillRate: 0.5,
 	}),
 	async (c) => {
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const prefix = c.req.query('prefix') || '';
 		if (!prefix) {

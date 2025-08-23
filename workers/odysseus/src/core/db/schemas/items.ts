@@ -13,7 +13,7 @@ export const ITEMS = sqliteTable(
 	{
 		id: text('id').primaryKey().$defaultFn(() => nanoid()),
 		templateId: text('template_id').notNull(),
-		profileId: integer('profile_id')
+		profileId: text('profile_id')
 			.references(() => PROFILES.id)
 			.notNull(),
 		jsonAttributes: text('attributes', { mode: 'json' }).notNull().default(JSON.stringify(defaultJsonAttributes)).$type<Record<string, any>>(),

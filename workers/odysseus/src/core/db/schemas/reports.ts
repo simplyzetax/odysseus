@@ -7,7 +7,7 @@ export const REPORTS = sqliteTable('hotfixes', {
 	reason: text('reason').notNull(),
 	details: text('details').notNull(),
 	playlistName: text('playlist_name').notNull(),
-	accountId: integer('account_id').references(() => ACCOUNTS.id),
+	accountId: text('account_id').references(() => ACCOUNTS.id),
 });
 
 export type Report = typeof REPORTS.$inferSelect;

@@ -13,7 +13,7 @@ export const HOTFIXES = sqliteTable(
 		value: text('value').notNull(),
 		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 		scope: text('scope').notNull().default('user'),
-		accountId: integer('account_id').references(() => ACCOUNTS.id),
+		accountId: text('account_id').references(() => ACCOUNTS.id),
 	},
 	(hotfixes) => {
 		return {

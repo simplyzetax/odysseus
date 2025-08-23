@@ -30,7 +30,7 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 		return odysseus.friends.friendshipNotFound.withMessage('Friend ID is required').toResponse();
 	}
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if friendship exists (only check accepted friends where user is accountId)
 	const [friendship] = await db
@@ -79,7 +79,7 @@ app.all('/friends/api/v1/:accountId/friends/:friendId/alias', ratelimitMiddlewar
 
 // Get friends list for an account
 app.get('/friends/api/public/friends/:accountId', ratelimitMiddleware(), acidMiddleware, async (c) => {
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	const response: any[] = [];
 
@@ -139,7 +139,7 @@ app.post('/friends/api/*/friends*/:receiverId', ratelimitMiddleware(), acidMiddl
 	const receiverId = c.req.param('receiverId');
 	const senderId = c.var.accountId;
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if both users exist
 	const [senderAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, senderId));
@@ -195,7 +195,7 @@ app.delete('/friends/api/*/friends*/:receiverId', ratelimitMiddleware(), acidMid
 	const receiverId = c.req.param('receiverId');
 	const senderId = c.var.accountId;
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if both users exist
 	const [senderAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, senderId));
@@ -223,7 +223,7 @@ app.post('/friends/api/*/blocklist*/:receiverId', ratelimitMiddleware(), acidMid
 	const receiverId = c.req.param('receiverId');
 	const senderId = c.var.accountId;
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if both users exist
 	const [senderAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, senderId));
@@ -259,7 +259,7 @@ app.delete('/friends/api/*/blocklist*/:receiverId', ratelimitMiddleware(), acidM
 	const receiverId = c.req.param('receiverId');
 	const senderId = c.var.accountId;
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if both users exist
 	const [senderAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, senderId));
@@ -284,7 +284,7 @@ app.delete('/friends/api/*/blocklist*/:receiverId', ratelimitMiddleware(), acidM
 
 // Get friends summary
 app.get('/friends/api/v1/:accountId/summary', ratelimitMiddleware(), acidMiddleware, async (c) => {
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	const response = {
 		friends: [] as any[],
@@ -360,7 +360,7 @@ app.get('/friends/api/v1/:accountId/summary', ratelimitMiddleware(), acidMiddlew
 
 // Get blocklist
 app.get('/friends/api/public/blocklist/:accountId', ratelimitMiddleware(), acidMiddleware, async (c) => {
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	const blockedUsers = await db
 		.select({

@@ -12,7 +12,7 @@ import { md5, sha1, sha256 } from 'hono/utils/crypto';
 const SETTINGS_FILE = 'clientsettings.sav';
 
 app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), async (c) => {
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 	const hotfixes = await db.select().from(HOTFIXES);
 
 	const parser = new IniParser(hotfixes);
@@ -41,7 +41,7 @@ app.get('/fortnite/api/cloudstorage/system', ratelimitMiddleware(), async (c) =>
 
 app.get('/fortnite/api/cloudstorage/system/:filename', ratelimitMiddleware(), async (c) => {
 	const filename = c.req.param('filename');
-	const hotfixes = await getDB(c.var.cacheIdentifier).select().from(HOTFIXES);
+	const hotfixes = await getDB(c.var.databaseIdentifier).select().from(HOTFIXES);
 	const parser = new IniParser(hotfixes);
 
 	// Get .ini content for the specific file (without timestamp for consistent hashing)
@@ -65,7 +65,7 @@ app.post('/fortnite/api/cloudstorage/system/:filename', devAuthMiddleware, ratel
 	const filename = file.name;
 	const body = await file.text();
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	const newHotfixes = IniParser.parseIniToHotfixes(body, filename);
 	if (newHotfixes.length > 0) {

@@ -4,6 +4,8 @@ import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
 import { drizzle, DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
 import { sha256 } from "hono/utils/crypto";
 
+
+//TODO: Make this globally replicating
 export class DatabaseDurableObject extends DurableObject {
 
     sql: SqlStorage

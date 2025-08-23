@@ -16,13 +16,13 @@ import type { Bindings } from 'src/types/bindings';
 const XMPP_DOMAIN = 'prod.ol.epicgames.com';
 
 const xmppClientSchema = type({
-	accountId: 'number',
+	accountId: 'string',
 	account: 'object',
 	jid: 'string',
 	id: 'string',
 	sessionId: 'string',
 	authenticated: 'boolean',
-	friends: 'number[]',
+	friends: 'string[]',
 	lastPresenceUpdate: type({
 		away: 'boolean',
 		status: 'string',
@@ -36,7 +36,7 @@ type XMPPClient = typeof xmppClientSchema.infer;
  * Re-implemented to use Cloudflare Workers infrastructure and fix logic flaws
  */
 export class XMPPServer extends DurableObject<Bindings> {
-	private clientsByAccountId: Map<number, { ws: WebSocket; data: XMPPClient }> = new Map();
+	private clientsByAccountId: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private clientsByJid: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private mapsInitialized = false;
 
@@ -69,7 +69,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		const sessionId = nanoid();
 
 		const clientData: XMPPClient = {
-			accountId: 0,
+			accountId: '',
 			account: {} as Account,
 			jid: '',
 			id: '',
@@ -184,7 +184,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 			return;
 		}
 
-		const accountId = Number(payload.sub);
+		const accountId = payload.sub.toString();
 
 		// Check if user is already connected (atomic check)
 		if (this.isAccountConnected(accountId)) {
@@ -195,7 +195,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		// Fetch account from database
 		const db = getDB('db');
 
-		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, accountId)).limit(1);
+		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, accountId.toString())).limit(1);
 		if (!account) {
 			this.sendSaslError(ws, 'not-authorized');
 			return;
@@ -210,7 +210,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		const friends = await this.loadFriendsList(db, accountId);
 
 		// Update client data
-		clientData.accountId = accountId;
+		clientData.accountId = accountId.toString();
 		clientData.account = account;
 		clientData.authenticated = true;
 		clientData.friends = friends;
@@ -635,7 +635,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	/**
 	 * Load friends list for an account
 	 */
-	private async loadFriendsList(db: DB, accountId: number): Promise<number[]> {
+	private async loadFriendsList(db: DB, accountId: string): Promise<string[]> {
 		// Get friends where this user is the accountId and status is ACCEPTED
 		const outgoingFriends = await db
 			.select({ targetId: FRIENDS.targetId })
@@ -650,8 +650,8 @@ export class XMPPServer extends DurableObject<Bindings> {
 
 		// Combine both directions to get all accepted friends
 		const allFriends = [
-			...outgoingFriends.map((f: { targetId: number }) => f.targetId),
-			...incomingFriends.map((f: { accountId: number }) => f.accountId),
+			...outgoingFriends.map((f: { targetId: string }) => f.targetId),
+			...incomingFriends.map((f: { accountId: string }) => f.accountId),
 		];
 
 		// Remove duplicates (shouldn't happen with proper data, but safe to do)
@@ -661,7 +661,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	/**
 	 * Check if an account is already connected
 	 */
-	private isAccountConnected(accountId: number): boolean {
+	private isAccountConnected(accountId: string): boolean {
 		this.ensureClientMapsPopulated();
 		return this.clientsByAccountId.has(accountId);
 	}
@@ -687,13 +687,13 @@ export class XMPPServer extends DurableObject<Bindings> {
 		}
 
 		// Try accountId match
-		const clientByAccountId = this.clientsByAccountId.get(Number(identifier));
+		const clientByAccountId = this.clientsByAccountId.get(identifier);
 		if (clientByAccountId) {
 			return clientByAccountId;
 		}
 
 		// Fallback for bare JID (e.g., accountId@domain)
-		const accountId = Number(identifier.split('@')[0]);
+		const accountId = identifier.split('@')[0];
 		const clientByBareJid = this.clientsByAccountId.get(accountId);
 		if (clientByBareJid) {
 			return clientByBareJid;

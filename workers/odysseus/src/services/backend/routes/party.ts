@@ -273,7 +273,7 @@ app.post('/party/api/v1/:deploymentId/parties/:partyId/invites/:accountId', rate
 		return odysseus.party.memberNotFound.variable([requestAccountId]).toResponse();
 	}
 
-	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.var.cacheIdentifier);
+	await party.inviteUser(inviteeAccountId, requestAccountId, body || {}, c.var.databaseIdentifier);
 
 	// Send XMPP notification for the invite
 	try {
@@ -371,7 +371,7 @@ app.post('/party/api/v1/:deploymentId/user/:friendId/pings/:accountId', ratelimi
 		return odysseus.party.selfPing.toResponse();
 	}
 
-	const db = getDB(c.var.cacheIdentifier);
+	const db = getDB(c.var.databaseIdentifier);
 
 	// Check if they are friends
 	const [friendship] = await db

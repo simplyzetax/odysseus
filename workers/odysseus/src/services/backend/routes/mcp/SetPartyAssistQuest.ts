@@ -18,7 +18,7 @@ app.post(
 	async (c) => {
 		const { questToPinAsPartyAssist } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',

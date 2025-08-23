@@ -22,9 +22,9 @@ app.post(
 	async (c) => {
 		const { itemIds, itemFavStatus } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const items = await db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
 		if (items.length !== itemIds.length) {

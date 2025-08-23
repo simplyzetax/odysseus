@@ -7,10 +7,10 @@ export const FRIENDS = sqliteTable(
 	'friends',
 	{
 		id: text('id').primaryKey().$defaultFn(() => nanoid()),
-		accountId: integer('account_id')
+		accountId: text('account_id')
 			.references(() => ACCOUNTS.id)
 			.notNull(),
-		targetId: integer('target_id')
+		targetId: text('target_id')
 			.references(() => ACCOUNTS.id)
 			.notNull(),
 		status: text('status').default('PENDING').notNull(),

@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 export const PROFILES = sqliteTable('profiles', {
 	id: text('id').primaryKey().$defaultFn(() => nanoid()),
 	type: text('type').notNull().default('common_core'),
-	accountId: integer('account_id')
+	accountId: text('account_id')
 		.notNull()
 		.references(() => ACCOUNTS.id),
 	rvn: integer('rvn').notNull().default(0),

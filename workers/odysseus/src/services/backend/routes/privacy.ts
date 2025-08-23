@@ -23,7 +23,7 @@ app.post(
 		refillRate: 0.5,
 	}),
 	async (c) => {
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const body = c.req.valid('json');
 

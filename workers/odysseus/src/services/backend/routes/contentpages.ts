@@ -90,7 +90,7 @@ app.get('/content/api/pages/fortnite-game', ratelimitMiddleware(), async (c) => 
 	}
 
 	// Load custom content from database
-	const customContent = await getDB(c.var.cacheIdentifier).select().from(CONTENT);
+	const customContent = await getDB(c.var.databaseIdentifier).select().from(CONTENT);
 	customContent.forEach((entry) => {
 		contentpages[entry.key] = entry.valueJSON;
 	});

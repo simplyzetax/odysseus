@@ -1,4 +1,4 @@
-import { cacheIdentifierMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
+import { databaseIdentifierMiddleware } from '@middleware/core/cacheIdentifierMiddleware';
 import { responseEnhancementsMiddleware } from '@middleware/core/remMiddleware';
 import { mcpCorrectionMiddleware } from '@middleware/game/mcpCorrectionMiddleware';
 import { Hono } from 'hono';
@@ -11,10 +11,10 @@ import { Bindings } from '@otypes/bindings';
 /**
  * The main app
  */
-const app = new Hono<{ Bindings: Bindings; Variables: { cacheIdentifier: string } }>()
+const app = new Hono<{ Bindings: Bindings; Variables: { databaseIdentifier: string } }>()
 	.use(responseEnhancementsMiddleware)
 	.use(logger())
-	.use(cacheIdentifierMiddleware)
+	.use(databaseIdentifierMiddleware)
 	.use('/fortnite/api/game/v2/profile/*', mcpCorrectionMiddleware);
 
 app.onError((err, c) => {

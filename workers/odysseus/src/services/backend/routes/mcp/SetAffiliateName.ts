@@ -27,7 +27,7 @@ app.post(
 	async (c) => {
 		const { affiliateName } = c.req.valid('json');
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const [creatorAccount] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.displayName, affiliateName));
 		if (!creatorAccount) {
@@ -40,7 +40,7 @@ app.post(
 
 		const now = new Date().toISOString();
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.cacheIdentifier);
+		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
 
 		profile.trackChange({
 			changeType: 'statModified',

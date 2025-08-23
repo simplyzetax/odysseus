@@ -71,7 +71,7 @@ app.post(
 
 		let account: Account | undefined;
 
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		switch (grantType) {
 			case GRANT_TYPES.client_credentials: {
@@ -86,7 +86,7 @@ app.post(
 					expires_in: Math.round(
 						(JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime() -
 							new Date().getTime()) /
-							1000,
+						1000,
 					),
 					expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
 					token_type: 'bearer',
@@ -102,9 +102,9 @@ app.post(
 
 				//TODO: Remove in prod
 				/*const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
-            if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
-                return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
-            }*/
+			if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
+				return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
+			}*/
 
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
 				break;
@@ -175,7 +175,7 @@ app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
 		return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
 	}
 
-	const [account] = await getDB(c.var.cacheIdentifier)
+	const [account] = await getDB(c.var.databaseIdentifier)
 		.select({
 			displayName: ACCOUNTS.displayName,
 		})
@@ -316,7 +316,7 @@ app.post(
 			}
 
 			// Get account information
-			const db = getDB(c.var.cacheIdentifier);
+			const db = getDB(c.var.databaseIdentifier);
 			const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
 
 			if (!account) {

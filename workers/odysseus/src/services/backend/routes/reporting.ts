@@ -18,7 +18,7 @@ app.post(
 	arktypeValidator('json', reportBodySchema),
 	accountMiddleware,
 	async (c) => {
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 		const [offenderAccount] = await db
 			.select()
 			.from(ACCOUNTS)

@@ -15,7 +15,7 @@ app.get(
 		capacity: 10,
 	}),
 	async (c) => {
-		const db = getDB(c.var.cacheIdentifier);
+		const db = getDB(c.var.databaseIdentifier);
 
 		const hotfixes = await db
 			.select()
