@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "6bbf75af-e1fb-4646-9268-b533f3cbcb67",
+  "id": "08a3ede4-44af-4911-9747-7607119d043f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -361,14 +361,14 @@
         },
         "account_id": {
           "name": "account_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "target_id": {
           "name": "target_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -387,7 +387,7 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": "'\"2025-08-23T00:03:44.646Z\"'"
+          "default": "'\"2025-08-23T19:10:38.208Z\"'"
         },
         "updated_at": {
           "name": "updated_at",
@@ -395,7 +395,7 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": "'\"2025-08-23T00:03:44.646Z\"'"
+          "default": "'\"2025-08-23T19:10:38.208Z\"'"
         },
         "favorite": {
           "name": "favorite",
@@ -509,7 +509,7 @@
         },
         "account_id": {
           "name": "account_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -554,7 +554,7 @@
         },
         "profile_id": {
           "name": "profile_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -647,7 +647,7 @@
         },
         "account_id": {
           "name": "account_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

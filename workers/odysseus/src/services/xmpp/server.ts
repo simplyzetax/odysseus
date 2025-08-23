@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { nanoid } from 'nanoid';
+
 import { JWT } from '@utils/auth/jwt';
 import { DB, getDB } from '@core/db/client';
 import { ACCOUNTS } from '@core/db/schemas/account';
@@ -66,7 +66,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	 * Handle WebSocket connection and setup client data
 	 */
 	private handleWebSocket(ws: WebSocket): void {
-		const sessionId = nanoid();
+		const sessionId = crypto.randomUUID();
 
 		const clientData: XMPPClient = {
 			accountId: '',
@@ -275,12 +275,12 @@ export class XMPPServer extends DurableObject<Bindings> {
 		}
 
 		const resourceElement = this.findElement(bindElement, 'resource');
-		let resource = resourceElement?.content || `OdysseusPC-${nanoid()}`;
+		let resource = resourceElement?.content || `OdysseusPC-${crypto.randomUUID()}`;
 
 		// Check for resource conflicts and generate unique resource if needed
 		const proposedJid = `${clientData.accountId}@${XMPP_DOMAIN}/${resource}`;
 		if (this.isJidInUse(proposedJid)) {
-			resource = `${resource}-${nanoid()}`;
+			resource = `${resource}-${crypto.randomUUID()}`;
 		}
 
 		clientData.jid = `${clientData.accountId}@${XMPP_DOMAIN}/${resource}`;

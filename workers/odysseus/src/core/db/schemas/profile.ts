@@ -1,9 +1,9 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
-import { nanoid } from 'nanoid';
+
 
 export const PROFILES = sqliteTable('profiles', {
-	id: text('id').primaryKey().$defaultFn(() => nanoid()),
+	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
 	type: text('type').notNull().default('common_core'),
 	accountId: text('account_id')
 		.notNull()

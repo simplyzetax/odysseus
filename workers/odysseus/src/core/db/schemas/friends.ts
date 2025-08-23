@@ -1,12 +1,12 @@
 import { sql } from 'drizzle-orm';
 import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
-import { nanoid } from 'nanoid';
+
 
 export const FRIENDS = sqliteTable(
 	'friends',
 	{
-		id: text('id').primaryKey().$defaultFn(() => nanoid()),
+		id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
 		accountId: text('account_id')
 			.references(() => ACCOUNTS.id)
 			.notNull(),

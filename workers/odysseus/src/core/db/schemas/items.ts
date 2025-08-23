@@ -1,7 +1,7 @@
 import { sqliteTable, integer, text, index } from 'drizzle-orm/sqlite-core';
 import { createSelectSchema } from 'drizzle-arktype';
 import { PROFILES } from './profile';
-import { nanoid } from 'nanoid';
+
 
 const defaultJsonAttributes = {
 	item_seen: true,
@@ -11,12 +11,12 @@ const defaultJsonAttributes = {
 export const ITEMS = sqliteTable(
 	'items',
 	{
-		id: text('id').primaryKey().$defaultFn(() => nanoid()),
+		id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
 		templateId: text('template_id').notNull(),
 		profileId: text('profile_id')
 			.references(() => PROFILES.id)
 			.notNull(),
-		jsonAttributes: text('attributes', { mode: 'json' }).notNull().default(JSON.stringify(defaultJsonAttributes)).$type<Record<string, any>>(),
+		jsonAttributes: text('attributes', { mode: 'json' }).notNull().default(defaultJsonAttributes).$type<Record<string, any>>(),
 		quantity: integer('quantity').notNull().default(1),
 		favorite: integer('favorite', { mode: 'boolean' }).default(false),
 		seen: integer('has_seen', { mode: 'boolean' }).default(false),

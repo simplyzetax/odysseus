@@ -56,11 +56,11 @@ CREATE INDEX `content_id_idx` ON `content` (`id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `content_key_unique_idx` ON `content` (`key`);--> statement-breakpoint
 CREATE TABLE `friends` (
 	`id` text PRIMARY KEY NOT NULL,
-	`account_id` integer NOT NULL,
-	`target_id` integer NOT NULL,
+	`account_id` text NOT NULL,
+	`target_id` text NOT NULL,
 	`status` text DEFAULT 'PENDING' NOT NULL,
-	`created_at` integer DEFAULT '"2025-08-23T00:03:44.646Z"',
-	`updated_at` integer DEFAULT '"2025-08-23T00:03:44.646Z"',
+	`created_at` integer DEFAULT '"2025-08-23T19:10:38.208Z"',
+	`updated_at` integer DEFAULT '"2025-08-23T19:10:38.208Z"',
 	`favorite` integer DEFAULT false NOT NULL,
 	`note` text,
 	`alias` text,
@@ -76,14 +76,14 @@ CREATE TABLE `hotfixes` (
 	`reason` text NOT NULL,
 	`details` text NOT NULL,
 	`playlist_name` text NOT NULL,
-	`account_id` integer,
+	`account_id` text,
 	FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `items` (
 	`id` text PRIMARY KEY NOT NULL,
 	`template_id` text NOT NULL,
-	`profile_id` integer NOT NULL,
+	`profile_id` text NOT NULL,
 	`attributes` text DEFAULT '{"item_seen":true,"variants":[]}' NOT NULL,
 	`quantity` integer DEFAULT 1 NOT NULL,
 	`favorite` integer DEFAULT false,
@@ -96,7 +96,7 @@ CREATE INDEX `items_template_id_idx` ON `items` (`template_id`);--> statement-br
 CREATE TABLE `profiles` (
 	`id` text PRIMARY KEY NOT NULL,
 	`type` text DEFAULT 'common_core' NOT NULL,
-	`account_id` integer NOT NULL,
+	`account_id` text NOT NULL,
 	`rvn` integer DEFAULT 0 NOT NULL,
 	FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`) ON UPDATE no action ON DELETE no action
 );

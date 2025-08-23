@@ -2,7 +2,7 @@ import { app } from '@core/app';
 import { odysseus } from '@core/error';
 import { devAuthMiddleware } from '@middleware/auth/devAuthMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
-import { nanoid } from 'nanoid';
+
 
 const eulaKey = '/eula/';
 
@@ -60,7 +60,7 @@ app.get('/eulatracking/api/shared/agreements/:appName', async (c) => {
 	const origin = c.req.header('Origin');
 
 	return c.json({
-		id: nanoid(),
+		id: crypto.randomUUID(),
 		key: appName,
 		version: 1,
 		revision: 1,

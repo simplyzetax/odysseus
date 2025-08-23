@@ -1,7 +1,7 @@
 import type { Account } from '@core/db/schemas/account';
 import { env } from 'cloudflare:workers';
 import { SignJWT, jwtVerify } from 'jose';
-import { nanoid } from 'nanoid';
+
 import type { ClientId } from './clients';
 
 export enum GRANT_TYPES {
@@ -36,14 +36,14 @@ export class JWT {
 		const expirationTime = Math.floor(Date.now() / 1000) + expiresIn * 3600; // Convert hours to seconds
 
 		const token = await new SignJWT({
-			p: nanoid(),
+			p: crypto.randomUUID(),
 			clsvc: 'fortnite',
 			t: 's',
 			mver: false,
 			clid: clientId,
 			ic: true,
 			am: grant_type,
-			jti: nanoid(),
+			jti: crypto.randomUUID(),
 			creation_date: new Date(),
 			hours_expire: expiresIn,
 		})
@@ -80,13 +80,13 @@ export class JWT {
 			clid: clientId,
 			dn: account.displayName,
 			am: grant_type,
-			p: btoa(nanoid()),
+			p: btoa(crypto.randomUUID()),
 			iai: account.id,
 			sec: 1,
 			clsvc: 'fortnite',
 			t: 's',
 			ic: true,
-			jti: nanoid(),
+			jti: crypto.randomUUID(),
 			creation_date: new Date(),
 			hours_expire: expiresIn,
 		})
@@ -113,7 +113,7 @@ export class JWT {
 			t: 's',
 			clid: clientId,
 			am: GRANT_TYPES.exchange,
-			jti: nanoid(),
+			jti: crypto.randomUUID(),
 			creation_date: new Date(),
 			hours_expire: expiresIn,
 		})
@@ -147,7 +147,7 @@ export class JWT {
 			t: 'r',
 			clid: clientId,
 			am: grantType,
-			jti: nanoid(),
+			jti: crypto.randomUUID(),
 			creation_date: new Date(),
 			hours_expire: expiresIn,
 		})

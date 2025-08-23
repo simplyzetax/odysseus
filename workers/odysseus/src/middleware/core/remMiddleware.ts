@@ -2,7 +2,7 @@ import { parseUserAgent } from '@utils/misc/user-agent';
 import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { StatusCode } from 'hono/utils/http-status';
-import { nanoid } from 'nanoid';
+
 
 export interface Flags {
 	skipMcpCorrection: boolean;

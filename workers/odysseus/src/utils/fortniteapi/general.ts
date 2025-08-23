@@ -18,7 +18,25 @@ type FortniteCosmetic = AllCosmeticsResponseData['data']['br'][number];
  */
 export async function searchCosmeticsByName(searchQuery: string, limit: number = 25) {
 	try {
-		const result = await fnApiClient.allCosmetics();
+		let result: AllCosmeticsResponseData;
+		const cache = caches.default;
+		const cacheUrl = new URL(`/cosmetics?query=${encodeURIComponent(searchQuery)}`, 'https://fortnite.ac');
+		const cacheRequest = new Request(cacheUrl.toString(), { method: 'GET' });
+		const cachedResponse = await cache.match(cacheRequest);
+		if (cachedResponse) {
+			console.log('cache hit for ', searchQuery);
+			result = await cachedResponse.json();
+		} else {
+			result = await fnApiClient.allCosmetics();
+			const responseToCache = new Response(JSON.stringify(result), {
+				headers: {
+					'Cache-Control': 'public, max-age=3600',
+					'Content-Type': 'application/json',
+				},
+			});
+			await cache.put(cacheRequest, responseToCache);
+		}
+
 		console.log(result.status);
 		const allCosmetics = result.data;
 		if (!allCosmetics || !allCosmetics.br) return [];

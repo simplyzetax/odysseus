@@ -1,6 +1,6 @@
 import { odysseus } from '@core/error';
 import { JoinPartyConnection, PartyConfig, PartyData, PartyInvite, PartyMember, PartyUpdate } from '@otypes/fortnite/party';
-import { nanoid } from 'nanoid';
+
 import { getDB } from '@core/db/client';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { eq, and } from 'drizzle-orm';
@@ -22,7 +22,7 @@ export class Party implements PartyData {
 		} else {
 			const now = new Date().toISOString();
 			Object.assign(this, {
-				id: nanoid(),
+				id: crypto.randomUUID(),
 				created_at: now,
 				updated_at: now,
 				revision: 0,

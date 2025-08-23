@@ -14,13 +14,6 @@
 		"nodejs_compat"
 	],
 	"upload_source_maps": true,
-	"hyperdrive": [
-		{
-			"binding": "DB",
-			"id": "7fe0e6c7f9d24aec8528d87ae3aee600",
-			"localConnectionString": "postgresql://finnernzerhoff:123@localhost:5432/odysseus"
-		}
-	],
 	"r2_buckets": [
 		{
 			"bucket_name": "odysseus",

@@ -1,11 +1,11 @@
 import { index, sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
-import { nanoid } from 'nanoid';
+
 
 export const ANALYTICS = sqliteTable(
 	'analytics',
 	{
-		id: text('id').primaryKey().$defaultFn(() => nanoid()),
-		value: text('value').notNull(),
+		id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+		value: text('value', { mode: 'json' }).notNull(),
 	},
 	(analytics) => {
 		return {

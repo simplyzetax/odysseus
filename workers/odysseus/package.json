@@ -22,7 +22,6 @@
 	},
 	"dependencies": {
 		"@hono/arktype-validator": "^2.0.1",
-		"@types/pg": "^8.15.4",
 		"arktype": "^2.1.20",
 		"discord-api-types": "^0.38.13",
 		"dotenv": "^16.5.0",
@@ -34,8 +33,6 @@
 		"hono": "^4.8.2",
 		"jose": "^6.0.11",
 		"nanoid": "^5.1.5",
-		"pg": "^8.16.2",
-		"postgres": "^3.4.7",
 		"tweetnacl": "^1.0.3",
 		"xml-parser": "^1.2.1",
 		"xmlbuilder": "^15.1.1"

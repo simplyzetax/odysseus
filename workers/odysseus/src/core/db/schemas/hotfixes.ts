@@ -1,12 +1,12 @@
 import { sql } from 'drizzle-orm';
 import { index, sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
-import { nanoid } from 'nanoid';
+
 
 export const HOTFIXES = sqliteTable(
 	'hotfixes',
 	{
-		id: text('id').primaryKey().$defaultFn(() => nanoid()),
+		id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
 		filename: text('file').notNull(),
 		section: text('section').notNull(),
 		key: text('key').notNull(),

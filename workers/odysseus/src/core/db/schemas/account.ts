@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { type } from 'arktype';
-import { nanoid } from 'nanoid';
+
 
 export const privacySettingsSchema = type({
 	optOutOfPublicLeaderboards: 'boolean',
@@ -29,7 +29,7 @@ const defaultSettings: AccountSettings = {
 };
 
 export const ACCOUNTS = sqliteTable('accounts', {
-	id: text('id').primaryKey().$defaultFn(() => nanoid()),
+	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
 	email: text('email').notNull().unique().notNull(),
 	displayName: text('username').notNull().unique().notNull(),
 	passwordHash: text('password_hash').notNull().notNull(),

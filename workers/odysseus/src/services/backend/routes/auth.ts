@@ -10,6 +10,7 @@ import { GRANT_TYPES, JWT } from '@utils/auth/jwt';
 import { eq } from 'drizzle-orm';
 import { arktypeValidator } from '@hono/arktype-validator';
 import { nanoid } from 'nanoid';
+
 import { type } from 'arktype';
 
 const baseOauthSchema = type({
@@ -101,12 +102,12 @@ app.post(
 				}
 
 				//TODO: Remove in prod
-				/*const DecodedExchangeCode = await JWT.verifyToken(body.exchange_code);
-			if (!DecodedExchangeCode || !DecodedExchangeCode.sub || !DecodedExchangeCode.iai) {
-				return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
-			}*/
+				const decodedExchangeCode = await JWT.verifyToken(body.exchange_code);
+				if (!decodedExchangeCode || !decodedExchangeCode.sub || !decodedExchangeCode.iai) {
+					return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
+				}
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'bOFc51UUjadEFDiG3JikJ'));
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedExchangeCode.sub));
 				break;
 			}
 			case GRANT_TYPES.password: {
@@ -114,7 +115,7 @@ app.post(
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
 				}
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, "3dddcb87-41e7-40b2-9633-7bd7f70ded79@fortnite.ac"));
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, body.username));
 				if (!account) {
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
 				}
