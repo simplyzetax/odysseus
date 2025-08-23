@@ -1,18 +1,19 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
+import { index, sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
+import { nanoid } from 'nanoid';
 
-export const HOTFIXES = pgTable(
+export const HOTFIXES = sqliteTable(
 	'hotfixes',
 	{
-		id: uuid('id').primaryKey().defaultRandom(),
+		id: text('id').primaryKey().$defaultFn(() => nanoid()),
 		filename: text('file').notNull(),
 		section: text('section').notNull(),
 		key: text('key').notNull(),
 		value: text('value').notNull(),
-		enabled: boolean('enabled').notNull().default(true),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 		scope: text('scope').notNull().default('user'),
-		accountId: uuid('account_id').references(() => ACCOUNTS.id),
+		accountId: integer('account_id').references(() => ACCOUNTS.id),
 	},
 	(hotfixes) => {
 		return {

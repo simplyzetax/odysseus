@@ -1,25 +1,25 @@
-import { sql } from 'drizzle-orm';
-import { pgTable, integer, uuid, text, boolean, jsonb, index } from 'drizzle-orm/pg-core';
+import { sqliteTable, integer, text, index } from 'drizzle-orm/sqlite-core';
 import { createSelectSchema } from 'drizzle-arktype';
 import { PROFILES } from './profile';
+import { nanoid } from 'nanoid';
 
 const defaultJsonAttributes = {
 	item_seen: true,
 	variants: [],
 };
 
-export const ITEMS = pgTable(
+export const ITEMS = sqliteTable(
 	'items',
 	{
-		id: uuid('id').primaryKey().defaultRandom(),
+		id: text('id').primaryKey().$defaultFn(() => nanoid()),
 		templateId: text('template_id').notNull(),
-		profileId: uuid('profile_id')
+		profileId: integer('profile_id')
 			.references(() => PROFILES.id)
 			.notNull(),
-		jsonAttributes: jsonb('attributes').notNull().default(defaultJsonAttributes).$type<Record<string, any>>(),
+		jsonAttributes: text('attributes', { mode: 'json' }).notNull().default(JSON.stringify(defaultJsonAttributes)).$type<Record<string, any>>(),
 		quantity: integer('quantity').notNull().default(1),
-		favorite: boolean('favorite').default(false),
-		seen: boolean('has_seen').default(false),
+		favorite: integer('favorite', { mode: 'boolean' }).default(false),
+		seen: integer('has_seen', { mode: 'boolean' }).default(false),
 	},
 	(items) => {
 		return {

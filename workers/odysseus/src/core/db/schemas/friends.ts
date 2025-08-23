@@ -1,25 +1,22 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, uuid, text, boolean, uniqueIndex, index, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
+import { nanoid } from 'nanoid';
 
-// Friend status codes - Drizzle enum
-export const friendStatusEnum = pgEnum('friend_status', ['PENDING', 'ACCEPTED', 'BLOCKED', 'REJECTED']);
-
-// The friends table stores friendship relationships between accounts
-export const FRIENDS = pgTable(
+export const FRIENDS = sqliteTable(
 	'friends',
 	{
-		id: uuid().primaryKey().defaultRandom(),
-		accountId: uuid()
+		id: text('id').primaryKey().$defaultFn(() => nanoid()),
+		accountId: integer('account_id')
 			.references(() => ACCOUNTS.id)
 			.notNull(),
-		targetId: uuid()
+		targetId: integer('target_id')
 			.references(() => ACCOUNTS.id)
 			.notNull(),
-		status: friendStatusEnum().default('PENDING').notNull(),
-		createdAt: timestamp().default(sql`now()`),
-		updatedAt: timestamp().default(sql`now()`),
-		favorite: boolean().default(false).notNull(),
+		status: text('status').default('PENDING').notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp' }).default(new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).default(new Date()),
+		favorite: integer('favorite', { mode: 'boolean' }).default(false).notNull(),
 		note: text(),
 		alias: text(),
 	},

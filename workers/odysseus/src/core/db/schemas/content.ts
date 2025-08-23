@@ -1,11 +1,12 @@
-import { index, jsonb, pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
+import { index, sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { nanoid } from 'nanoid';
 
-export const CONTENT = pgTable(
+export const CONTENT = sqliteTable(
 	'content',
 	{
-		id: uuid('id').primaryKey().defaultRandom(),
+		id: text('id').primaryKey().$defaultFn(() => nanoid()),
 		key: text('key').notNull(),
-		valueJSON: jsonb('value_json').notNull(),
+		valueJSON: text('value_json', { mode: 'json' }).notNull().default(JSON.stringify({})),
 	},
 	(content) => {
 		return {

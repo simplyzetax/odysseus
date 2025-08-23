@@ -1,14 +1,14 @@
-import { index, jsonb, pgTable, text, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
+import { index, sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { PROFILES } from './profile';
 
-export const ATTRIBUTES = pgTable(
+export const ATTRIBUTES = sqliteTable(
 	'attributes',
 	{
-		profileId: uuid('profile_id')
+		profileId: text('profile_id')
 			.references(() => PROFILES.id)
 			.notNull(),
 		key: text('key').notNull(),
-		valueJSON: jsonb('value_json').notNull(),
+		valueJSON: text('value_json', { mode: 'json' }).notNull(),
 		type: text('type').notNull(),
 	},
 	(attributes) => {

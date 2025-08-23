@@ -1,12 +1,13 @@
-import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { ACCOUNTS } from './account';
+import { nanoid } from 'nanoid';
 
-export const REPORTS = pgTable('hotfixes', {
-	id: uuid('id').primaryKey().defaultRandom(),
+export const REPORTS = sqliteTable('hotfixes', {
+	id: text('id').primaryKey().$defaultFn(() => nanoid()),
 	reason: text('reason').notNull(),
 	details: text('details').notNull(),
 	playlistName: text('playlist_name').notNull(),
-	accountId: uuid('account_id').references(() => ACCOUNTS.id),
+	accountId: integer('account_id').references(() => ACCOUNTS.id),
 });
 
 export type Report = typeof REPORTS.$inferSelect;

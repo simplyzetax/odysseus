@@ -1,10 +1,11 @@
-import { index, jsonb, pgTable, uuid } from 'drizzle-orm/pg-core';
+import { index, sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+import { nanoid } from 'nanoid';
 
-export const ANALYTICS = pgTable(
+export const ANALYTICS = sqliteTable(
 	'analytics',
 	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		value: jsonb('value').notNull(),
+		id: text('id').primaryKey().$defaultFn(() => nanoid()),
+		value: text('value').notNull(),
 	},
 	(analytics) => {
 		return {

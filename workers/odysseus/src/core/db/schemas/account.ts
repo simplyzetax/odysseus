@@ -1,6 +1,6 @@
-import { pgTable, uuid, boolean, text, jsonb } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { type } from 'arktype';
-import { createSelectSchema } from 'drizzle-arktype';
+import { nanoid } from 'nanoid';
 
 export const privacySettingsSchema = type({
 	optOutOfPublicLeaderboards: 'boolean',
@@ -28,17 +28,16 @@ const defaultSettings: AccountSettings = {
 	},
 };
 
-export const ACCOUNTS = pgTable('accounts', {
-	id: uuid('id').primaryKey().defaultRandom(),
+export const ACCOUNTS = sqliteTable('accounts', {
+	id: text('id').primaryKey().$defaultFn(() => nanoid()),
 	email: text('email').notNull().unique().notNull(),
 	displayName: text('username').notNull().unique().notNull(),
 	passwordHash: text('password_hash').notNull().notNull(),
-	banned: boolean('banned').default(false).notNull(),
+	banned: integer('banned', { mode: 'boolean' }).default(false),
 	discordId: text('discord_id').notNull().unique().notNull(),
-	creator: boolean('creator').default(false).notNull(),
-	settings: jsonb('settings').$type<AccountSettings>().default(defaultSettings).notNull(),
+	creator: integer('creator', { mode: 'boolean' }).default(false),
+	settings: text('settings', { mode: 'json' }).default(defaultSettings).$type<AccountSettings>().notNull(),
 });
 
 export type Account = typeof ACCOUNTS.$inferSelect;
 export type NewAccount = typeof ACCOUNTS.$inferInsert;
-export const accountSchema = createSelectSchema(ACCOUNTS);

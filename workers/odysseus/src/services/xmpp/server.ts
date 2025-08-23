@@ -1,8 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { nanoid } from 'nanoid';
 import { JWT } from '@utils/auth/jwt';
-import { DB, getDBSimple } from '@core/db/client';
-import { ACCOUNTS, accountSchema } from '@core/db/schemas/account';
+import { DB, getDB } from '@core/db/client';
+import { ACCOUNTS } from '@core/db/schemas/account';
 import { FRIENDS } from '@core/db/schemas/friends';
 import { eq, and } from 'drizzle-orm';
 import type { Account } from '@core/db/schemas/account';
@@ -16,13 +16,13 @@ import type { Bindings } from 'src/types/bindings';
 const XMPP_DOMAIN = 'prod.ol.epicgames.com';
 
 const xmppClientSchema = type({
-	accountId: 'string',
-	account: accountSchema,
+	accountId: 'number',
+	account: 'object',
 	jid: 'string',
 	id: 'string',
 	sessionId: 'string',
 	authenticated: 'boolean',
-	friends: 'string[]',
+	friends: 'number[]',
 	lastPresenceUpdate: type({
 		away: 'boolean',
 		status: 'string',
@@ -36,7 +36,7 @@ type XMPPClient = typeof xmppClientSchema.infer;
  * Re-implemented to use Cloudflare Workers infrastructure and fix logic flaws
  */
 export class XMPPServer extends DurableObject<Bindings> {
-	private clientsByAccountId: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
+	private clientsByAccountId: Map<number, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private clientsByJid: Map<string, { ws: WebSocket; data: XMPPClient }> = new Map();
 	private mapsInitialized = false;
 
@@ -69,7 +69,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		const sessionId = nanoid();
 
 		const clientData: XMPPClient = {
-			accountId: '',
+			accountId: 0,
 			account: {} as Account,
 			jid: '',
 			id: '',
@@ -184,7 +184,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 			return;
 		}
 
-		const accountId = payload.sub as string;
+		const accountId = Number(payload.sub);
 
 		// Check if user is already connected (atomic check)
 		if (this.isAccountConnected(accountId)) {
@@ -193,7 +193,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 		}
 
 		// Fetch account from database
-		const db = getDBSimple(this.env);
+		const db = getDB('db');
 
 		const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, accountId)).limit(1);
 		if (!account) {
@@ -454,6 +454,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
 		const clientData = this.getClientData(ws);
 		if (clientData?.authenticated) {
+			// @ts-ignore
 			console.log(`XMPP client disconnected: ${clientData.account.displayName} (${clientData.accountId})`);
 
 			await this.handlePartyExit(clientData);
@@ -475,6 +476,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 
 		const clientData = this.getClientData(ws);
 		if (clientData?.authenticated) {
+			// @ts-ignore
 			console.log(`Cleaning up client due to error: ${clientData.account.displayName} (${clientData.accountId})`);
 
 			await this.handlePartyExit(clientData);
@@ -517,7 +519,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 			return;
 		}
 
-		const remainingMembers = party.members.filter((m) => m.account_id !== clientData.accountId);
+		const remainingMembers = party.members.filter((m) => m.account_id !== clientData.accountId.toString());
 		if (remainingMembers.length === 0) {
 			return;
 		}
@@ -633,7 +635,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	/**
 	 * Load friends list for an account
 	 */
-	private async loadFriendsList(db: DB, accountId: string): Promise<string[]> {
+	private async loadFriendsList(db: DB, accountId: number): Promise<number[]> {
 		// Get friends where this user is the accountId and status is ACCEPTED
 		const outgoingFriends = await db
 			.select({ targetId: FRIENDS.targetId })
@@ -648,8 +650,8 @@ export class XMPPServer extends DurableObject<Bindings> {
 
 		// Combine both directions to get all accepted friends
 		const allFriends = [
-			...outgoingFriends.map((f: { targetId: string }) => f.targetId),
-			...incomingFriends.map((f: { accountId: string }) => f.accountId),
+			...outgoingFriends.map((f: { targetId: number }) => f.targetId),
+			...incomingFriends.map((f: { accountId: number }) => f.accountId),
 		];
 
 		// Remove duplicates (shouldn't happen with proper data, but safe to do)
@@ -659,7 +661,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 	/**
 	 * Check if an account is already connected
 	 */
-	private isAccountConnected(accountId: string): boolean {
+	private isAccountConnected(accountId: number): boolean {
 		this.ensureClientMapsPopulated();
 		return this.clientsByAccountId.has(accountId);
 	}
@@ -685,13 +687,13 @@ export class XMPPServer extends DurableObject<Bindings> {
 		}
 
 		// Try accountId match
-		const clientByAccountId = this.clientsByAccountId.get(identifier);
+		const clientByAccountId = this.clientsByAccountId.get(Number(identifier));
 		if (clientByAccountId) {
 			return clientByAccountId;
 		}
 
 		// Fallback for bare JID (e.g., accountId@domain)
-		const accountId = identifier.split('@')[0];
+		const accountId = Number(identifier.split('@')[0]);
 		const clientByBareJid = this.clientsByAccountId.get(accountId);
 		if (clientByBareJid) {
 			return clientByBareJid;
