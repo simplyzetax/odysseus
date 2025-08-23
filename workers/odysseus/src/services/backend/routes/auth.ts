@@ -106,7 +106,7 @@ app.post(
 				return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
 			}*/
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'b2cdd628-ab99-4ba4-864b-cc7463f261a3'));
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, 'bOFc51UUjadEFDiG3JikJ'));
 				break;
 			}
 			case GRANT_TYPES.password: {
@@ -114,7 +114,7 @@ app.post(
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
 				}
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, body.username));
+				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, "3dddcb87-41e7-40b2-9633-7bd7f70ded79@fortnite.ac"));
 				if (!account) {
 					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
 				}

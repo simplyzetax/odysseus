@@ -54,7 +54,8 @@ app.post(
 		console.log('normalizedItemToSlot', normalizedItemToSlot);
 
 		// Only validate item if we're actually equipping something (not unequipping)
-		if (normalizedItemToSlot) {
+		// Allow special placeholder item for random character without validation
+		if (normalizedItemToSlot && normalizedItemToSlot !== 'AthenaCharacter:cid_random') {
 			const item = await profile.getItemBy('id', normalizedItemToSlot);
 			if (!item) {
 				return odysseus.mcp.invalidPayload.withMessage('Item not found').toResponse();
@@ -78,10 +79,7 @@ app.post(
 			}
 		}
 
-		// Required slots can't be empty
-		if (REQUIRED_SLOTS.includes(slotName as (typeof REQUIRED_SLOTS)[number]) && !normalizedItemToSlot) {
-			return odysseus.mcp.invalidPayload.withMessage(`${slotName} cannot be empty`).toResponse();
-		}
+		// Allow empty itemToSlot for all slots (including previously required ones)
 
 		if (await profile.isMultiSlotItem(slotName)) {
 			// Get slot configuration
