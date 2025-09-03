@@ -9,27 +9,27 @@ import type { Account } from '@core/db/schemas/account';
 import { buildXML, parseXML } from '@utils/xmpp/xml';
 import type { Document, Node } from 'xml-parser';
 import xmlbuilder from 'xmlbuilder';
-import { ArkError, type } from 'arktype';
 import { Party } from '@utils/party/base';
 import type { Bindings } from 'src/types/bindings';
+import { z } from 'zod';
 
 const XMPP_DOMAIN = 'prod.ol.epicgames.com';
 
-const xmppClientSchema = type({
-	accountId: 'string',
-	account: 'object',
-	jid: 'string',
-	id: 'string',
-	sessionId: 'string',
-	authenticated: 'boolean',
-	friends: 'string[]',
-	lastPresenceUpdate: type({
-		away: 'boolean',
-		status: 'string',
+const xmppClientSchema = z.object({
+	accountId: z.string(),
+	account: z.object({}),
+	jid: z.string(),
+	id: z.string(),
+	sessionId: z.string(),
+	authenticated: z.boolean(),
+	friends: z.array(z.string()),
+	lastPresenceUpdate: z.object({
+		away: z.boolean(),
+		status: z.string(),
 	}),
 });
 
-type XMPPClient = typeof xmppClientSchema.infer;
+type XMPPClient = z.infer<typeof xmppClientSchema>;
 
 /**
  * XMPP Durable Object for handling real-time messaging and presence
@@ -70,7 +70,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 
 		const clientData: XMPPClient = {
 			accountId: '',
-			account: {} as Account,
+			account: {} as unknown as Record<string, never>,
 			jid: '',
 			id: '',
 			sessionId,
@@ -211,7 +211,7 @@ export class XMPPServer extends DurableObject<Bindings> {
 
 		// Update client data
 		clientData.accountId = accountId.toString();
-		clientData.account = account;
+		clientData.account = account as unknown as Record<string, never>;
 		clientData.authenticated = true;
 		clientData.friends = friends;
 		this.setClientData(ws, clientData);
@@ -845,13 +845,13 @@ export class XMPPServer extends DurableObject<Bindings> {
 	 * Client data management
 	 */
 	private setClientData(ws: WebSocket, clientData: XMPPClient): void {
-		const validData = xmppClientSchema(clientData);
-		if (validData instanceof ArkError) {
-			console.error('Invalid client data:', validData.message);
+		const validData = xmppClientSchema.safeParse(clientData);
+		if (!validData.success) {
+			console.error('Invalid client data:', validData.error);
 			// Don't attach invalid data. The operation that triggered this should fail.
 			return;
 		}
-		ws.serializeAttachment(clientData);
+		ws.serializeAttachment(validData.data);
 	}
 
 	private getClientData(ws: WebSocket): XMPPClient | null {

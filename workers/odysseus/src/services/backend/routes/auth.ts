@@ -8,36 +8,49 @@ import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { CLIENTS, isValidClientId } from '@utils/auth/clients';
 import { GRANT_TYPES, JWT } from '@utils/auth/jwt';
 import { eq } from 'drizzle-orm';
-import { arktypeValidator } from '@hono/arktype-validator';
+import { zValidator } from '@hono/zod-validator';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
-import { type } from 'arktype';
-
-const baseOauthSchema = type({
-	grant_type: type(['===', GRANT_TYPES.client_credentials, GRANT_TYPES.refresh, GRANT_TYPES.exchange, GRANT_TYPES.password]),
-	'exchange_code?': 'string',
-	'refresh_token?': 'string',
-	'username?': 'string',
-	'password?': 'string',
-});
-
-const oauthSchema = baseOauthSchema.narrow((data, ctx) => {
-	const { grant_type, exchange_code, refresh_token, username, password } = data;
-	switch (grant_type) {
-		case GRANT_TYPES.exchange:
-			return !!exchange_code || ctx.mustBe('grant type exchange requires exchange_code');
-		case GRANT_TYPES.refresh:
-			return !!refresh_token || ctx.mustBe('grant type refresh requires refresh_token');
-		case GRANT_TYPES.password:
-			return !(!username || !password) || ctx.mustBe('grant type password requires username and password');
-		default:
-			return true;
-	}
-});
+const oauthSchema = z
+	.object({
+		grant_type: z.nativeEnum(GRANT_TYPES),
+		exchange_code: z.string().optional(),
+		refresh_token: z.string().optional(),
+		username: z.string().optional(),
+		password: z.string().optional(),
+	})
+	.superRefine((data, ctx) => {
+		switch (data.grant_type) {
+			case GRANT_TYPES.exchange: {
+				if (!data.exchange_code) {
+					ctx.addIssue({ code: 'custom', message: 'grant type exchange requires exchange_code', path: ['exchange_code'] });
+				}
+				break;
+			}
+			case GRANT_TYPES.refresh: {
+				if (!data.refresh_token) {
+					ctx.addIssue({ code: 'custom', message: 'grant type refresh requires refresh_token', path: ['refresh_token'] });
+				}
+				break;
+			}
+			case GRANT_TYPES.password: {
+				if (!data.username) {
+					ctx.addIssue({ code: 'custom', message: 'grant type password requires username', path: ['username'] });
+				}
+				if (!data.password) {
+					ctx.addIssue({ code: 'custom', message: 'grant type password requires password', path: ['password'] });
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	});
 
 app.post(
 	'/account/api/oauth/token',
-	arktypeValidator('form', oauthSchema),
+	zValidator('form', oauthSchema),
 	ratelimitMiddleware({
 		capacity: 5,
 		refillRate: 0.25,
@@ -87,7 +100,7 @@ app.post(
 					expires_in: Math.round(
 						(JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime() -
 							new Date().getTime()) /
-						1000,
+							1000,
 					),
 					expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
 					token_type: 'bearer',
@@ -104,7 +117,7 @@ app.post(
 				//TODO: Remove in prod
 				const decodedExchangeCode = await JWT.verifyToken(body.exchange_code);
 				if (!decodedExchangeCode || !decodedExchangeCode.sub || !decodedExchangeCode.iai) {
-					return odysseus.authentication.invalidToken.withMessage("Invalid exchange code").toResponse();
+					return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
 				}
 
 				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedExchangeCode.sub));
@@ -246,11 +259,11 @@ app.post(
 		refillRate: 2,
 		initialTokens: 10,
 	}),
-	arktypeValidator(
+	zValidator(
 		'form',
-		type({
-			refresh_token: type.string.moreThanLength(0).describe('Refresh token is required'),
-			'scope?': 'string',
+		z.object({
+			refresh_token: z.string().min(1, 'Refresh token is required'),
+			scope: z.string().optional(),
 		}),
 	),
 	async (c) => {

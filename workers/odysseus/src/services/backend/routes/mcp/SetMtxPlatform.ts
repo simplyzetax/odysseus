@@ -1,19 +1,19 @@
 import { app } from '@core/app';
 import { odysseus } from '@core/error';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { type } from 'arktype';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 
-const setMtxPlatformSchema = type({
-	newPlatform: 'string',
+const setMtxPlatformSchema = z.object({
+	newPlatform: z.string(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetMtxPlatform',
-	arktypeValidator('json', setMtxPlatformSchema),
+	zValidator('json', setMtxPlatformSchema),
 	acidMiddleware,
 	ratelimitMiddleware({
 		capacity: 10,

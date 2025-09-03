@@ -1,18 +1,18 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
-const setReceiveGiftsEnabledSchema = type({
-	bReceiveGifts: 'boolean',
+const setReceiveGiftsEnabledSchema = z.object({
+	bReceiveGifts: z.boolean(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetReceiveGiftsEnabled',
-	arktypeValidator('json', setReceiveGiftsEnabledSchema),
+	zValidator('json', setReceiveGiftsEnabledSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

@@ -1,10 +1,9 @@
 import { app } from '@core/app';
-import { profileTypesEnum } from '@core/db/schemas/profile';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
-import { type } from 'arktype';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 export const VALID_COSMETIC_SLOTS = [
@@ -28,19 +27,22 @@ export const SLOT_CONFIGS = {
 	Dance: { maxSlots: 6, maxIndex: 5 },
 } as const;
 
-const equipBattleRoyaleCustomizationSchema = type({
-	indexWithinSlot: 'number', // -1 = fill all slots for multi-slot items, 0+ = specific slot index
-	itemToSlot: 'string',
-	slotName: 'string',
-	'variantUpdates?': type({
-		channel: 'string',
-		active: 'string',
-	}).array(),
+const equipBattleRoyaleCustomizationSchema = z.object({
+	indexWithinSlot: z.number(), // -1 = fill all slots for multi-slot items, 0+ = specific slot index
+	itemToSlot: z.string(),
+	slotName: z.string(),
+	variantUpdates: z
+		.object({
+			channel: z.string(),
+			active: z.string(),
+		})
+		.optional()
+		.array(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/EquipBattleRoyaleCustomization',
-	arktypeValidator('json', equipBattleRoyaleCustomizationSchema),
+	zValidator('json', equipBattleRoyaleCustomizationSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {
@@ -124,6 +126,7 @@ app.post(
 		// Handle variant updates if provided
 		if (variantUpdates && variantUpdates.length > 0 && normalizedItemToSlot) {
 			for (const variantUpdate of variantUpdates) {
+				if (!variantUpdate) continue;
 				const variantAttributeName = `${normalizedItemToSlot}_variants_${variantUpdate.channel}`;
 				await profile.updateAttribute(variantAttributeName, variantUpdate.active);
 

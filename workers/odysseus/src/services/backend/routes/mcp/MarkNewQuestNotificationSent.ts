@@ -1,20 +1,20 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { inArray } from 'drizzle-orm';
 import { ITEMS } from '@core/db/schemas/items';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
-const markNewQuestNotificationSentSchema = type({
-	itemIds: 'string[]',
+const markNewQuestNotificationSentSchema = z.object({
+	itemIds: z.array(z.string()),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/MarkNewQuestNotificationSent',
-	arktypeValidator('json', markNewQuestNotificationSentSchema),
+	zValidator('json', markNewQuestNotificationSentSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

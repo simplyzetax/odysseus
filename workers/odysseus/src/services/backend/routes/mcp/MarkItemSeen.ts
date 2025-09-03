@@ -1,18 +1,18 @@
 import { app } from '@core/app';
 import { odysseus } from '@core/error';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { type } from 'arktype';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 
-const markItemSeenSchema = type({
-	itemIds: 'string[]',
+const markItemSeenSchema = z.object({
+	itemIds: z.array(z.string()),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
-	arktypeValidator('json', markItemSeenSchema),
+	zValidator('json', markItemSeenSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

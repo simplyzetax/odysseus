@@ -1,22 +1,21 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { type } from 'arktype';
+import { z } from 'zod';
 
-
-export const privacySettingsSchema = type({
-	optOutOfPublicLeaderboards: 'boolean',
+export const privacySettingsSchema = z.object({
+	optOutOfPublicLeaderboards: z.boolean(),
 });
 
-export const friendsSettingsSchema = type({
-	mutualPrivacy: '"ALL" | "NONE" | "FRIENDS"',
-	acceptInvites: '"private" | "public"',
+export const friendsSettingsSchema = z.object({
+	mutualPrivacy: z.enum(['ALL', 'NONE', 'FRIENDS']),
+	acceptInvites: z.enum(['private', 'public']),
 });
 
-export const accountSettingsSchema = type({
+export const accountSettingsSchema = z.object({
 	privacy: privacySettingsSchema,
 	friends: friendsSettingsSchema,
 });
 
-export type AccountSettings = typeof accountSettingsSchema.infer;
+export type AccountSettings = z.infer<typeof accountSettingsSchema>;
 
 const defaultSettings: AccountSettings = {
 	privacy: {
@@ -29,7 +28,9 @@ const defaultSettings: AccountSettings = {
 };
 
 export const ACCOUNTS = sqliteTable('accounts', {
-	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
 	email: text('email').notNull().unique().notNull(),
 	displayName: text('username').notNull().unique().notNull(),
 	passwordHash: text('password_hash').notNull().notNull(),

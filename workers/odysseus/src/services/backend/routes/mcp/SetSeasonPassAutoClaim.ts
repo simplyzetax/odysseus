@@ -1,19 +1,18 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
-import { odysseus } from '@core/error';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
-const setSeasonPassAutoClaimSchema = type({
-	bEnabled: 'boolean',
-	seasonIds: 'string[]',
+const setSeasonPassAutoClaimSchema = z.object({
+	bEnabled: z.boolean(),
+	seasonIds: z.array(z.string()),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetSeasonPassAutoClaim',
-	arktypeValidator('json', setSeasonPassAutoClaimSchema),
+	zValidator('json', setSeasonPassAutoClaimSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

@@ -1,17 +1,17 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 
-const athenaPinQuestSchema = type({
-	pinnedQuest: 'string',
+const athenaPinQuestSchema = z.object({
+	pinnedQuest: z.string(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/AthenaPinQuest',
-	arktypeValidator('json', athenaPinQuestSchema),
+	zValidator('json', athenaPinQuestSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

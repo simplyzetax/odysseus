@@ -1,19 +1,19 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
-const setBattleRoyaleBannerSchema = type({
-	homebaseBannerIconId: 'string',
-	homebaseBannerColorId: 'string',
+const setBattleRoyaleBannerSchema = z.object({
+	homebaseBannerIconId: z.string(),
+	homebaseBannerColorId: z.string(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetBattleRoyaleBanner',
-	arktypeValidator('json', setBattleRoyaleBannerSchema),
+	zValidator('json', setBattleRoyaleBannerSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

@@ -4,17 +4,17 @@ import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 import { odysseus } from '@core/error';
-import { type } from 'arktype';
-import { arktypeValidator } from '@hono/arktype-validator';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 
-const setItemFavoriteStatusSchema = type({
-	bFavorite: 'boolean',
-	targetItemId: 'string',
+const setItemFavoriteStatusSchema = z.object({
+	bFavorite: z.boolean(),
+	targetItemId: z.string(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetItemFavoriteStatus',
-	arktypeValidator('json', setItemFavoriteStatusSchema),
+	zValidator('json', setItemFavoriteStatusSchema),
 	acidMiddleware,
 	ratelimitMiddleware({
 		capacity: 10,

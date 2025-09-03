@@ -1,22 +1,22 @@
 import { app } from '@core/app';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
-import { type } from 'arktype';
 import { odysseus } from '@core/error';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import { arktypeValidator } from '@hono/arktype-validator';
+import { zValidator } from '@hono/zod-validator';
 import { ITEMS } from '@core/db/schemas/items';
 import { inArray } from 'drizzle-orm';
 import { getDB } from '@core/db/client';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import z from 'zod';
 
-const setItemArchivedStatusBatchSchema = type({
-	itemIds: 'string[]',
-	archived: 'boolean',
+const setItemArchivedStatusBatchSchema = z.object({
+	itemIds: z.array(z.string()),
+	archived: z.boolean(),
 });
 
 app.post(
 	'/fortnite/api/game/v2/profile/:accountId/client/SetItemArchivedStatusBatch',
-	arktypeValidator('json', setItemArchivedStatusBatchSchema),
+	zValidator('json', setItemArchivedStatusBatchSchema),
 	acidMiddleware,
 	mcpValidationMiddleware,
 	async (c) => {

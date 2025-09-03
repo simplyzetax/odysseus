@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.7.2
+        version: 0.7.2(hono@4.8.2)(zod@4.1.5)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.44.4(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7))(zod@4.1.5)
       eslint-plugin-drizzle:
         specifier: ^0.2.3
         version: 0.2.3(eslint@9.29.0)
@@ -711,6 +717,12 @@ packages:
       arktype: ^2.0.0-dev.14
       hono: '*'
 
+  '@hono/zod-validator@0.7.2':
+    resolution: {integrity: sha512-ub5eL/NeZ4eLZawu78JpW/J+dugDAYhwqUIdp9KYScI6PZECij4Hx4UsrthlEUutqDDhPwRI0MscUfNkvn/mqQ==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.25.0 || ^4.0.0
+
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -1385,6 +1397,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  drizzle-zod@0.8.3:
+    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: ^3.25.0 || ^4.0.0
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -2614,6 +2632,11 @@ snapshots:
       arktype: 2.1.20
       hono: 4.8.2
 
+  '@hono/zod-validator@0.7.2(hono@4.8.2)(zod@4.1.5)':
+    dependencies:
+      hono: 4.8.2
+      zod: 4.1.5
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.6':
@@ -3145,6 +3168,11 @@ snapshots:
       '@types/pg': 8.15.4
       pg: 8.16.2
       postgres: 3.4.7
+
+  drizzle-zod@0.8.3(drizzle-orm@0.44.4(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7))(zod@4.1.5):
+    dependencies:
+      drizzle-orm: 0.44.4(@types/pg@8.15.4)(pg@8.16.2)(postgres@3.4.7)
+      zod: 4.1.5
 
   dunder-proto@1.0.1:
     dependencies:
