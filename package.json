@@ -39,6 +39,7 @@
 		"wrangler": "^4.32.0"
 	},
 	"dependencies": {
-		"eslint-plugin-drizzle": "^0.2.3"
+		"eslint-plugin-drizzle": "^0.2.3",
+		"zod": "^4.1.5"
 	}
 }

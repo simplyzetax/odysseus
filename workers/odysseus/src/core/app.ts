@@ -7,6 +7,9 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { odysseus } from './error';
 import { Bindings } from '@otypes/bindings';
+import { MCPVariables } from '@otypes/variables';
+import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 
 /**
  * The main app
@@ -32,4 +35,9 @@ app.onError((err, c) => {
 
 app.notFound(() => odysseus.basic.notFound.toResponse());
 
-export { app };
+const mcpApp = new Hono<{ Bindings: Bindings, Variables: MCPVariables }>()
+	.use(mcpValidationMiddleware)
+	.use(mcpCorrectionMiddleware)
+	.use(acidMiddleware)
+
+export { app, mcpApp };

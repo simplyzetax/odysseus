@@ -14,6 +14,7 @@ app.post(
 	}),
 	mcpValidationMiddleware,
 	async (c) => {
+
 		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
 		const profileObject = await profile.buildProfileObject();
 

@@ -1,3 +1,3 @@
 import { app } from '@core/app';
 
-app.get('/api/waitingroom', (c) => c.sendStatus(204));
+app.get('/waitingroom/api/waitingroom', (c) => c.sendStatus(204));

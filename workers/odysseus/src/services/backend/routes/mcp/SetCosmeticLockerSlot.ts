@@ -1,10 +1,10 @@
 import { app } from "@core/app";
 import { arktypeValidator } from "@hono/arktype-validator";
-import { acidMiddleware } from "@middleware/auth/accountIdMiddleware";
-import { mcpValidationMiddleware } from "@middleware/game/mcpValidationMiddleware";
-import { FortniteProfile, MULTI_ITEM_SLOTS } from "@utils/mcp/base-profile";
+import { FortniteProfile } from "@utils/mcp/base-profile";
 import { type } from "arktype";
 import { odysseus } from "@core/error";
+import { acidMiddleware } from "@middleware/auth/accountIdMiddleware";
+import { mcpValidationMiddleware } from "@middleware/game/mcpValidationMiddleware";
 
 const specialCosmetics = [
     "AthenaCharacter:cid_random",
@@ -26,6 +26,7 @@ const setCosmeticLockerSlotSchema = type({
 
 app.post(
     '/fortnite/api/game/v2/profile/:accountId/client/SetCosmeticLockerSlot',
+    // @ts-expect-error - Hono types are not working
     arktypeValidator('json', setCosmeticLockerSlotSchema),
     acidMiddleware,
     mcpValidationMiddleware,

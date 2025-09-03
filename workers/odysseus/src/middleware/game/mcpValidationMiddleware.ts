@@ -1,7 +1,9 @@
 import { odysseus } from '@core/error';
+import { Bindings } from '@otypes/bindings';
 import { ProfileType } from '@otypes/fortnite/profiles';
+import { MCPVariables } from '@otypes/variables';
 import { FortniteProfile } from '@utils/mcp/base-profile';
-import type { Context } from 'hono';
+import { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
 /**
@@ -10,7 +12,7 @@ import { createMiddleware } from 'hono/factory';
  * it manually in the routes.
  */
 export const mcpValidationMiddleware = createMiddleware(
-	async (c: Context<{ Bindings: Env } & { Variables: { profileType: ProfileType } }>, next) => {
+	async (c: Context<{ Bindings: Bindings; Variables: { accountId: string; token: string, databaseIdentifier: string, profileType: ProfileType } }>, next) => {
 		const requestedProfileId = c.req.query('profileId');
 		if (!requestedProfileId) {
 			return odysseus.mcp.invalidPayload.withMessage('Missing profile ID').toResponse();
