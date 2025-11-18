@@ -7,31 +7,33 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
 const markItemSeenSchema = z.object({
-	itemIds: z.array(z.string()),
+    itemIds: z.array(z.string()),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
-	zValidator('json', markItemSeenSchema),
-	acidMiddleware,
-	mcpValidationMiddleware,
-	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
+    '/fortnite/api/game/v2/profile/:accountId/client/MarkItemSeen',
+    zValidator('json', markItemSeenSchema),
+    acidMiddleware,
+    mcpValidationMiddleware,
+    async (c) => {
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const { itemIds } = c.req.valid('json');
+        const { itemIds } = c.req.valid('json');
 
-		c.executionCtx.waitUntil(profile.updateSeenStatus(itemIds));
+        for (const itemId of itemIds) {
+            profile.changes.track({
+                changeType: 'itemAttrChanged',
+                itemId: itemId,
+                attributeName: 'item_seen',
+                attributeValue: true,
+            });
+        }
 
-		for (const itemId of itemIds) {
-			profile.trackChange({
-				changeType: 'itemAttrChanged',
-				itemId: itemId,
-				attributeName: 'item_seen',
-				attributeValue: true,
-			});
-		}
+        await profile.changes.commit(c);
 
-		const response = profile.createResponse();
-		return c.json(response);
-	},
+        return c.json(profile.createResponse());
+    },
 );

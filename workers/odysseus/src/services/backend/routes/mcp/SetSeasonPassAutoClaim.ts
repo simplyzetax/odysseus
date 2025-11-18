@@ -4,44 +4,43 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { FortniteProfile } from '@utils/mcp/base-profile';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
+import { odysseus } from '@core/error';
 
 const setSeasonPassAutoClaimSchema = z.object({
-	bEnabled: z.boolean(),
-	seasonIds: z.array(z.string()),
+    bEnabled: z.boolean(),
+    seasonIds: z.array(z.string()),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/SetSeasonPassAutoClaim',
-	zValidator('json', setSeasonPassAutoClaimSchema),
-	acidMiddleware,
-	mcpValidationMiddleware,
-	async (c) => {
-		const { bEnabled, seasonIds } = c.req.valid('json');
+    '/fortnite/api/game/v2/profile/:accountId/client/SetSeasonPassAutoClaim',
+    zValidator('json', setSeasonPassAutoClaimSchema),
+    acidMiddleware,
+    mcpValidationMiddleware,
+    async (c) => {
+        const { bEnabled, seasonIds } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const seasonIdsAttribute =
-			(await profile.getAttribute('auto_spend_season_currency_ids')) || profile.createAttribute('auto_spend_season_currency_ids', []);
+        const seasonIdsAttribute = await profile.attributes.get('auto_spend_season_currency_ids');
+        if (!seasonIdsAttribute) {
+            profile.changes.track({
+                changeType: 'statModified',
+                name: 'auto_spend_season_currency_ids',
+                value: [],
+            });
+        }
 
-		if (!Array.isArray(seasonIdsAttribute.valueJSON)) {
-			seasonIdsAttribute.valueJSON = [];
-		}
+        profile.changes.track({
+            changeType: 'statModified',
+            name: 'auto_spend_season_currency_ids',
+            value: seasonIds,
+        });
 
-		if (bEnabled) {
-			const newSeasonIds = seasonIds.filter((id: string) => !seasonIdsAttribute.valueJSON.includes(id));
-			seasonIdsAttribute.valueJSON.push(...newSeasonIds);
-		} else {
-			seasonIdsAttribute.valueJSON = seasonIdsAttribute.valueJSON.filter((id: string) => !seasonIds.includes(id));
-		}
+        await profile.changes.commit(c);
 
-		profile.trackChange({
-			changeType: 'statModified',
-			name: 'auto_spend_season_currency_ids',
-			value: seasonIdsAttribute?.valueJSON,
-		});
-
-		c.executionCtx.waitUntil(profile.updateAttribute('auto_spend_season_currency_ids', seasonIdsAttribute.valueJSON));
-
-		return c.json(profile.createResponse());
-	},
+        return c.json(profile.createResponse());
+    },
 );

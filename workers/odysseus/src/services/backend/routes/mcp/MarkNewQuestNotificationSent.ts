@@ -9,32 +9,35 @@ import { ITEMS } from '@core/db/schemas/items';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const markNewQuestNotificationSentSchema = z.object({
-	itemIds: z.array(z.string()),
+    itemIds: z.array(z.string()),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/MarkNewQuestNotificationSent',
-	zValidator('json', markNewQuestNotificationSentSchema),
-	acidMiddleware,
-	mcpValidationMiddleware,
-	async (c) => {
-		const { itemIds } = c.req.valid('json');
+    '/fortnite/api/game/v2/profile/:accountId/client/MarkNewQuestNotificationSent',
+    zValidator('json', markNewQuestNotificationSentSchema),
+    acidMiddleware,
+    mcpValidationMiddleware,
+    async (c) => {
+        const { itemIds } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const items = await profile.db.select().from(ITEMS).where(inArray(ITEMS.id, itemIds));
+        const items = await profile.items.findByIds(itemIds);
 
-		for (const item of items) {
-			profile.trackChange({
-				changeType: 'itemAttrChanged',
-				itemId: item.id,
-				attributeName: 'quest_notifications',
-				attributeValue: true,
-			});
+        for (const item of items) {
+            profile.changes.track({
+                changeType: 'itemAttrChanged',
+                itemId: item.id,
+                attributeName: 'quest_notifications',
+                attributeValue: true,
+            });
+        }
 
-			c.executionCtx.waitUntil(profile.updateItem(item.id, { ...item.jsonAttributes, quest_notifications: true }));
-		}
+        await profile.changes.commit(c);
 
-		return c.json(profile.createResponse());
-	},
+        return c.json(profile.createResponse());
+    },
 );

@@ -7,40 +7,42 @@ import { z } from 'zod';
 import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddleware';
 
 const setBattleRoyaleBannerSchema = z.object({
-	homebaseBannerIconId: z.string(),
-	homebaseBannerColorId: z.string(),
+    homebaseBannerIconId: z.string(),
+    homebaseBannerColorId: z.string(),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/SetBattleRoyaleBanner',
-	zValidator('json', setBattleRoyaleBannerSchema),
-	acidMiddleware,
-	mcpValidationMiddleware,
-	async (c) => {
-		const { homebaseBannerIconId, homebaseBannerColorId } = c.req.valid('json');
+    '/fortnite/api/game/v2/profile/:accountId/client/SetBattleRoyaleBanner',
+    zValidator('json', setBattleRoyaleBannerSchema),
+    acidMiddleware,
+    mcpValidationMiddleware,
+    async (c) => {
+        const { homebaseBannerIconId, homebaseBannerColorId } = c.req.valid('json');
 
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const item = await profile.getItemBy('id', homebaseBannerIconId);
-		if (!item) {
-			return odysseus.mcp.invalidPayload.withMessage('Item not found in profile').toResponse();
-		}
+        const item = await profile.items.find('id', homebaseBannerIconId, false);
+        if (!item) {
+            return odysseus.mcp.invalidPayload.withMessage('Item not found in profile').toResponse();
+        }
 
-		profile.trackChange({
-			changeType: 'statModified',
-			name: 'banner_icon',
-			value: homebaseBannerIconId,
-		});
+        profile.changes.track({
+            changeType: 'statModified',
+            name: 'banner_icon',
+            value: homebaseBannerIconId,
+        });
 
-		profile.trackChange({
-			changeType: 'statModified',
-			name: 'banner_color',
-			value: homebaseBannerColorId,
-		});
+        profile.changes.track({
+            changeType: 'statModified',
+            name: 'banner_color',
+            value: homebaseBannerColorId,
+        });
 
-		c.executionCtx.waitUntil(profile.updateAttribute('banner_icon', homebaseBannerIconId));
-		c.executionCtx.waitUntil(profile.updateAttribute('banner_color', homebaseBannerColorId));
+        await profile.changes.commit(c);
 
-		return c.json(profile.createResponse());
-	},
+        return c.json(profile.createResponse());
+    },
 );

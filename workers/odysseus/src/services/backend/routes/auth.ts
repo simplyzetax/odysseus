@@ -1,7 +1,7 @@
 import { app } from '@core/app';
 import { getDB } from '@core/db/client';
-import type { Account } from '@core/db/schemas/account';
-import { ACCOUNTS } from '@core/db/schemas/account';
+import type { Account } from '@core/db/schemas/accounts';
+import { ACCOUNTS } from '@core/db/schemas/accounts';
 import { odysseus } from '@core/error';
 import { acidMiddleware } from '@middleware/auth/accountIdMiddleware';
 import { ratelimitMiddleware } from '@middleware/core/rateLimitMiddleware';
@@ -13,370 +13,370 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 const oauthSchema = z
-	.object({
-		grant_type: z.nativeEnum(GRANT_TYPES),
-		exchange_code: z.string().optional(),
-		refresh_token: z.string().optional(),
-		username: z.string().optional(),
-		password: z.string().optional(),
-	})
-	.superRefine((data, ctx) => {
-		switch (data.grant_type) {
-			case GRANT_TYPES.exchange: {
-				if (!data.exchange_code) {
-					ctx.addIssue({ code: 'custom', message: 'grant type exchange requires exchange_code', path: ['exchange_code'] });
-				}
-				break;
-			}
-			case GRANT_TYPES.refresh: {
-				if (!data.refresh_token) {
-					ctx.addIssue({ code: 'custom', message: 'grant type refresh requires refresh_token', path: ['refresh_token'] });
-				}
-				break;
-			}
-			case GRANT_TYPES.password: {
-				if (!data.username) {
-					ctx.addIssue({ code: 'custom', message: 'grant type password requires username', path: ['username'] });
-				}
-				if (!data.password) {
-					ctx.addIssue({ code: 'custom', message: 'grant type password requires password', path: ['password'] });
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	});
+    .object({
+        grant_type: z.nativeEnum(GRANT_TYPES),
+        exchange_code: z.string().optional(),
+        refresh_token: z.string().optional(),
+        username: z.string().optional(),
+        password: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+        switch (data.grant_type) {
+            case GRANT_TYPES.exchange: {
+                if (!data.exchange_code) {
+                    ctx.addIssue({ code: 'custom', message: 'grant type exchange requires exchange_code', path: ['exchange_code'] });
+                }
+                break;
+            }
+            case GRANT_TYPES.refresh: {
+                if (!data.refresh_token) {
+                    ctx.addIssue({ code: 'custom', message: 'grant type refresh requires refresh_token', path: ['refresh_token'] });
+                }
+                break;
+            }
+            case GRANT_TYPES.password: {
+                if (!data.username) {
+                    ctx.addIssue({ code: 'custom', message: 'grant type password requires username', path: ['username'] });
+                }
+                if (!data.password) {
+                    ctx.addIssue({ code: 'custom', message: 'grant type password requires password', path: ['password'] });
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    });
 
 app.post(
-	'/account/api/oauth/token',
-	zValidator('form', oauthSchema),
-	ratelimitMiddleware({
-		capacity: 5,
-		refillRate: 0.25,
-		initialTokens: 5,
-	}),
-	async (c) => {
-		const body = c.req.valid('form');
+    '/account/api/oauth/token',
+    zValidator('form', oauthSchema),
+    ratelimitMiddleware({
+        capacity: 5,
+        refillRate: 0.25,
+        initialTokens: 5,
+    }),
+    async (c) => {
+        const body = c.req.valid('form');
 
-		const Authorization = c.req.header('Authorization');
-		if (!Authorization) {
-			return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
-		}
+        const Authorization = c.req.header('Authorization');
+        if (!Authorization) {
+            return odysseus.authentication.invalidHeader.withMessage('Missing or invalid Authorization header').toResponse();
+        }
 
-		if (!Authorization.toLowerCase().startsWith('basic')) {
-			return odysseus.authentication.invalidHeader.withMessage('Invalid Authorization header format').toResponse();
-		}
+        if (!Authorization.toLowerCase().startsWith('basic')) {
+            return odysseus.authentication.invalidHeader.withMessage('Invalid Authorization header format').toResponse();
+        }
 
-		const [clientId, clientSecret] = atob(Authorization.slice(6)).split(':');
-		if (!clientId || !clientSecret) {
-			return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
-		}
+        const [clientId, clientSecret] = atob(Authorization.slice(6)).split(':');
+        if (!clientId || !clientSecret) {
+            return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
+        }
 
-		if (!isValidClientId(clientId)) {
-			return odysseus.authentication.invalidHeader.withMessage('Invalid client ID').toResponse();
-		}
+        if (!isValidClientId(clientId)) {
+            return odysseus.authentication.invalidHeader.withMessage('Invalid client ID').toResponse();
+        }
 
-		if (CLIENTS[clientId].secret !== clientSecret) {
-			return odysseus.authentication.invalidHeader.withMessage('Invalid client secret').toResponse();
-		}
+        if (CLIENTS[clientId].secret !== clientSecret) {
+            return odysseus.authentication.invalidHeader.withMessage('Invalid client secret').toResponse();
+        }
 
-		const grantType = body.grant_type;
+        const grantType = body.grant_type;
 
-		let account: Account | undefined;
+        let account: Account | undefined;
 
-		const db = getDB(c.var.databaseIdentifier);
+        const db = getDB(c.var.databaseIdentifier);
 
-		switch (grantType) {
-			case GRANT_TYPES.client_credentials: {
-				const token = await JWT.createClientToken(clientId, grantType, 24);
-				const decodedClient = await JWT.verifyToken(token);
-				if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== grantType) {
-					return odysseus.authentication.invalidToken.withMessage('Invalid client token').toResponse();
-				}
+        switch (grantType) {
+            case GRANT_TYPES.client_credentials: {
+                const token = await JWT.createClientToken(clientId, grantType, 24);
+                const decodedClient = await JWT.verifyToken(token);
+                if (!decodedClient || decodedClient.clid !== clientId || decodedClient.am !== grantType) {
+                    return odysseus.authentication.invalidToken.withMessage('Invalid client token').toResponse();
+                }
 
-				return c.json({
-					access_token: token,
-					expires_in: Math.round(
-						(JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime() -
-							new Date().getTime()) /
-							1000,
-					),
-					expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
-					token_type: 'bearer',
-					client_id: clientId,
-					internal_client: true,
-					client_service: 'fortnite',
-				});
-			}
-			case GRANT_TYPES.exchange: {
-				if (!body.exchange_code) {
-					return odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code').toResponse();
-				}
+                return c.json({
+                    access_token: token,
+                    expires_in: Math.round(
+                        (JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).getTime() -
+                            new Date().getTime()) /
+                        1000,
+                    ),
+                    expires_at: JWT.dateAddHours(new Date(decodedClient.creation_date as string), decodedClient.hours_expire as number).toISOString(),
+                    token_type: 'bearer',
+                    client_id: clientId,
+                    internal_client: true,
+                    client_service: 'fortnite',
+                });
+            }
+            case GRANT_TYPES.exchange: {
+                if (!body.exchange_code) {
+                    return odysseus.authentication.oauth.invalidExchange.withMessage('Missing exchange code').toResponse();
+                }
 
-				//TODO: Remove in prod
-				const decodedExchangeCode = await JWT.verifyToken(body.exchange_code);
-				if (!decodedExchangeCode || !decodedExchangeCode.sub || !decodedExchangeCode.iai) {
-					return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
-				}
+                //TODO: Remove in prod
+                const decodedExchangeCode = await JWT.verifyToken(body.exchange_code);
+                if (!decodedExchangeCode || !decodedExchangeCode.sub || !decodedExchangeCode.iai) {
+                    return odysseus.authentication.invalidToken.withMessage('Invalid exchange code').toResponse();
+                }
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedExchangeCode.sub));
-				break;
-			}
-			case GRANT_TYPES.password: {
-				if (!body.username || !body.password) {
-					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
-				}
+                [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedExchangeCode.sub));
+                break;
+            }
+            case GRANT_TYPES.password: {
+                if (!body.username || !body.password) {
+                    return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Missing username or password').toResponse();
+                }
 
-				[account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, body.username));
-				if (!account) {
-					return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
-				}
+                [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.email, body.username));
+                if (!account) {
+                    return odysseus.authentication.oauth.invalidAccountCredentials.withMessage('Account not found').toResponse();
+                }
 
-				//TODO: Check password
-				break;
-			}
-			default: {
-				return odysseus.authentication.oauth.grantNotImplemented.withMessage('Unsupported grant type').toResponse();
-			}
-		}
+                //TODO: Check password
+                break;
+            }
+            default: {
+                return odysseus.authentication.oauth.grantNotImplemented.withMessage('Unsupported grant type').toResponse();
+            }
+        }
 
-		if (!account) {
-			return odysseus.account.accountNotFound.withMessage('Account not found for the provided grant type').toResponse();
-		}
+        if (!account) {
+            return odysseus.account.accountNotFound.withMessage('Account not found for the provided grant type').toResponse();
+        }
 
-		if (account.banned) {
-			return odysseus.account.disabledAccount.toResponse();
-		}
+        if (account.banned) {
+            return odysseus.account.disabledAccount.toResponse();
+        }
 
-		const deviceId = nanoid(8);
-		const expiresInAccess = 8; // hours
-		const expiresInRefresh = 24; // hours
+        const deviceId = nanoid(8);
+        const expiresInAccess = 8; // hours
+        const expiresInRefresh = 24; // hours
 
-		const [accessToken, refreshToken] = await Promise.all([
-			JWT.createAccessToken(account, clientId, grantType, deviceId, expiresInAccess),
-			JWT.createRefreshToken(account, clientId, grantType, expiresInRefresh, deviceId),
-		]);
+        const [accessToken, refreshToken] = await Promise.all([
+            JWT.createAccessToken(account, clientId, grantType, deviceId, expiresInAccess),
+            JWT.createRefreshToken(account, clientId, grantType, expiresInRefresh, deviceId),
+        ]);
 
-		const now = new Date();
-		const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
-		const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
+        const now = new Date();
+        const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
+        const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
 
-		return c.json({
-			access_token: accessToken,
-			expires_in: expiresInAccess * 3600, // Convert hours to seconds
-			expires_at: accessExpiresAt.toISOString(),
-			token_type: 'bearer',
-			refresh_token: refreshToken,
-			refresh_expires: expiresInRefresh * 3600, // Convert hours to seconds
-			refresh_expires_at: refreshExpiresAt.toISOString(),
-			account_id: account.id,
-			client_id: clientId,
-			internal_client: true,
-			client_service: 'fortnite',
-			displayName: account.displayName,
-			app: 'fortnite',
-			in_app_id: account.id,
-			device_id: deviceId,
-		});
-	},
+        return c.json({
+            access_token: accessToken,
+            expires_in: expiresInAccess * 3600, // Convert hours to seconds
+            expires_at: accessExpiresAt.toISOString(),
+            token_type: 'bearer',
+            refresh_token: refreshToken,
+            refresh_expires: expiresInRefresh * 3600, // Convert hours to seconds
+            refresh_expires_at: refreshExpiresAt.toISOString(),
+            account_id: account.id,
+            client_id: clientId,
+            internal_client: true,
+            client_service: 'fortnite',
+            displayName: account.displayName,
+            app: 'fortnite',
+            in_app_id: account.id,
+            device_id: deviceId,
+        });
+    },
 );
 
 app.get('/account/api/oauth/verify', acidMiddleware, async (c) => {
-	// Token is already verified by acidMiddleware, get the decoded token
-	const decodedToken = await JWT.verifyToken(c.var.token);
-	if (!decodedToken?.sub) {
-		return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
-	}
+    // Token is already verified by acidMiddleware, get the decoded token
+    const decodedToken = await JWT.verifyToken(c.var.token);
+    if (!decodedToken?.sub) {
+        return odysseus.authentication.invalidToken.withMessage('Invalid or expired token').toResponse();
+    }
 
-	const [account] = await getDB(c.var.databaseIdentifier)
-		.select({
-			displayName: ACCOUNTS.displayName,
-		})
-		.from(ACCOUNTS)
-		.where(eq(ACCOUNTS.id, decodedToken.sub));
+    const [account] = await getDB(c.var.databaseIdentifier)
+        .select({
+            displayName: ACCOUNTS.displayName,
+        })
+        .from(ACCOUNTS)
+        .where(eq(ACCOUNTS.id, decodedToken.sub));
 
-	if (!account) {
-		return odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${decodedToken.sub} not found`).toResponse();
-	}
+    if (!account) {
+        return odysseus.authentication.authenticationFailed.withMessage(`Account with ID ${decodedToken.sub} not found`).toResponse();
+    }
 
-	// Calculate expiration time properly
-	const creationDate = new Date(decodedToken.creation_date as string);
-	const hoursExpire = decodedToken.hours_expire as number;
-	const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
-	const expiresIn = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
+    // Calculate expiration time properly
+    const creationDate = new Date(decodedToken.creation_date as string);
+    const hoursExpire = decodedToken.hours_expire as number;
+    const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
+    const expiresIn = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
 
-	return c.json({
-		token: c.var.token,
-		session_id: decodedToken.jti,
-		token_type: 'bearer',
-		client_id: decodedToken.clid,
-		internal_client: true,
-		client_service: 'fortnite',
-		account_id: c.var.accountId,
-		expires_in: expiresIn,
-		expires_at: expiresAt.toISOString(),
-		auth_method: decodedToken.am,
-		display_name: account.displayName,
-		app: 'fortnite',
-		in_app_id: c.var.accountId,
-		device_id: decodedToken.dvid,
-	});
+    return c.json({
+        token: c.var.token,
+        session_id: decodedToken.jti,
+        token_type: 'bearer',
+        client_id: decodedToken.clid,
+        internal_client: true,
+        client_service: 'fortnite',
+        account_id: c.var.accountId,
+        expires_in: expiresIn,
+        expires_at: expiresAt.toISOString(),
+        auth_method: decodedToken.am,
+        display_name: account.displayName,
+        app: 'fortnite',
+        in_app_id: c.var.accountId,
+        device_id: decodedToken.dvid,
+    });
 });
 
 app.delete('/account/api/oauth/sessions/kill', (c) => {
-	return c.sendStatus(204);
+    return c.sendStatus(204);
 });
 
 app.delete('/account/api/oauth/sessions/kill/:token', (c) => {
-	const token = c.req.param('token');
-	if (!token) {
-		return odysseus.authentication.invalidHeader.withMessage('Missing token parameter').toResponse();
-	}
-	// I would invalidate the token in your database or cache but we are not
-	// storing tokens in the db atm, so we just return 204
-	return c.sendStatus(204);
+    const token = c.req.param('token');
+    if (!token) {
+        return odysseus.authentication.invalidHeader.withMessage('Missing token parameter').toResponse();
+    }
+    // I would invalidate the token in your database or cache but we are not
+    // storing tokens in the db atm, so we just return 204
+    return c.sendStatus(204);
 });
 
 app.post('/auth/v1/oauth/token', async (c) => {
-	return c.json({
-		access_token: nanoid(32),
-		token_type: 'bearer',
-		expires_at: '9999-12-31T23:59:59.999Z',
-		features: ['AntiCheat', 'Connect', 'Ecom'],
-		organization_id: 'org-fn',
-		product_id: 'prod-fn',
-		sandbox_id: 'fn',
-		deployment_id: 'fn',
-		expires_in: 3599,
-	});
+    return c.json({
+        access_token: nanoid(32),
+        token_type: 'bearer',
+        expires_at: '9999-12-31T23:59:59.999Z',
+        features: ['AntiCheat', 'Connect', 'Ecom'],
+        organization_id: 'org-fn',
+        product_id: 'prod-fn',
+        sandbox_id: 'fn',
+        deployment_id: 'fn',
+        expires_in: 3599,
+    });
 });
 
 app.post(
-	'/epic/oauth/v2/token',
-	ratelimitMiddleware({
-		capacity: 10,
-		refillRate: 2,
-		initialTokens: 10,
-	}),
-	zValidator(
-		'form',
-		z.object({
-			refresh_token: z.string().min(1, 'Refresh token is required'),
-			scope: z.string().optional(),
-		}),
-	),
-	async (c) => {
-		const body = c.req.valid('form');
+    '/epic/oauth/v2/token',
+    ratelimitMiddleware({
+        capacity: 10,
+        refillRate: 2,
+        initialTokens: 10,
+    }),
+    zValidator(
+        'form',
+        z.object({
+            refresh_token: z.string().min(1, 'Refresh token is required'),
+            scope: z.string().optional(),
+        }),
+    ),
+    async (c) => {
+        const body = c.req.valid('form');
 
-		// Parse Authorization header
-		const Authorization = c.req.header('Authorization');
-		if (!Authorization) {
-			return odysseus.authentication.invalidHeader
-				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
-				.toResponse();
-		}
+        // Parse Authorization header
+        const Authorization = c.req.header('Authorization');
+        if (!Authorization) {
+            return odysseus.authentication.invalidHeader
+                .withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+                .toResponse();
+        }
 
-		if (!Authorization.toLowerCase().startsWith('basic')) {
-			return odysseus.authentication.invalidHeader
-				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
-				.toResponse();
-		}
+        if (!Authorization.toLowerCase().startsWith('basic')) {
+            return odysseus.authentication.invalidHeader
+                .withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+                .toResponse();
+        }
 
-		let clientId: string;
-		try {
-			const [id, secret] = atob(Authorization.slice(6)).split(':');
-			if (!id || !secret) {
-				return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
-			}
-			clientId = id;
-		} catch {
-			return odysseus.authentication.invalidHeader
-				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
-				.toResponse();
-		}
+        let clientId: string;
+        try {
+            const [id, secret] = atob(Authorization.slice(6)).split(':');
+            if (!id || !secret) {
+                return odysseus.authentication.invalidHeader.withMessage('Invalid client credentials').toResponse();
+            }
+            clientId = id;
+        } catch {
+            return odysseus.authentication.invalidHeader
+                .withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+                .toResponse();
+        }
 
-		// Validate client ID
-		if (!isValidClientId(clientId)) {
-			return odysseus.authentication.invalidHeader
-				.withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
-				.toResponse();
-		}
+        // Validate client ID
+        if (!isValidClientId(clientId)) {
+            return odysseus.authentication.invalidHeader
+                .withMessage('Authorization header may be invalid or not present, please verify that you are sending the correct headers')
+                .toResponse();
+        }
 
-		// Process refresh token
-		const refreshToken = body.refresh_token;
+        // Process refresh token
+        const refreshToken = body.refresh_token;
 
-		// Remove "eg1~" prefix if present
-		const cleanRefreshToken = refreshToken.startsWith('eg1~') ? refreshToken.slice(4) : refreshToken;
+        // Remove "eg1~" prefix if present
+        const cleanRefreshToken = refreshToken.startsWith('eg1~') ? refreshToken.slice(4) : refreshToken;
 
-		try {
-			// Verify the refresh token
-			const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
-			if (!decodedRefreshToken?.sub || decodedRefreshToken.t !== 'r') {
-				return odysseus.authentication.oauth.invalidRefresh
-					.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
-					.toResponse();
-			}
+        try {
+            // Verify the refresh token
+            const decodedRefreshToken = await JWT.verifyToken(cleanRefreshToken);
+            if (!decodedRefreshToken?.sub || decodedRefreshToken.t !== 'r') {
+                return odysseus.authentication.oauth.invalidRefresh
+                    .withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
+                    .toResponse();
+            }
 
-			// Check if token is expired (JWT library should handle this, but double-check)
-			const creationDate = new Date(decodedRefreshToken.creation_date as string);
-			const hoursExpire = decodedRefreshToken.hours_expire as number;
-			const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
+            // Check if token is expired (JWT library should handle this, but double-check)
+            const creationDate = new Date(decodedRefreshToken.creation_date as string);
+            const hoursExpire = decodedRefreshToken.hours_expire as number;
+            const expiresAt = JWT.dateAddHours(creationDate, hoursExpire);
 
-			if (expiresAt.getTime() <= Date.now()) {
-				return odysseus.authentication.oauth.invalidRefresh
-					.withMessage(`Sorry the refresh token '${refreshToken}' is expired`)
-					.toResponse();
-			}
+            if (expiresAt.getTime() <= Date.now()) {
+                return odysseus.authentication.oauth.invalidRefresh
+                    .withMessage(`Sorry the refresh token '${refreshToken}' is expired`)
+                    .toResponse();
+            }
 
-			// Get account information
-			const db = getDB(c.var.databaseIdentifier);
-			const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
+            // Get account information
+            const db = getDB(c.var.databaseIdentifier);
+            const [account] = await db.select().from(ACCOUNTS).where(eq(ACCOUNTS.id, decodedRefreshToken.sub));
 
-			if (!account) {
-				return odysseus.authentication.oauth.invalidRefresh
-					.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
-					.toResponse();
-			}
+            if (!account) {
+                return odysseus.authentication.oauth.invalidRefresh
+                    .withMessage(`Sorry the refresh token '${refreshToken}' is invalid`)
+                    .toResponse();
+            }
 
-			if (account.banned) {
-				return odysseus.account.disabledAccount.toResponse();
-			}
+            if (account.banned) {
+                return odysseus.account.disabledAccount.toResponse();
+            }
 
-			// Generate new tokens
-			const deviceId = (decodedRefreshToken.dvid as string) || nanoid(8);
-			const expiresInAccess = 2; // 2 hours for Epic OAuth v2
-			const expiresInRefresh = 8; // 8 hours for refresh token
+            // Generate new tokens
+            const deviceId = (decodedRefreshToken.dvid as string) || nanoid(8);
+            const expiresInAccess = 2; // 2 hours for Epic OAuth v2
+            const expiresInRefresh = 8; // 8 hours for refresh token
 
-			const [newAccessToken, newRefreshToken] = await Promise.all([
-				JWT.createAccessToken(account as Account, clientId, 'refresh_token', deviceId, expiresInAccess),
-				JWT.createRefreshToken(account as Account, clientId, 'refresh_token', expiresInRefresh, deviceId),
-			]);
+            const [newAccessToken, newRefreshToken] = await Promise.all([
+                JWT.createAccessToken(account as Account, clientId, 'refresh_token', deviceId, expiresInAccess),
+                JWT.createRefreshToken(account as Account, clientId, 'refresh_token', expiresInRefresh, deviceId),
+            ]);
 
-			const now = new Date();
-			const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
-			const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
+            const now = new Date();
+            const accessExpiresAt = JWT.dateAddHours(now, expiresInAccess);
+            const refreshExpiresAt = JWT.dateAddHours(now, expiresInRefresh);
 
-			return c.json({
-				scope: body.scope || 'basic_profile friends_list openid presence',
-				token_type: 'bearer',
-				access_token: newAccessToken,
-				refresh_token: newRefreshToken,
-				id_token: newAccessToken, // Using access token as ID token for simplicity
-				expires_in: expiresInAccess * 3600,
-				expires_at: accessExpiresAt.toISOString(),
-				refresh_expires_in: expiresInRefresh * 3600,
-				refresh_expires_at: refreshExpiresAt.toISOString(),
-				account_id: account.id,
-				client_id: clientId,
-				application_id: clientId,
-				selected_account_id: account.id,
-				merged_accounts: [],
-			});
-		} catch (error) {
-			// Handle invalid/expired refresh token
-			console.error('Refresh token error:', error);
-			return odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`).toResponse();
-		}
-	},
+            return c.json({
+                scope: body.scope || 'basic_profile friends_list openid presence',
+                token_type: 'bearer',
+                access_token: newAccessToken,
+                refresh_token: newRefreshToken,
+                id_token: newAccessToken, // Using access token as ID token for simplicity
+                expires_in: expiresInAccess * 3600,
+                expires_at: accessExpiresAt.toISOString(),
+                refresh_expires_in: expiresInRefresh * 3600,
+                refresh_expires_at: refreshExpiresAt.toISOString(),
+                account_id: account.id,
+                client_id: clientId,
+                application_id: clientId,
+                selected_account_id: account.id,
+                merged_accounts: [],
+            });
+        } catch (error) {
+            // Handle invalid/expired refresh token
+            console.error('Refresh token error:', error);
+            return odysseus.authentication.oauth.invalidRefresh.withMessage(`Sorry the refresh token '${refreshToken}' is invalid`).toResponse();
+        }
+    },
 );

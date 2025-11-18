@@ -6,36 +6,55 @@ import { mcpValidationMiddleware } from '@middleware/game/mcpValidationMiddlewar
 import { odysseus } from '@core/error';
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/ClaimMfaEnabled',
-	acidMiddleware,
-	ratelimitMiddleware({
-		capacity: 10,
-		initialTokens: 10,
-		refillRate: 0.5,
-	}),
-	mcpValidationMiddleware,
-	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
-		if (!profile) {
-			return odysseus.mcp.profileNotFound.toResponse();
-		}
+    '/fortnite/api/game/v2/profile/:accountId/client/ClaimMfaEnabled',
+    acidMiddleware,
+    ratelimitMiddleware({
+        capacity: 10,
+        initialTokens: 10,
+        refillRate: 0.5,
+    }),
+    mcpValidationMiddleware,
+    async (c) => {
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const claimed = await profile.getAttribute('mfa_reward_claimed');
-		if (claimed !== undefined) {
-			return odysseus.mcp.operationForbidden.withMessage('MFA reward already claimed').toResponse();
-		}
 
-		const templateId = 'AthenaDance:EID_BoogieDown';
+        const claimed = await profile.attributes.get("mfa_reward_claimed");
+        if (claimed) {
+            return odysseus.mcp.operationForbidden.withMessage("MFA reward already claimed").toResponse();
+        }
 
-		await profile.updateAttribute('mfa_reward_claimed', true);
-		const newItem = await profile.addItem(templateId);
+        const templateId = "AthenaDance:EID_BoogieDown";
 
-		profile.trackChange({
-			changeType: 'itemAdded',
-			itemId: newItem.id,
-			item: FortniteProfile.formatItemForMCP(newItem),
-		});
+        const newItem = {
+            templateId,
+            quantity: 1,
+            profileId: profile.profile.id,
+            id: crypto.randomUUID(),
+            favorite: false,
+            seen: false,
+            jsonAttributes: {
+                item_seen: true,
+                variants: [],
+            },
+        };
 
-		return c.json(profile.createResponse());
-	},
+        profile.changes.track({
+            changeType: "itemAdded",
+            itemId: newItem.id,
+            item: profile.formatter.formatItems(newItem),
+        });
+
+        profile.changes.track({
+            changeType: "statModified",
+            name: "mfa_reward_claimed",
+            value: true,
+        });
+
+        await profile.changes.commit(c);
+
+        return c.json(profile.createResponse());
+    },
 );

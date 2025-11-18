@@ -8,39 +8,37 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
 const removeGiftboxSchema = z.object({
-	giftBoxItemIds: z.array(z.string()),
+    giftBoxItemIds: z.array(z.string()),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/RemoveGiftbox',
-	zValidator('json', removeGiftboxSchema),
-	acidMiddleware,
-	ratelimitMiddleware({
-		capacity: 10,
-		initialTokens: 10,
-		refillRate: 0.5,
-	}),
-	mcpValidationMiddleware,
-	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
-		if (!profile) {
-			return odysseus.mcp.profileNotFound.toResponse();
-		}
+    '/fortnite/api/game/v2/profile/:accountId/client/RemoveGiftbox',
+    zValidator('json', removeGiftboxSchema),
+    acidMiddleware,
+    ratelimitMiddleware({
+        capacity: 10,
+        initialTokens: 10,
+        refillRate: 0.5,
+    }),
+    mcpValidationMiddleware,
+    async (c) => {
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const body = c.req.valid('json');
+        const body = c.req.valid('json');
 
-		const items = await profile.getItems();
-		const itemsToRemove = items.filter((item) => body.giftBoxItemIds.includes(item.id));
+        const items = await profile.items.all();
+        const itemsToRemove = items.filter((item) => body.giftBoxItemIds.includes(item.id));
 
-		await profile.removeItems(itemsToRemove.map((item) => item.id));
+        for (const item of itemsToRemove) {
+            profile.changes.track({
+                changeType: 'itemRemoved',
+                itemId: item.id,
+            });
+        }
 
-		for (const item of itemsToRemove) {
-			profile.trackChange({
-				changeType: 'itemRemoved',
-				itemId: item.id,
-			});
-		}
-
-		return c.json(profile.createResponse());
-	},
+        return c.json(profile.createResponse());
+    },
 );

@@ -1,23 +1,30 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { ACCOUNTS } from './account';
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { ACCOUNTS } from "./accounts";
+import { z } from "zod";
+import { sql } from "drizzle-orm";
 
+export const profileTypes = z.union([
+    z.literal("athena"),
+    z.literal("common_core"),
+    z.literal("common_public"),
+    z.literal("creative"),
+]);
 
-export const PROFILES = sqliteTable('profiles', {
-	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-	type: text('type').notNull().default('common_core'),
-	accountId: text('account_id')
-		.notNull()
-		.references(() => ACCOUNTS.id),
-	rvn: integer('rvn').notNull().default(0),
+export const PROFILES = sqliteTable("profiles", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    accountId: text("account_id")
+        .references(() => ACCOUNTS.id)
+        .notNull(),
+    profileType: text("profile_type").notNull().$type<z.infer<typeof profileTypes>>(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+        .notNull()
+        .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+        .notNull()
+        .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type Profile = typeof PROFILES.$inferSelect;
 export type NewProfile = typeof PROFILES.$inferInsert;
-
-export const profileTypesEnum = {
-	athena: 'athena',
-	common_core: 'common_core',
-	common_public: 'common_public',
-	creative: 'creative',
-	profile0: 'profile0',
-} as const;

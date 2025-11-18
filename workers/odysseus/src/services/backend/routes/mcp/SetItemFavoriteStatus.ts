@@ -8,42 +8,42 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
 const setItemFavoriteStatusSchema = z.object({
-	bFavorite: z.boolean(),
-	targetItemId: z.string(),
+    bFavorite: z.boolean(),
+    targetItemId: z.string(),
 });
 
 app.post(
-	'/fortnite/api/game/v2/profile/:accountId/client/SetItemFavoriteStatus',
-	zValidator('json', setItemFavoriteStatusSchema),
-	acidMiddleware,
-	ratelimitMiddleware({
-		capacity: 10,
-		initialTokens: 10,
-		refillRate: 0.5,
-	}),
-	mcpValidationMiddleware,
-	async (c) => {
-		const profile = await FortniteProfile.construct(c.var.accountId, c.var.profileType, c.var.databaseIdentifier);
-		if (!profile) {
-			return odysseus.mcp.profileNotFound.toResponse();
-		}
+    '/fortnite/api/game/v2/profile/:accountId/client/SetItemFavoriteStatus',
+    zValidator('json', setItemFavoriteStatusSchema),
+    acidMiddleware,
+    ratelimitMiddleware({
+        capacity: 10,
+        initialTokens: 10,
+        refillRate: 0.5,
+    }),
+    mcpValidationMiddleware,
+    async (c) => {
+        const profile = await FortniteProfile.from(c.var.accountId, c.var.profileType);
+        if (!profile) {
+            return odysseus.mcp.profileNotFound.toResponse();
+        }
 
-		const body = c.req.valid('json');
+        const body = c.req.valid('json');
 
-		const item = await profile.getItemBy('id', body.targetItemId);
-		if (!item) {
-			return odysseus.mcp.invalidPayload.withMessage('Item not found').toResponse();
-		}
+        const item = await profile.items.find('id', body.targetItemId, false);
+        if (!item) {
+            return odysseus.mcp.invalidPayload.withMessage('Item not found').toResponse();
+        }
 
-		await profile.modifyItem(item.id, 'favorite', body.bFavorite);
+        profile.changes.track({
+            changeType: 'itemAttrChanged',
+            itemId: item.id,
+            attributeName: 'favorite',
+            attributeValue: body.bFavorite,
+        });
 
-		profile.trackChange({
-			changeType: 'itemAttrChanged',
-			itemId: item.id,
-			attributeName: 'favorite',
-			attributeValue: body.bFavorite,
-		});
+        await profile.changes.commit(c);
 
-		return c.json(profile.createResponse());
-	},
+        return c.json(profile.createResponse());
+    },
 );
